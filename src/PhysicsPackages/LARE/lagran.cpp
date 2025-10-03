@@ -243,7 +243,7 @@ void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &da
             lagranNeutral.by1(ix, iy, iz) = 0.0;
             lagranNeutral.bz1(ix, iy, iz) = 0.0;
 
-            lagran.pressure(ix, iy, iz) = (gas_gamma_neutral - 1.0) * dataNeutral.rho(ix, iy, iz) * energy_neutral(ix, iy, iz);
+            lagranNeutral.pressure(ix, iy, iz) = (gas_gamma_neutral - 1.0) * dataNeutral.rho(ix, iy, iz) * energy_neutral(ix, iy, iz);
         }, Range(-1,dataNeutral.nx+2), Range(-1,dataNeutral.ny+2), Range(-1,dataNeutral.nz+2));
 
     // Compute rho_v and cv_v
