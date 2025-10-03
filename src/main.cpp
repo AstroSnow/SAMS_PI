@@ -33,12 +33,6 @@ int main(int argc, char *argv[]){
     data.visc2_norm=data.visc2;
 		portableWrapper::fence();
 	
-    S.initial_conditions(data);
-		portableWrapper::fence();
-    timer t;
-    t.begin("Main Loop");
-    data.step=0;
-    
 	if (data.two_fluid) {
 	    printf("Initialising two-fluid arrays \n");
 	    S2.controlvariables(dataNeutral);
@@ -46,6 +40,12 @@ int main(int argc, char *argv[]){
 		S2.grid(dataNeutral);
 		printf("Finished initialising two-fluid arrays \n");
 	}
+	
+    S.initial_conditions(data,dataNeutral);
+		portableWrapper::fence();
+    timer t;
+    t.begin("Main Loop");
+    data.step=0;
 
     while (true)
     {

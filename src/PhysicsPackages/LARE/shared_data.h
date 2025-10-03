@@ -240,7 +240,7 @@ public:
      * @param data Simulation data struct
      * This function sets up the initial conditions for the simulation, including the initial values of the physical variables.
      */
-    void initial_conditions(simulationData &data);
+    void initial_conditions(simulationData &data,simulationData &dataNeutral);
 
     /**
      * Call all the boundary condition functions

@@ -77,7 +77,7 @@ void simulation::controlvariables(simulationData &data) {
   data.dt_snapshots = 10.0;
 }
 
-void simulation::initial_conditions(simulationData &data) {
+void simulation::initial_conditions(simulationData &data,simulationData &dataNeutral) {
 
   using Range = portableWrapper::Range;
 
