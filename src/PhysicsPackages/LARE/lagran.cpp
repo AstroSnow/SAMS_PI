@@ -46,7 +46,7 @@ struct lagranData
 /**
  * Class representing data only needed during the lagrangian step
  */
-struct lagranData_neutrals
+struct lagranDataNeutral
 {
     volumeArray bx1; // X-magnetic field at half timestep
     volumeArray by1; // Y-magnetic field at half timestep
@@ -128,6 +128,7 @@ DEVICEPREFIX INLINE T_dataType edge_viscosity(simulationData data, lagranData la
 
 void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &dataNeutral) {
     lagranData lagran;
+    lagranDataNeutral lagranNeutral;
     portableWrapper::portableArrayManager lagranManager;
     using Range = portableWrapper::Range;
     // Allocate arrays using the portableArrayManager
@@ -154,6 +155,30 @@ void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &da
     lagranManager.allocate(lagran.flux_z, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
     lagranManager.allocate(lagran.curlb, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
 
+    if (data.two_fluid){
+    lagranManager.allocate(lagranNeutral.bx1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+    lagranManager.allocate(lagranNeutral.by1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+    lagranManager.allocate(lagranNeutral.bz1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+    lagranManager.allocate(lagranNeutral.alpha1, Range(0,data.nx+1), Range(0,data.ny+2), Range(0,data.nz+2));
+    lagranManager.allocate(lagranNeutral.alpha2, Range(-1,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+2));
+    lagranManager.allocate(lagranNeutral.alpha3, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(0,data.nz+1));
+    lagranManager.allocate(lagranNeutral.visc_heat, Range(0,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+1));
+    lagranManager.allocate(lagranNeutral.pressure, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
+    lagranManager.allocate(lagranNeutral.p_e, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
+    lagranManager.allocate(lagranNeutral.p_i, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
+    lagranManager.allocate(lagranNeutral.rho_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    lagranManager.allocate(lagranNeutral.cv_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    lagranManager.allocate(lagranNeutral.fx, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.fy, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.fz, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.fx_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.fy_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.fz_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.flux_x, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.flux_y, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.flux_z, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    lagranManager.allocate(lagranNeutral.curlb, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));    
+    }
 
     //All of the arrays are deallocated when lagranManager goes out of scope
     // Initialize bx1, by1, bz1, p_e, p_i, pressure
