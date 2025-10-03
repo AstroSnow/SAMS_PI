@@ -155,31 +155,6 @@ void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &da
     lagranManager.allocate(lagran.flux_z, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
     lagranManager.allocate(lagran.curlb, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
 
-    if (data.two_fluid){
-    lagranManager.allocate(lagranNeutral.bx1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
-    lagranManager.allocate(lagranNeutral.by1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
-    lagranManager.allocate(lagranNeutral.bz1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
-    lagranManager.allocate(lagranNeutral.alpha1, Range(0,data.nx+1), Range(0,data.ny+2), Range(0,data.nz+2));
-    lagranManager.allocate(lagranNeutral.alpha2, Range(-1,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+2));
-    lagranManager.allocate(lagranNeutral.alpha3, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(0,data.nz+1));
-    lagranManager.allocate(lagranNeutral.visc_heat, Range(0,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+1));
-    lagranManager.allocate(lagranNeutral.pressure, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
-    lagranManager.allocate(lagranNeutral.p_e, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
-    lagranManager.allocate(lagranNeutral.p_i, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
-    lagranManager.allocate(lagranNeutral.rho_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-    lagranManager.allocate(lagranNeutral.cv_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-    lagranManager.allocate(lagranNeutral.fx, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.fy, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.fz, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.fx_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.fy_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.fz_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.flux_x, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.flux_y, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.flux_z, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
-    lagranManager.allocate(lagranNeutral.curlb, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));    
-    }
-
     //All of the arrays are deallocated when lagranManager goes out of scope
     // Initialize bx1, by1, bz1, p_e, p_i, pressure
     T_dataType gas_gamma = data.gas_gamma;
@@ -231,6 +206,81 @@ void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &da
     }, Range(-1,data.nz+1), Range(-1,data.ny+1), Range(-1,data.nx+1));
 
     shock_viscosity(data, lagran);
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    // get the two-fluid properties
+    if (data.two_fluid){
+        lagranManager.allocate(lagranNeutral.bx1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+        lagranManager.allocate(lagranNeutral.by1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+        lagranManager.allocate(lagranNeutral.bz1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+        lagranManager.allocate(lagranNeutral.alpha1, Range(0,data.nx+1), Range(0,data.ny+2), Range(0,data.nz+2));
+        lagranManager.allocate(lagranNeutral.alpha2, Range(-1,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+2));
+        lagranManager.allocate(lagranNeutral.alpha3, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(0,data.nz+1));
+        lagranManager.allocate(lagranNeutral.visc_heat, Range(0,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+1));
+        lagranManager.allocate(lagranNeutral.pressure, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
+        lagranManager.allocate(lagranNeutral.rho_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+        lagranManager.allocate(lagranNeutral.cv_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+        lagranManager.allocate(lagranNeutral.fx, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fy, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fz, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fx_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fy_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fz_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.flux_x, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.flux_y, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.flux_z, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.curlb, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));    
+    
+        // Initialize bx1, by1, bz1, p_e, p_i, pressure
+        T_dataType gas_gamma_neutral = dataNeutral.gas_gamma;
+        volumeArray cvl_neutral = dataNeutral.cv;
+        volumeArray energy_neutral = dataNeutral.energy_neutral;
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            T_indexType izm = iz - 1;
+            T_indexType iym = iy - 1;
+            T_indexType ixm = ix - 1;
+            lagranNeutral.bx1(ix, iy, iz) = 0.0;
+            lagranNeutral.by1(ix, iy, iz) = 0.0;
+            lagranNeutral.bz1(ix, iy, iz) = 0.0;
+
+            lagran.pressure(ix, iy, iz) = (gas_gamma_neutral - 1.0) * dataNeutral.rho(ix, iy, iz) * energy_neutral(ix, iy, iz);
+        }, Range(-1,dataNeutral.nx+2), Range(-1,dataNeutral.ny+2), Range(-1,dataNeutral.nz+2));
+
+    // Compute rho_v and cv_v
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        T_indexType izp = iz + 1;
+        T_indexType iyp = iy + 1;
+        T_indexType ixp = ix + 1;
+
+        T_dataType sum_rho_cv = data.rho(ix, iy, iz) * cvl(ix, iy, iz) +
+                            data.rho(ixp, iy, iz) * cvl(ixp, iy, iz) +
+                            data.rho(ix, iyp, iz) * cvl(ix, iyp, iz) +
+                            data.rho(ixp, iyp, iz) * cvl(ixp, iyp, iz) +
+                            data.rho(ix, iy, izp) * cvl(ix, iy, izp) +
+                            data.rho(ixp, iy, izp) * cvl(ixp, iy, izp) +
+                            data.rho(ix, iyp, izp) * cvl(ix, iyp, izp) +
+                            data.rho(ixp, iyp, izp) * cvl(ixp, iyp, izp);
+
+        T_dataType sum_cv = cvl(ix, iy, iz) +
+                            cvl(ixp, iy, iz) +
+                            cvl(ix, iyp, iz) +
+                            cvl(ixp, iyp, iz) +
+                            cvl(ix, iy, izp) +
+                            cvl(ixp, iy, izp) +
+                            cvl(ix, iyp, izp) +
+                            cvl(ixp, iyp, izp);
+        lagran.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
+        lagran.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
+    }, Range(-1,data.nz+1), Range(-1,data.ny+1), Range(-1,data.nx+1));
+
+    shock_viscosity(data, lagran);
+    
+    }
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    
+    
+    
     set_dt(data, lagran);
     if (data.resistiveMHD){
         T_dataType dt_sub = data.dtr;
