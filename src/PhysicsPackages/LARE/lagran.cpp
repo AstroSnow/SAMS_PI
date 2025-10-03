@@ -234,8 +234,9 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
         // Initialize bx1, by1, bz1, p_e, p_i, pressure
         T_dataType gas_gamma_neutral = dataNeutral.gas_gamma;
         volumeArray cvl_neutral = dataNeutral.cv;
-        volumeArray energy_neutral = dataNeutral.energy_neutral;
-    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        volumeArray energy_neutral = dataNeutral.energy_electron;
+        
+        portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
             T_indexType izm = iz - 1;
             T_indexType iym = iy - 1;
             T_indexType ixm = ix - 1;
@@ -272,15 +273,14 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
             lagranNeutral.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
             lagranNeutral.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
         }, Range(-1,dataNeutral.nz+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nx+1));
-
+        
         shock_viscosity(dataNeutral, lagranNeutral);
     }
     
     //////////////////////////////////////////////////////////////////////////////////////////////
     
-    
-    
     set_dt(data, lagran);
+    
     if (data.resistiveMHD){
         T_dataType dt_sub = data.dtr;
         int substeps = static_cast<int>(data.dt / dt_sub)+1;

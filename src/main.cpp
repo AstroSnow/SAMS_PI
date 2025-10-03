@@ -12,6 +12,7 @@ int main(int argc, char *argv[]){
     portableWrapper::initialize(argc, argv);
 
     simulation S;
+    simulation S2;
     simulationData data;
     simulationData dataNeutral;
 
@@ -31,11 +32,20 @@ int main(int argc, char *argv[]){
     S.grid(data);
     data.visc2_norm=data.visc2;
 		portableWrapper::fence();
+	
     S.initial_conditions(data);
 		portableWrapper::fence();
     timer t;
     t.begin("Main Loop");
     data.step=0;
+    
+	if (data.two_fluid) {
+	    printf("Initialising two-fluid arrays \n");
+	    S2.controlvariables(dataNeutral);
+        S2.allocate(dataNeutral);
+		S2.grid(dataNeutral);
+		printf("Finished initialising two-fluid arrays \n");
+	}
 
     while (true)
     {
