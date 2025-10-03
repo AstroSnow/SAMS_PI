@@ -18,7 +18,7 @@ void simulation::controlvariables(simulationData &data) {
 
   data.nx=128; // Number of cells in the x-direction
   data.ny=128; // Number of cells in the y-direction
-  data.nz=128; // Number of cells in the z-direction
+  data.nz=1; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
@@ -43,8 +43,8 @@ void simulation::controlvariables(simulationData &data) {
   data.xbc_max = BCType::BC_OTHER;
   data.ybc_min = BCType::BC_OTHER;
   data.ybc_max = BCType::BC_OTHER;
-  data.zbc_min = BCType::BC_OTHER;
-  data.zbc_max = BCType::BC_OTHER;
+  data.zbc_min = BCType::BC_PERIODIC;
+  data.zbc_max = BCType::BC_PERIODIC;
 
   // Grid stretching
   data.x_stretch = false;
@@ -69,6 +69,9 @@ void simulation::controlvariables(simulationData &data) {
 
   // Remap kinetic energy correction
   data.rke = true;
+  
+  // Two-fluid flag
+  data.two_fluid=true;
 
   // Output frequency and directory
   data.dt_snapshots = 10.0;

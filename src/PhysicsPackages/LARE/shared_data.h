@@ -73,6 +73,7 @@ struct simulationData{
     //Physics selectors
     bool resistiveMHD; // Resistive MHD
     bool rke; // Remap phase kinetic energy correction
+    bool two_fluid; // Flag for the two-fluid version of the code
 
     //Shock viscosity coefficients
     T_dataType visc1; // Linear shock viscosity coefficient
