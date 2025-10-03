@@ -126,7 +126,7 @@ DEVICEPREFIX INLINE T_dataType edge_viscosity(simulationData data, lagranData la
         return q_k_bar * (1.0 - psi) * dvdots;
     }
 
-void simulation::lagrangian_step(simulationData &data) {
+void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &dataNeutral) {
     lagranData lagran;
     portableWrapper::portableArrayManager lagranManager;
     using Range = portableWrapper::Range;

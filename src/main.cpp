@@ -13,6 +13,7 @@ int main(int argc, char *argv[]){
 
     simulation S;
     simulationData data;
+    simulationDataNeutral dataNeutral;
 
     S.controlvariables(data);
     auto& axRegistry = SAMS::getaxisRegistry();
@@ -41,7 +42,7 @@ int main(int argc, char *argv[]){
       std::cout << data.step << " " << data.time << std::endl;
       if ((data.step >= data.nsteps && data.nsteps >= 0) || (data.time >= data.t_end))
         break;
-      S.lagrangian_step(data);    // lagran.cpp
+      S.lagrangian_step(data,dataNeutral);    // lagran.cpp
       S.eulerian_remap(data); // remap.cpp
       data.step++;
       if (data.rke) S.energy_correction(data); // diagnostics.cpp

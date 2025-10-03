@@ -143,6 +143,108 @@ struct simulationData{
     volumeArray xp, yp, zp;
 };
 
+
+// Neutral simulation data structure - lots of repeated info, can be streamlined
+struct simulationDataNeutral{
+
+    bool configured = false; // Indicates if the simulation data has been configured
+
+    T_dataType none_zero = std::numeric_limits<T_dataType>::epsilon(); // Smallest non-zero value for T_dataTyp
+    T_dataType largest_number = std::numeric_limits<T_dataType>::max(); // Largest number for T_dataType
+
+    // Simulation parameters
+    T_dataType dt, dtr, dt_multiplier;
+    T_dataType time; //Current simulation time
+    size_t step; //Current simulation step
+    int64_t nsteps; // Maximum number of steps, if < 0 run until t_end
+    T_dataType t_end; // End time of the simulation
+
+    // Domain parameters
+    T_indexType nx, ny, nz; //Could be unsigned but when comparing signed and unsigned, unsigned wins
+    T_dataType x_min, x_max, length_x, dx;
+    T_dataType y_min, y_max, length_y, dy;
+    T_dataType z_min, z_max, length_z, dz;
+    bool x_stretch, y_stretch, z_stretch;
+    geometryType geometry;
+
+    // Boundary conditions
+    BCType xbc_min, xbc_max;
+    BCType ybc_min, ybc_max;
+    BCType zbc_min, zbc_max;
+
+    //Physics selectors
+    bool resistiveMHD; // Resistive MHD
+    bool rke; // Remap phase kinetic energy correction
+    bool two_fluid; // Flag for the two-fluid version of the code
+
+    //Shock viscosity coefficients
+    T_dataType visc1; // Linear shock viscosity coefficient
+    T_dataType visc2; // Quadratic shock viscosity coefficient
+    T_dataType visc2_norm; // Normalized quadratic shock viscosity coefficient
+
+    //Physical constants
+    T_dataType gas_gamma; // Ratio of specific heats
+    T_dataType j_max; // Maximum current
+    T_dataType eta0; // Limited resisivity (applied J>j_max)
+    T_dataType eta_background; // Background resisivity
+    T_dataType mf; // Average mass of an ion in proton masses
+    T_dataType mu0_si; // Vacuum permeability in SI units
+
+    //IO control
+    T_dataType dt_snapshots; // Time between snapshots
+
+    //Physical arrays
+    volumeArray energy_electron; // Electron specific internal energy
+    volumeArray energy_ion; // Ion specific
+    volumeArray p_visc; // Viscous pressure
+    volumeArray rho; // Density
+    volumeArray vx; // X-velocity
+    volumeArray vy; // Y-velocity
+    volumeArray vz; // Z-velocity
+    volumeArray vx1; // Half timestep X-velocity
+    volumeArray vy1; // Half timestep Y-velocity
+    volumeArray vz1; // Half timestep Z-velocity
+    volumeArray bx; // X-magnetic field
+    volumeArray by; // Y-magnetic field
+    volumeArray bz; // Z-magnetic field
+    volumeArray eta; // Resisivity
+    volumeArray dxab;
+    volumeArray dyab;
+    volumeArray dzab;
+    volumeArray dxac;
+    volumeArray dyac;
+    volumeArray dzac;
+    volumeArray cv; // Control volume
+    volumeArray cv1; // Half timestep control volume
+    volumeArray cvc;
+    lineArray xc; //Cell center X-coordinates
+    lineArray yc; //Cell center Y-coordinates
+    lineArray zc; //Cell center Z-coordinates
+    lineArray xb; //Cell boundary X-coordinates
+    lineArray yb; //Cell boundary Y-coordinates
+    lineArray zb; //Cell boundary Z-coordinates
+    lineArray xb_global; //Global cell boundary X-coordinates
+    lineArray yb_global; //Global cell boundary Y-coordinates
+    lineArray zb_global; //Global cell boundary Z-coordinates
+    lineArray dxc; //Cell center X-dx
+    lineArray dyc; //Cell center Y-dy
+    lineArray dzc; //Cell center Z-dz
+    lineArray dxb; //Cell boundary X-dx
+    lineArray dyb; //Cell boundary Y-dy
+    lineArray dzb; //Cell boundary Z-dz
+    lineArray hy;
+    planeArray hz;
+    lineArray hyc;
+    planeArray hzc;
+    planeArray hz1;
+    planeArray hz2;
+    lineArray grav_r;
+    lineArray grav_z;
+    volumeArray delta_ke; //Remap kinetic energy correction
+    volumeArray x,y,z;
+    volumeArray xp, yp, zp;
+};
+
 class simulation{
 public:
 
@@ -254,7 +356,7 @@ public:
      * @param data Simulation data struct
      * This function performs a Lagrangian step for the simulation
      */
-    void lagrangian_step(simulationData &data);
+    void lagrangian_step(simulationData &data,simulationDataNeutral &dataNeutral);
 
     /**
      * Calculate the resistivity eta based on current density
