@@ -194,8 +194,7 @@ struct simulationDataNeutral{
     T_dataType dt_snapshots; // Time between snapshots
 
     //Physical arrays
-    volumeArray energy_electron; // Electron specific internal energy
-    volumeArray energy_ion; // Ion specific
+    volumeArray energy_neutral; // Neutral specific internal energy
     volumeArray p_visc; // Viscous pressure
     volumeArray rho; // Density
     volumeArray vx; // X-velocity
