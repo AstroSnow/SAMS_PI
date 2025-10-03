@@ -194,7 +194,8 @@ struct simulationDataNeutral{
     T_dataType dt_snapshots; // Time between snapshots
 
     //Physical arrays
-    volumeArray energy_neutral; // Neutral specific internal energy
+    volumeArray energy_electron; // Electron specific internal energy
+    volumeArray energy_ion; // Ion specific
     volumeArray p_visc; // Viscous pressure
     volumeArray rho; // Density
     volumeArray vx; // X-velocity
@@ -355,7 +356,7 @@ public:
      * @param data Simulation data struct
      * This function performs a Lagrangian step for the simulation
      */
-    void lagrangian_step(simulationData &data,simulationDataNeutral &dataNeutral);
+    void lagrangian_step(simulationData &data,simulationData &dataNeutral);
 
     /**
      * Calculate the resistivity eta based on current density

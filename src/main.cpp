@@ -13,7 +13,7 @@ int main(int argc, char *argv[]){
 
     simulation S;
     simulationData data;
-    simulationDataNeutral dataNeutral;
+    simulationData dataNeutral;
 
     S.controlvariables(data);
     auto& axRegistry = SAMS::getaxisRegistry();

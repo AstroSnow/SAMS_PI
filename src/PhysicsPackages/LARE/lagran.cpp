@@ -126,9 +126,9 @@ DEVICEPREFIX INLINE T_dataType edge_viscosity(simulationData data, lagranData la
         return q_k_bar * (1.0 - psi) * dvdots;
     }
 
-void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &dataNeutral) {
+void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutral) {
     lagranData lagran;
-    lagranDataNeutral lagranNeutral;
+    lagranData lagranNeutral;
     portableWrapper::portableArrayManager lagranManager;
     using Range = portableWrapper::Range;
     // Allocate arrays using the portableArrayManager
@@ -234,7 +234,7 @@ void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &da
         // Initialize bx1, by1, bz1, p_e, p_i, pressure
         T_dataType gas_gamma_neutral = dataNeutral.gas_gamma;
         volumeArray cvl_neutral = dataNeutral.cv;
-        volumeArray energy_neutral = dataNeutral.energy_neutral;
+        volumeArray energy_neutral = dataNeutral.energy_electron;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
             T_indexType izm = iz - 1;
             T_indexType iym = iy - 1;
@@ -246,35 +246,34 @@ void simulation::lagrangian_step(simulationData &data, simulationDataNeutral &da
             lagranNeutral.pressure(ix, iy, iz) = (gas_gamma_neutral - 1.0) * dataNeutral.rho(ix, iy, iz) * energy_neutral(ix, iy, iz);
         }, Range(-1,dataNeutral.nx+2), Range(-1,dataNeutral.ny+2), Range(-1,dataNeutral.nz+2));
 
-    // Compute rho_v and cv_v
-    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
-        T_indexType izp = iz + 1;
-        T_indexType iyp = iy + 1;
-        T_indexType ixp = ix + 1;
+        // Compute rho_v and cv_v
+        portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            T_indexType izp = iz + 1;
+            T_indexType iyp = iy + 1;
+            T_indexType ixp = ix + 1;
 
-        T_dataType sum_rho_cv = data.rho(ix, iy, iz) * cvl(ix, iy, iz) +
-                            data.rho(ixp, iy, iz) * cvl(ixp, iy, iz) +
-                            data.rho(ix, iyp, iz) * cvl(ix, iyp, iz) +
-                            data.rho(ixp, iyp, iz) * cvl(ixp, iyp, iz) +
-                            data.rho(ix, iy, izp) * cvl(ix, iy, izp) +
-                            data.rho(ixp, iy, izp) * cvl(ixp, iy, izp) +
-                            data.rho(ix, iyp, izp) * cvl(ix, iyp, izp) +
-                            data.rho(ixp, iyp, izp) * cvl(ixp, iyp, izp);
+            T_dataType sum_rho_cv = dataNeutral.rho(ix, iy, iz) * cvl_neutral(ix, iy, iz) +
+                                dataNeutral.rho(ixp, iy, iz) * cvl_neutral(ixp, iy, iz) +
+                                dataNeutral.rho(ix, iyp, iz) * cvl_neutral(ix, iyp, iz) +
+                                dataNeutral.rho(ixp, iyp, iz) * cvl_neutral(ixp, iyp, iz) +
+                                dataNeutral.rho(ix, iy, izp) * cvl_neutral(ix, iy, izp) +
+                                dataNeutral.rho(ixp, iy, izp) * cvl_neutral(ixp, iy, izp) +
+                                dataNeutral.rho(ix, iyp, izp) * cvl_neutral(ix, iyp, izp) +
+                                dataNeutral.rho(ixp, iyp, izp) * cvl_neutral(ixp, iyp, izp);
 
-        T_dataType sum_cv = cvl(ix, iy, iz) +
-                            cvl(ixp, iy, iz) +
-                            cvl(ix, iyp, iz) +
-                            cvl(ixp, iyp, iz) +
-                            cvl(ix, iy, izp) +
-                            cvl(ixp, iy, izp) +
-                            cvl(ix, iyp, izp) +
-                            cvl(ixp, iyp, izp);
-        lagran.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
-        lagran.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
-    }, Range(-1,data.nz+1), Range(-1,data.ny+1), Range(-1,data.nx+1));
+            T_dataType sum_cv = cvl_neutral(ix, iy, iz) +
+                                cvl_neutral(ixp, iy, iz) +
+                                cvl_neutral(ix, iyp, iz) +
+                                cvl_neutral(ixp, iyp, iz) +
+                                cvl_neutral(ix, iy, izp) +
+                                cvl_neutral(ixp, iy, izp) +
+                                cvl_neutral(ix, iyp, izp) +
+                                cvl_neutral(ixp, iyp, izp);
+            lagranNeutral.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
+            lagranNeutral.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
+        }, Range(-1,dataNeutral.nz+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nx+1));
 
-    shock_viscosity(data, lagran);
-    
+        shock_viscosity(dataNeutral, lagranNeutral);
     }
     
     //////////////////////////////////////////////////////////////////////////////////////////////
