@@ -320,9 +320,9 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     if (data.two_fluid) {
         predictor_corrector_step(*this, dataNeutral, lagranNeutral);
 
-        //this->energy_bcs(dataNeutral);
-       // this->density_bcs(dataNeutral);
-       // this->velocity_bcs(dataNeutral);    
+        this->energy_bcs(dataNeutral);
+        this->density_bcs(dataNeutral);
+        this->velocity_bcs(dataNeutral);    
     }
     //Lagrangian step data is automatically deallocated when lagranManager goes out of scope
 
