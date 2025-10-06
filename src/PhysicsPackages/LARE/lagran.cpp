@@ -933,10 +933,8 @@ void predictor_corrector_step(simulation &sim, simulationData &data, lagranData 
 
         // Energy at end of Lagrangian step
         if (lagran.neutral_flag) {
-            printf("Neutral step\n");
             data.energy_neutral(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.pressure(ix, iy, iz)) / data.rho(ix, iy, iz);
         } else {
-            printf("Plasma step\n");
             data.energy_electron(ix, iy, iz) -= dv * lagran.p_e(ix, iy, iz) / data.rho(ix, iy, iz);
             data.energy_ion(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.p_i(ix, iy, iz)) / data.rho(ix, iy, iz);
         }
