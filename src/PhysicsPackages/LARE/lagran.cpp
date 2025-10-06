@@ -285,6 +285,7 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     
     //Set the time based on dt
     data.time += data.dt;
+    if (data.two_fluid) dataNeutral.time +=dataNeutral.dt;
     
     if (data.resistiveMHD){
         T_dataType dt_sub = data.dtr;
