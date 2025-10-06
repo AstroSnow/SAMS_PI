@@ -275,6 +275,8 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
         }, Range(-1,dataNeutral.nz+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nx+1));
         
         shock_viscosity(dataNeutral, lagranNeutral);
+        
+        set_dt(dataNeutral, lagranNeutral);
     }
     
     //////////////////////////////////////////////////////////////////////////////////////////////
