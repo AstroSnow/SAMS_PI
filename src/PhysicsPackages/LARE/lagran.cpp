@@ -214,7 +214,7 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     //////////////////////////////////////////////////////////////////////////////////////////////
     // get the two-fluid properties
     if (data.two_fluid){
-        lagran.neutral_flag=true;
+        lagranNeutral.neutral_flag=true;
         lagranManager.allocate(lagranNeutral.bx1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
         lagranManager.allocate(lagranNeutral.by1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
         lagranManager.allocate(lagranNeutral.bz1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
@@ -318,7 +318,7 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     this->velocity_bcs(data);
     
     if (data.two_fluid) {
-        //predictor_corrector_step(*this, dataNeutral, lagranNeutral);
+        predictor_corrector_step(*this, dataNeutral, lagranNeutral);
 
         //this->energy_bcs(dataNeutral);
        // this->density_bcs(dataNeutral);
@@ -742,14 +742,23 @@ void predictor_corrector_step(simulation &sim, simulationData &data, lagranData 
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
 
         T_dataType dv = data.cv1(ix, iy, iz) / data.cv(ix, iy, iz) - 1.0;
-        T_dataType e1_e = data.energy_electron(ix,iy,iz) - lagran.p_e(ix,iy,iz) * dv/data.rho(ix,iy,iz);
-        T_dataType e1_i = data.energy_ion(ix,iy,iz) - lagran.p_i(ix,iy,iz) * dv/data.rho(ix,iy,iz);
-        e1_i += lagran.visc_heat(ix, iy, iz) * data.dt/2.0 /data.rho(ix,iy,iz);
+        
+        //Pressure is slightly different in neutral fluid
+        if (lagran.neutral_flag) {
+            T_dataType e1_i = data.energy_neutral(ix,iy,iz) - lagran.pressure(ix,iy,iz) * dv/data.rho(ix,iy,iz);
+            e1_i += lagran.visc_heat(ix, iy, iz) * data.dt/2.0 /data.rho(ix,iy,iz);
 
-        lagran.p_e(ix, iy, iz) = e1_e * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
-        lagran.p_i(ix, iy, iz) = e1_i * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
-        lagran.pressure(ix, iy, iz) = lagran.p_e(ix, iy, iz) + lagran.p_i(ix, iy, iz);
-        //data.energy_electron(ix,iy,iz) = data.cv(ix,iy,iz);
+            lagran.pressure(ix, iy, iz) = e1_i * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
+        } else {
+            T_dataType e1_e = data.energy_electron(ix,iy,iz) - lagran.p_e(ix,iy,iz) * dv/data.rho(ix,iy,iz);
+            T_dataType e1_i = data.energy_ion(ix,iy,iz) - lagran.p_i(ix,iy,iz) * dv/data.rho(ix,iy,iz);
+            e1_i += lagran.visc_heat(ix, iy, iz) * data.dt/2.0 /data.rho(ix,iy,iz);
+
+            lagran.p_e(ix, iy, iz) = e1_e * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
+            lagran.p_i(ix, iy, iz) = e1_i * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
+            lagran.pressure(ix, iy, iz) = lagran.p_e(ix, iy, iz) + lagran.p_i(ix, iy, iz);
+            //data.energy_electron(ix,iy,iz) = data.cv(ix,iy,iz);
+        }
 
     }, Range(0,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+1));
 
@@ -923,9 +932,14 @@ void predictor_corrector_step(simulation &sim, simulationData &data, lagranData 
         data.cv1(ix, iy, iz) = vol * (1.0 + dv);
 
         // Energy at end of Lagrangian step
-        data.energy_electron(ix, iy, iz) -= dv * lagran.p_e(ix, iy, iz) / data.rho(ix, iy, iz);
-        data.energy_ion(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.p_i(ix, iy, iz)) / data.rho(ix, iy, iz);
-
+        if (lagran.neutral_flag) {
+            printf("Neutral step\n");
+            data.energy_neutral(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.pressure(ix, iy, iz)) / data.rho(ix, iy, iz);
+        } else {
+            printf("Plasma step\n");
+            data.energy_electron(ix, iy, iz) -= dv * lagran.p_e(ix, iy, iz) / data.rho(ix, iy, iz);
+            data.energy_ion(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.p_i(ix, iy, iz)) / data.rho(ix, iy, iz);
+        }
         //Update density based on volume change
         data.rho(ix, iy, iz) /= (1.0 + dv);
 

@@ -16,8 +16,8 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=128; // Number of cells in the x-direction
-  data.ny=128; // Number of cells in the y-direction
+  data.nx=8; // Number of cells in the x-direction
+  data.ny=8; // Number of cells in the y-direction
   data.nz=1; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
