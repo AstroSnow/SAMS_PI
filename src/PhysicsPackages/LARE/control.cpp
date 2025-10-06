@@ -114,6 +114,15 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     portableWrapper::Range(0, data.ny),
     portableWrapper::Range(0, data.nz)
   );
+  
+  //Some Neutral conditions
+  if (data.two_fluid) {
+    portableWrapper::assign(dataNeutral.vx,0.0);
+    portableWrapper::assign(dataNeutral.vx,0.0);
+    portableWrapper::assign(dataNeutral.vx,0.0);
+    portableWrapper::assign(dataNeutral.rho,1.0);
+    portableWrapper::assign(dataNeutral.energy_neutral,1.0);    
+  }
 
   std::cout << "Range of vx: " << portableWrapper::minval(data.vx) << " to " << portableWrapper::maxval(data.vx) << "\n";
   std::cout << "Range of vy: " << portableWrapper::minval(data.vy) << " to " << portableWrapper::maxval(data.vy) << "\n";
