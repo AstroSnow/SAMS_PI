@@ -19,6 +19,7 @@
  */
 struct lagranData
 {
+    bool neutral_flag; //Species flag
     volumeArray bx1; // X-magnetic field at half timestep
     volumeArray by1; // Y-magnetic field at half timestep
     volumeArray bz1; // Z-magnetic field at half timestep
@@ -48,6 +49,7 @@ struct lagranData
  */
 struct lagranDataNeutral
 {
+    bool neutral_flag; //Species flag
     volumeArray bx1; // X-magnetic field at half timestep
     volumeArray by1; // Y-magnetic field at half timestep
     volumeArray bz1; // Z-magnetic field at half timestep
@@ -129,6 +131,8 @@ DEVICEPREFIX INLINE T_dataType edge_viscosity(simulationData data, lagranData la
 void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutral) {
     lagranData lagran;
     lagranData lagranNeutral;
+    
+    lagran.neutral_flag=false;
     portableWrapper::portableArrayManager lagranManager;
     using Range = portableWrapper::Range;
     // Allocate arrays using the portableArrayManager
@@ -210,6 +214,7 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     //////////////////////////////////////////////////////////////////////////////////////////////
     // get the two-fluid properties
     if (data.two_fluid){
+        lagran.neutral_flag=true;
         lagranManager.allocate(lagranNeutral.bx1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
         lagranManager.allocate(lagranNeutral.by1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
         lagranManager.allocate(lagranNeutral.bz1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
@@ -311,6 +316,14 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     this->energy_bcs(data);
     this->density_bcs(data);
     this->velocity_bcs(data);
+    
+    if (data.two_fluid) {
+        //predictor_corrector_step(*this, dataNeutral, lagranNeutral);
+
+        //this->energy_bcs(dataNeutral);
+       // this->density_bcs(dataNeutral);
+       // this->velocity_bcs(dataNeutral);    
+    }
     //Lagrangian step data is automatically deallocated when lagranManager goes out of scope
 
 }
