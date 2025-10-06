@@ -283,6 +283,9 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     
     set_dt(data, lagran);
     
+    //Set the time based on dt
+    data.time += data.dt;
+    
     if (data.resistiveMHD){
         T_dataType dt_sub = data.dtr;
         int substeps = static_cast<int>(data.dt / dt_sub)+1;
@@ -548,7 +551,7 @@ void set_dt(simulationData &data, lagranData &lagran) {
     }, data.largest_number,
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
 
-    data.time += data.dt;
+    //data.time += data.dt;
 }
 
 void simulation::eta_calc(simulationData &data) {
