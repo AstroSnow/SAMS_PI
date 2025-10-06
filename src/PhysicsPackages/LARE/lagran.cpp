@@ -239,7 +239,7 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
         // Initialize bx1, by1, bz1, p_e, p_i, pressure
         T_dataType gas_gamma_neutral = dataNeutral.gas_gamma;
         volumeArray cvl_neutral = dataNeutral.cv;
-        volumeArray energy_neutral = dataNeutral.energy_electron;
+        volumeArray energy_neutral = dataNeutral.energy_neutral;
         
         portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
             T_indexType izm = iz - 1;
