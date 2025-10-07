@@ -125,6 +125,7 @@ DEVICEPREFIX INLINE T_dataType edge_viscosity(simulationData data, lagranData la
         // Find q_kur / abs(dv)
         T_dataType q_k_bar = rho_edge *
             (data.visc2_norm * dv + std::sqrt(data.visc2_norm * data.visc2_norm * dv2 + (data.visc1 * cs_edge) * (data.visc1 * cs_edge)));
+            //printf("edge visc = %d %d %d %f %f \n",i1,j1,k1,q_k_bar,lagran.rho_v(i1, j1, k1));
         return q_k_bar * (1.0 - psi) * dvdots;
     }
 
@@ -207,7 +208,7 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
                             cvl(ixp, iyp, izp);
         lagran.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
         lagran.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
-    }, Range(-1,data.nz+1), Range(-1,data.ny+1), Range(-1,data.nx+1));
+    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 
     shock_viscosity(data, lagran);
     
@@ -277,7 +278,7 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
                                 cvl_neutral(ixp, iyp, izp);
             lagranNeutral.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
             lagranNeutral.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
-        }, Range(-1,dataNeutral.nz+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nx+1));
+        }, Range(-1,dataNeutral.nx+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nz+1));
         
         shock_viscosity(dataNeutral, lagranNeutral);
         
@@ -388,6 +389,8 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
         T_dataType dxm = data.dxb(ixm);
         T_dataType dvdots = -(data.vx(i1, j1, k1) - data.vx(i2, j2, k2));
         T_dataType cs_edge = portableWrapper::min(cs_v(i1, j1, k1), cs_v(i2, j2, k2));
+        
+        //printf("%ld %f \n", ix, lagran.rho_v(ix,iy,iz));
         // Edge viscosities from Caramana
         lagran.alpha1(ix, iy, iz) = edge_viscosity(data, lagran,
             dvdots, dx, dxm, dxp, cs_edge,
@@ -462,6 +465,8 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
         data.p_visc(ix, iy, iz) = portableWrapper::max(data.p_visc(ix, iy, iz), -lagran.alpha1(ix, iy, iz) * std::sqrt(a1));
         data.p_visc(ix, iy, iz) = portableWrapper::max(data.p_visc(ix, iy, iz), -lagran.alpha2(ix, iy, iz) * std::sqrt(a2));
         data.p_visc(ix, iy, iz) = portableWrapper::max(data.p_visc(ix, iy, iz), -lagran.alpha3(ix, iy, iz) * std::sqrt(a9));
+
+        //printf("p_visc %ld, %f %f %f %f\n", ix ,data.p_visc(ix,iy,iz),lagran.alpha1(ix,iy,iz),lagran.alpha2(ix,iy,iz),lagran.alpha3(ix,iy,iz));
 
         T_dataType dx = data.dxb(ix);
         T_dataType dy = data.dyb(iy) * data.hyc(ix);
@@ -564,12 +569,14 @@ void set_dt(simulationData &data, lagranData &lagran) {
         T_dataType length  = portableWrapper::min({dhx, dhy, dhz});
 
         T_dataType t1  = length / (std::sqrt(c_visc2) + std::sqrt(cs2 + w1 + c_visc2));
-
+        //printf("%ld %f %f %f %f %f \n",ix, t1,cs2, w1, c_visc2,data.p_visc(ix, iy, iz));
         return t1;
     }, LAMBDA(T_dataType &a, const T_dataType &b) {
         a=portableWrapper::min(a, b);
     }, data.largest_number,
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
+
+    printf("dt=%f \n",data.dt);
 
     //data.time += data.dt;
 }
