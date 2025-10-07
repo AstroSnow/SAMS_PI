@@ -63,7 +63,7 @@ int main(int argc, char *argv[]){
     }
     t.end();
 
-		S.output(data);
+		S.output(data,dataNeutral);
 
 		S.manager.clear();
     varRegistry.deallocateAll();

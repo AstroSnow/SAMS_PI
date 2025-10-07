@@ -16,7 +16,7 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=20; // Number of cells in the x-direction
+  data.nx=800; // Number of cells in the x-direction
   data.ny=2; // Number of cells in the y-direction
   data.nz=2; // Number of cells in the z-direction
 
@@ -24,7 +24,7 @@ void simulation::controlvariables(simulationData &data) {
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = 1;
+  data.nsteps = -1;
   data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
@@ -114,9 +114,9 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
     
     if (data.xb(ix) < 0.5) {
-      //data.vx(ix, iy, iz) = vx_L;
-      //data.rho(ix, iy, iz) = rho_L;
-      //data.energy_ion(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);
+      data.vx(ix, iy, iz) = vx_L;
+      data.rho(ix, iy, iz) = rho_L;
+      data.energy_ion(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);
     } 
 
     //printf("%ld %f \n",ix,data.rho(ix,iy,iz));

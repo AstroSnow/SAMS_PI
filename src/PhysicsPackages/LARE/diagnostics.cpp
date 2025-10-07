@@ -42,7 +42,7 @@ void getHostVersion(simulationData &data, portableWrapper::portableArrayManager 
 }
 
 template <typename T_writer>
-void writeDiagnosticsCore(simulationData &data, writer<T_writer> &writer)
+void writeDiagnosticsCore(simulationData &data,simulationData &dataNeutral, writer<T_writer> &writer)
 {
     portableWrapper::portableArrayManager manager;
     hostVolumeArray host;
@@ -88,18 +88,36 @@ void writeDiagnosticsCore(simulationData &data, writer<T_writer> &writer)
 
     getHostVersion(data, manager, data.bz, host);
     writer.writeData("bz", host.data());
+    
+    if (data.two_fluid){
+        getHostVersion(dataNeutral, manager, dataNeutral.rho, host);
+        writer.writeData("rho_n", host.data());
+
+        getHostVersion(dataNeutral, manager, data.energy_neutral, host);
+        writer.writeData("energy_n", host.data());
+
+        getHostVersion(dataNeutral, manager, dataNeutral.vx, host);
+        writer.writeData("vx_n", host.data());
+
+        getHostVersion(dataNeutral, manager, dataNeutral.vy, host);
+        writer.writeData("vy_n", host.data());
+
+        getHostVersion(dataNeutral, manager, dataNeutral.vz, host);
+        writer.writeData("vz_n", host.data());
+    
+    }
 
     writer.closeFile();
 }
 
-void simulation::output(simulationData &data)
+void simulation::output(simulationData &data,simulationData &dataNeutral)
 {
 #if defined(USE_HDF5)
     HDF5File writer;
 #else
     simpleFile writer;
 #endif
-    writeDiagnosticsCore(data, writer);
+    writeDiagnosticsCore(data, dataNeutral, writer);
 }
 
 void simulation::energy_correction(simulationData &data)
