@@ -16,7 +16,7 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=800; // Number of cells in the x-direction
+  data.nx=20; // Number of cells in the x-direction
   data.ny=2; // Number of cells in the y-direction
   data.nz=2; // Number of cells in the z-direction
 
@@ -39,12 +39,12 @@ void simulation::controlvariables(simulationData &data) {
   data.z_max = 1.0;
 
   // Boundary conditions
-  data.xbc_min = BCType::BC_PERIODIC;
-  data.xbc_max = BCType::BC_PERIODIC;
-  data.ybc_min = BCType::BC_PERIODIC;
-  data.ybc_max = BCType::BC_PERIODIC;
-  data.zbc_min = BCType::BC_PERIODIC;
-  data.zbc_max = BCType::BC_PERIODIC;
+  data.xbc_min = BCType::BC_OTHER;
+  data.xbc_max = BCType::BC_OTHER;
+  data.ybc_min = BCType::BC_OTHER;
+  data.ybc_max = BCType::BC_OTHER;
+  data.zbc_min = BCType::BC_OTHER;
+  data.zbc_max = BCType::BC_OTHER;
 
   // Grid stretching
   data.x_stretch = false;
@@ -74,7 +74,7 @@ void simulation::controlvariables(simulationData &data) {
   data.two_fluid=false;
 
   // Output frequency and directory
-  data.dt_snapshots = 0.2;
+  data.dt_snapshots = 0.02;
 }
 
 void simulation::initial_conditions(simulationData &data,simulationData &dataNeutral) {
@@ -108,14 +108,15 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
 
   portableWrapper::assign(data.rho,rho_R);
   portableWrapper::assign(data.energy_ion,P_R/rho_R/(data.gas_gamma-1.0));
+  portableWrapper::assign(data.energy_electron,P_R/rho_R/(data.gas_gamma-1.0));
 
   portableWrapper::applyKernel(
     LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
     
     if (data.xb(ix) < 0.5) {
-      data.vx(ix, iy, iz) = vx_L;
-      data.rho(ix, iy, iz) = rho_L;
-      data.energy_ion(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);
+      //data.vx(ix, iy, iz) = vx_L;
+      //data.rho(ix, iy, iz) = rho_L;
+      //data.energy_ion(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);
     } 
 
     //printf("%ld %f \n",ix,data.rho(ix,iy,iz));

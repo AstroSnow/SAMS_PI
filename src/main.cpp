@@ -46,7 +46,7 @@ int main(int argc, char *argv[]){
     timer t;
     t.begin("Main Loop");
     data.step=0;
-    data.time=0.0;
+    //data.time=0.0;
 
     while (true)
     {
