@@ -60,6 +60,15 @@ void writeDiagnosticsCore(simulationData &data,simulationData &dataNeutral, writ
     writer.template registerData<T_dataType>("by", "MeshCC");
     writer.template registerData<T_dataType>("bz", "MeshCC");
 
+    //Allocate a name for the neutral volumes
+    if (data.two_fluid){
+        writer.template registerData<T_dataType>("rho_n", "MeshCC");
+        writer.template registerData<T_dataType>("energy_n", "MeshCC");
+        writer.template registerData<T_dataType>("vx_n", "MeshCC");
+        writer.template registerData<T_dataType>("vy_n", "MeshCC");
+        writer.template registerData<T_dataType>("vz_n", "MeshCC");
+    }
+
     writer.writeRectilinearMesh("MeshCC", &data.xc(1), &data.yc(1), &data.zc(1));
 
     getHostVersion(data, manager, data.rho, host);
@@ -89,6 +98,7 @@ void writeDiagnosticsCore(simulationData &data,simulationData &dataNeutral, writ
     getHostVersion(data, manager, data.bz, host);
     writer.writeData("bz", host.data());
     
+    //Writing data for neutrals
     if (data.two_fluid){
         getHostVersion(dataNeutral, manager, dataNeutral.rho, host);
         writer.writeData("rho_n", host.data());
