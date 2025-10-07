@@ -16,33 +16,33 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=8; // Number of cells in the x-direction
-  data.ny=8; // Number of cells in the y-direction
-  data.nz=1; // Number of cells in the z-direction
+  data.nx=800; // Number of cells in the x-direction
+  data.ny=2; // Number of cells in the y-direction
+  data.nz=2; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = 40;
-  data.t_end = 60.0 * 60.0 * 24.0; // One day in seconds
+  data.nsteps = 1;
+  data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
   data.geometry = geometryType::Cartesian;
 
   // Domain limits
-  data.x_min = -1.0e6;
-  data.x_max = 1.0e6;
-  data.y_min = -1.0e6;
-  data.y_max = 1.0e6;
-  data.z_min = -1.0e6;
-  data.z_max = 1.0e6;
+  data.x_min = 0.0;
+  data.x_max = 1.0;
+  data.y_min = -1.0;
+  data.y_max = 1.0;
+  data.z_min = -1.0;
+  data.z_max = 1.0;
 
   // Boundary conditions
-  data.xbc_min = BCType::BC_OTHER;
-  data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_OTHER;
-  data.ybc_max = BCType::BC_OTHER;
+  data.xbc_min = BCType::BC_PERIODIC;
+  data.xbc_max = BCType::BC_PERIODIC;
+  data.ybc_min = BCType::BC_PERIODIC;
+  data.ybc_max = BCType::BC_PERIODIC;
   data.zbc_min = BCType::BC_PERIODIC;
   data.zbc_max = BCType::BC_PERIODIC;
 
@@ -71,10 +71,10 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=true;
+  data.two_fluid=false;
 
   // Output frequency and directory
-  data.dt_snapshots = 10.0;
+  data.dt_snapshots = 0.2;
 }
 
 void simulation::initial_conditions(simulationData &data,simulationData &dataNeutral) {
@@ -83,32 +83,43 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
 
   //std::cout << "Setting up initial conditions" << std::endl;
   // Set initial conditions for the simulation
+  
+  printf("Setting up initial conditions\n"); 
+  
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);
   portableWrapper::assign(data.vz,0.0);
-
-  printf("Setting up initial conditions\n");
   
-  T_dataType v0 = 0.e3;
-  T_dataType a0 = 1.0e5;
-  T_dataType a2 = a0 * a0;
+  portableWrapper::assign(data.bx,0.0);
+  portableWrapper::assign(data.by,0.0);
+  portableWrapper::assign(data.bz,0.0);
+  
+  
+  ////////////////////////////////////////////////////
+  // Sod Shock tube
+  T_dataType rho_L = 1.0;
+  T_dataType P_L = 1.0;
+  T_dataType vx_L = 0.0;
+  
+  T_dataType rho_R = 0.125;
+  T_dataType P_R = 0.1;
+  T_dataType vx_R = 0.0;
+  ////////////////////////////////////////////////////
 
-  // Set the initial thermal energy of electrons and ions
-  T_dataType T0 = 1.e6;
-  T_dataType energy = 0.5 * kb_si * T0 / mh_si / (data.gas_gamma - 1.0);
-  portableWrapper::assign(data.energy_electron, energy);
-  portableWrapper::assign(data.energy_ion, energy);
+  portableWrapper::assign(data.rho,rho_R);
+  portableWrapper::assign(data.energy_ion,P_R/rho_R/(data.gas_gamma-1.0));
 
   portableWrapper::applyKernel(
     LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
-      T_dataType r2 = data.xb(ix) * data.xb(ix) + data.yb(iy) * data.yb(iy) + data.zb(iz) * data.zb(iz);
-      T_dataType v = v0 * std::exp(-r2 / a2);
-      data.vx(ix, iy, iz) = data.xb(ix)/1.0e6 * v;
-      data.vy(ix, iy, iz) = data.yb(iy)/1.0e6 * v;
-      data.vz(ix, iy, iz) = data.zb(iz)/1.0e6 * v;
+    
+    if (data.xb(ix) < 0.5) {
+      data.vx(ix, iy, iz) = vx_L;
+      data.rho(ix, iy, iz) = rho_L;
+      data.energy_ion(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);
+    } 
 
-      data.energy_electron(ix,iy,iz) *= (1.0+std::exp(-r2 / a2));
-      data.energy_ion(ix,iy,iz) *= (1.0+std::exp(-r2 / a2));
+    //printf("%ld %f \n",ix,data.rho(ix,iy,iz));
+
     },
     portableWrapper::Range(0, data.nx),
     portableWrapper::Range(0, data.ny),
@@ -129,10 +140,10 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   std::cout << "Range of vz: " << portableWrapper::minval(data.vz) << " to " << portableWrapper::maxval(data.vz) << "\n";
 
   T_dataType bmult = 000.0;
-  portableWrapper::assign(data.bx,0.01*bmult);
-  portableWrapper::assign(data.by,0.00*bmult);
-  portableWrapper::assign(data.bz,0.00*bmult);
+  portableWrapper::assign(data.bx,0.00);
+  portableWrapper::assign(data.by,0.00);
+  portableWrapper::assign(data.bz,0.00);
   // Set the initial density field in kg/m^3
-  portableWrapper::assign(data.rho, 1.0e-6);
+  //portableWrapper::assign(data.rho, 1.0e-6);
 
 }

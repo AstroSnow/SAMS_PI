@@ -46,14 +46,17 @@ int main(int argc, char *argv[]){
     timer t;
     t.begin("Main Loop");
     data.step=0;
+    data.time=0.0;
 
     while (true)
     {
+      printf("nsteps,steps,time = %ld,%ld,%f \n",data.nsteps,data.step,data.time);
       std::cout << data.step << " " << data.time << std::endl;
       if ((data.step >= data.nsteps && data.nsteps >= 0) || (data.time >= data.t_end))
         break;
       S.lagrangian_step(data,dataNeutral);    // lagran.cpp
       S.eulerian_remap(data); // remap.cpp
+      if (data.two_fluid) S.eulerian_remap(dataNeutral);
       data.step++;
       if (data.rke) S.energy_correction(data); // diagnostics.cpp
       S.eta_calc(data);            // lagran.cpp
