@@ -288,8 +288,10 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     
     set_dt(data, lagran);
     
+    
     //Set dt to be the minimum of the neutral and plasma times
     if (data.two_fluid) {
+        printf("dt=%f %f \n",data.dt,dataNeutral.dt);
         if (data.dt < dataNeutral.dt) dataNeutral.dt=data.dt;
         if (data.dt > dataNeutral.dt) data.dt=dataNeutral.dt;
     }
@@ -575,7 +577,7 @@ void set_dt(simulationData &data, lagranData &lagran) {
     }, data.largest_number,
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
 
-    printf("dt=%f \n",data.dt);
+    //printf("dt=%f \n",data.dt);
 
     //data.time += data.dt;
 }
