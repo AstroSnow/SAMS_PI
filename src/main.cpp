@@ -17,6 +17,7 @@ int main(int argc, char *argv[]){
     simulationData dataNeutral;
 
     S.controlvariables(data);
+    data.is_neutral=false;
     auto& axRegistry = SAMS::getaxisRegistry();
     axRegistry.registerAxis("X");
     axRegistry.registerAxis("Y");
@@ -28,6 +29,7 @@ int main(int argc, char *argv[]){
 	if (data.two_fluid) {
 	    printf("Initialising two-fluid arrays \n");
 	    S.controlvariables(dataNeutral);
+	    dataNeutral.is_neutral=true;
 		//S.grid(dataNeutral);
 		printf("Finished initialising two-fluid arrays \n");
 	}

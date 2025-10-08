@@ -123,10 +123,9 @@ void simulation::remap_x(simulationData &data, remapData &remap_data) {
         },
     Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
 
-
-
+    if (!data.is_neutral){
     x_energy_flux<&simulationData::energy_electron>(data, remap_data);
-
+    
     portableWrapper::applyKernel(
         LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
             T_indexType ixm = ix - 1;
@@ -156,8 +155,7 @@ void simulation::remap_x(simulationData &data, remapData &remap_data) {
     Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
 
     portableWrapper::fence();
-    
-    
+    }
     //Neutral energy flux
     x_energy_flux<&simulationData::energy_neutral>(data, remap_data);
 

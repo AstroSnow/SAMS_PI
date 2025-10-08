@@ -125,6 +125,7 @@ void simulation::remap_z(simulationData &data, remapData &remap_data) {
     }, Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
     portableWrapper::fence();
 
+    if (!data.is_neutral){
     z_energy_flux<&simulationData::energy_electron>(data, remap_data);
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         T_indexType izm = iz - 1;
@@ -138,7 +139,8 @@ void simulation::remap_z(simulationData &data, remapData &remap_data) {
         data.energy_ion(ix, iy, iz) = (data.energy_ion(ix, iy, iz) * data.cv1(ix, iy, iz) * remap_data.rho1(ix, iy, iz) + remap_data.flux(ix, iy, izm) - remap_data.flux(ix, iy, iz)) / (remap_data.cv2(ix, iy, iz) * data.rho(ix, iy, iz));
     }, Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
     portableWrapper::fence();
-    
+    }
+        
     //Neutral energy flux
     z_energy_flux<&simulationData::energy_neutral>(data, remap_data);
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
