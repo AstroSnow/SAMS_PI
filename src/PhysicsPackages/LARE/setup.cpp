@@ -20,7 +20,7 @@
  * Register variables with the portable array manager.
  */
 
- void simulation::registerVars(){
+ void simulation::registerVars(bool two_fluid){
 
     auto& varRegistry = SAMS::getvariableRegistry();
     auto& typeRegistry = SAMS::gettypeRegistry();
@@ -35,13 +35,23 @@
     varRegistry.registerVariable("bx", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
     varRegistry.registerVariable("by", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2));
     varRegistry.registerVariable("bz", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
+    if (two_fluid){
+        varRegistry.registerVariable("energy_neutral", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
+        varRegistry.registerVariable("rho_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
+        varRegistry.registerVariable("vx_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
+        varRegistry.registerVariable("vy_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
+        varRegistry.registerVariable("vz_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
+        varRegistry.registerVariable("bx_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
+        varRegistry.registerVariable("by_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2));
+        varRegistry.registerVariable("bz_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
+    }
  }
 
 /**
  * Allocate the data arrays for the simulation.
  * This allocates the permanent state arrays that are used throughout the simulation.
  */
-void simulation::allocate(simulationData &data)
+void simulation::allocate(simulationData &data,simulationData &dataNeutral)
 {
     T_sizeType nx, ny, nz;
 
@@ -132,6 +142,65 @@ void simulation::allocate(simulationData &data)
         manager.wrap(data.bz, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
                                                 Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
                                                 Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+    }
+    
+    if (data.two_fluid){
+        {
+            const auto& vardef = varRegistry.getVariable("energy_neutral");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.energy_neutral, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("rho_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.rho, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("vx_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.vx, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("vy_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.vy, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("vz_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.vz, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("bx_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.bx, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("by_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.by, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts),
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("bz_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.bz, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        } 
     }
 
     manager.allocate(data.p_visc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));

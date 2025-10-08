@@ -209,7 +209,7 @@ public:
     /**
      * Register variables with the portable array manager.
      */
-    void registerVars();
+    void registerVars(bool two_fluid);
 
     /**
      * Allocate the simulation data arrays
@@ -220,7 +220,7 @@ public:
      * This function allocates the arrays in the simulationData struct.
      * It uses the portableArrayManager to handle the memory allocation and deallocation.
      */
-    void allocate(simulationData &data);
+    void allocate(simulationData &data,simulationData &dataNeutral);
 
     /**
      * Setup the simulation data

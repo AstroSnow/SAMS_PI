@@ -16,7 +16,7 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=800; // Number of cells in the x-direction
+  data.nx=10; // Number of cells in the x-direction
   data.ny=2; // Number of cells in the y-direction
   data.nz=2; // Number of cells in the z-direction
 
@@ -24,7 +24,7 @@ void simulation::controlvariables(simulationData &data) {
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = -1;
+  data.nsteps = 2;
   data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
@@ -71,7 +71,7 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=false;
+  data.two_fluid=true;
 
   // Output frequency and directory
   data.dt_snapshots = 0.02;
@@ -110,6 +110,15 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   portableWrapper::assign(data.energy_ion,P_R/rho_R/(data.gas_gamma-1.0));
   portableWrapper::assign(data.energy_electron,P_R/rho_R/(data.gas_gamma-1.0));
 
+  //Some Neutral conditions
+  if (data.two_fluid) {
+    portableWrapper::assign(dataNeutral.vx,0.0);
+    portableWrapper::assign(dataNeutral.vx,0.0);
+    portableWrapper::assign(dataNeutral.vx,0.0);
+    portableWrapper::assign(dataNeutral.rho,0.1);
+    portableWrapper::assign(dataNeutral.energy_neutral,0.1);    
+  }
+
   portableWrapper::applyKernel(
     LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
     
@@ -119,22 +128,19 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       data.energy_ion(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);
     } 
 
-    //printf("%ld %f \n",ix,data.rho(ix,iy,iz));
+    //printf("%ld %f %f \n",ix,data.rho(ix,iy,iz),dataNeutral.rho(ix,iy,iz));
 
     },
     portableWrapper::Range(0, data.nx),
     portableWrapper::Range(0, data.ny),
     portableWrapper::Range(0, data.nz)
   );
-  
-  //Some Neutral conditions
-  if (data.two_fluid) {
-    portableWrapper::assign(dataNeutral.vx,0.0);
-    portableWrapper::assign(dataNeutral.vx,0.0);
-    portableWrapper::assign(dataNeutral.vx,0.0);
-    portableWrapper::assign(dataNeutral.rho,1.0);
-    portableWrapper::assign(dataNeutral.energy_neutral,1.0);    
-  }
+
+//data.rho(1,0,0)=1.0;
+//dataNeutral.rho(1,0,0)=2.0;
+//printf("\n %f %f \n",data.rho(1,0,0),dataNeutral.rho(1,0,0));
+//printf("\n%p",&data.rho(1,0,0));
+//printf("\n%p \n",&dataNeutral.rho(1,0,0));
 
   std::cout << "Range of vx: " << portableWrapper::minval(data.vx) << " to " << portableWrapper::maxval(data.vx) << "\n";
   std::cout << "Range of vy: " << portableWrapper::minval(data.vy) << " to " << portableWrapper::maxval(data.vy) << "\n";

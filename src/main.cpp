@@ -12,7 +12,7 @@ int main(int argc, char *argv[]){
     portableWrapper::initialize(argc, argv);
 
     simulation S;
-    simulation S2;
+    //simulation S2;
     simulationData data;
     simulationData dataNeutral;
 
@@ -25,22 +25,32 @@ int main(int argc, char *argv[]){
     axRegistry.setElements("Y", data.ny);
     axRegistry.setElements("Z", data.nz);
     
-    S.registerVars();
-    auto& varRegistry = SAMS::getvariableRegistry();
-    varRegistry.allocateAll();
-		S.allocate(data);
-    S.grid(data);
-    data.visc2_norm=data.visc2;
-		portableWrapper::fence();
-	
 	if (data.two_fluid) {
 	    printf("Initialising two-fluid arrays \n");
-	    S2.controlvariables(dataNeutral);
-        S2.allocate(dataNeutral);
-		S2.grid(dataNeutral);
+	    S.controlvariables(dataNeutral);
+		//S.grid(dataNeutral);
 		printf("Finished initialising two-fluid arrays \n");
 	}
+    
+    S.registerVars(data.two_fluid);
+    auto& varRegistry = SAMS::getvariableRegistry();
+    varRegistry.allocateAll();
+		S.allocate(data,dataNeutral);
+    S.grid(data);
+    //if (data.two_fluid) S.grid(dataNeutral);
+    data.visc2_norm=data.visc2;
+		//portableWrapper::fence();
 	
+	portableWrapper::fence();
+	
+	if (data.two_fluid){
+	    data.rho(1,0,0)=1.0;
+        dataNeutral.rho(1,0,0)=2.0;
+        printf("\n %f %f \n",data.rho(1,0,0),dataNeutral.rho(1,0,0));
+        printf("\n%p",&data.rho(1,0,0));
+        printf("\n%p \n",&dataNeutral.rho(1,0,0));
+    }
+
     S.initial_conditions(data,dataNeutral);
 		portableWrapper::fence();
     timer t;
