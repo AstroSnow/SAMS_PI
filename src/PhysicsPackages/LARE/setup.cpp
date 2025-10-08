@@ -143,8 +143,54 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
                                                 Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
                                                 Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
     }
+
+    manager.allocate(data.p_visc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.vx1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.vy1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.vz1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.eta, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.dxab, Range(-2, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.dyab, Range(-1, nx + 2), Range(-2, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.dzab, Range(-1, nx + 2), Range(-1, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.dxac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.dyac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.dzac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.cv, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.cv1, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocate(data.cvc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    manager.allocateManaged(data.xc, Range(-1, nx + 2));
+    manager.allocateManaged(data.yc, Range(-1, ny + 2));
+    manager.allocateManaged(data.zc, Range(-1, nz + 2));
+    manager.allocate(data.xb, Range(-2, nx + 2));
+    manager.allocate(data.yb, Range(-2, ny + 2));
+    manager.allocate(data.zb, Range(-2, nz + 2));
+    manager.allocate(data.xb_global, Range(-2, nx + 2));
+    manager.allocate(data.yb_global, Range(-2, ny + 2));
+    manager.allocate(data.zb_global, Range(-2, nz + 2));
+    manager.allocate(data.dxc, Range(-1, nx + 2));
+    manager.allocate(data.dyc, Range(-1, ny + 2));
+    manager.allocate(data.dzc, Range(-1, nz + 2));
+    manager.allocate(data.dxb, Range(-2, nx + 2));
+    manager.allocate(data.dyb, Range(-2, ny + 2));
+    manager.allocate(data.dzb, Range(-2, nz + 2));
+    manager.allocate(data.hy, Range(-2, nx + 2));
+    manager.allocate(data.hz, Range(-2, nx + 2), Range(-2, ny + 2));
+    manager.allocate(data.hyc, Range(-1, nx + 2));
+    manager.allocate(data.hzc, Range(-1, nx + 2), Range(-1, ny + 2));
+    manager.allocate(data.hz1, Range(-2, nx + 2), Range(-2, ny + 2));
+    manager.allocate(data.hz2, Range(-2, nx + 2), Range(-2, ny + 2));
+    manager.allocate(data.x, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.y, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.z, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.xp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.yp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    manager.allocate(data.zp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+    if (data.rke)
+    {
+        manager.allocate(data.delta_ke, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    }
     
-    if (data.two_fluid){
+        if (data.two_fluid){
         {
             const auto& vardef = varRegistry.getVariable("energy_neutral");
             const auto& dims = vardef.getDimensions();
@@ -201,52 +247,53 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
                                                     Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
                                                     Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
         } 
-    }
-
-    manager.allocate(data.p_visc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.vx1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.vy1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.vz1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.eta, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.dxab, Range(-2, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.dyab, Range(-1, nx + 2), Range(-2, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.dzab, Range(-1, nx + 2), Range(-1, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.dxac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.dyac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.dzac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.cv, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.cv1, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocate(data.cvc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
-    manager.allocateManaged(data.xc, Range(-1, nx + 2));
-    manager.allocateManaged(data.yc, Range(-1, ny + 2));
-    manager.allocateManaged(data.zc, Range(-1, nz + 2));
-    manager.allocate(data.xb, Range(-2, nx + 2));
-    manager.allocate(data.yb, Range(-2, ny + 2));
-    manager.allocate(data.zb, Range(-2, nz + 2));
-    manager.allocate(data.xb_global, Range(-2, nx + 2));
-    manager.allocate(data.yb_global, Range(-2, ny + 2));
-    manager.allocate(data.zb_global, Range(-2, nz + 2));
-    manager.allocate(data.dxc, Range(-1, nx + 2));
-    manager.allocate(data.dyc, Range(-1, ny + 2));
-    manager.allocate(data.dzc, Range(-1, nz + 2));
-    manager.allocate(data.dxb, Range(-2, nx + 2));
-    manager.allocate(data.dyb, Range(-2, ny + 2));
-    manager.allocate(data.dzb, Range(-2, nz + 2));
-    manager.allocate(data.hy, Range(-2, nx + 2));
-    manager.allocate(data.hz, Range(-2, nx + 2), Range(-2, ny + 2));
-    manager.allocate(data.hyc, Range(-1, nx + 2));
-    manager.allocate(data.hzc, Range(-1, nx + 2), Range(-1, ny + 2));
-    manager.allocate(data.hz1, Range(-2, nx + 2), Range(-2, ny + 2));
-    manager.allocate(data.hz2, Range(-2, nx + 2), Range(-2, ny + 2));
-    manager.allocate(data.x, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.y, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.z, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.xp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.yp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    manager.allocate(data.zp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
-    if (data.rke)
-    {
-        manager.allocate(data.delta_ke, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        
+        manager.allocate(dataNeutral.p_visc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.vx1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.vy1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.vz1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.eta, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dxab, Range(-2, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dyab, Range(-1, nx + 2), Range(-2, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dzab, Range(-1, nx + 2), Range(-1, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.dxac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dyac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dzac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.cv, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.cv1, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.cvc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocateManaged(dataNeutral.xc, Range(-1, nx + 2));
+        manager.allocateManaged(dataNeutral.yc, Range(-1, ny + 2));
+        manager.allocateManaged(dataNeutral.zc, Range(-1, nz + 2));
+        manager.allocate(dataNeutral.xb, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.yb, Range(-2, ny + 2));
+        manager.allocate(dataNeutral.zb, Range(-2, nz + 2));
+        manager.allocate(dataNeutral.xb_global, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.yb_global, Range(-2, ny + 2));
+        manager.allocate(dataNeutral.zb_global, Range(-2, nz + 2));
+        manager.allocate(dataNeutral.dxc, Range(-1, nx + 2));
+        manager.allocate(dataNeutral.dyc, Range(-1, ny + 2));
+        manager.allocate(dataNeutral.dzc, Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dxb, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.dyb, Range(-2, ny + 2));
+        manager.allocate(dataNeutral.dzb, Range(-2, nz + 2));
+        manager.allocate(dataNeutral.hy, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.hz, Range(-2, nx + 2), Range(-2, ny + 2));
+        manager.allocate(dataNeutral.hyc, Range(-1, nx + 2));
+        manager.allocate(dataNeutral.hzc, Range(-1, nx + 2), Range(-1, ny + 2));
+        manager.allocate(dataNeutral.hz1, Range(-2, nx + 2), Range(-2, ny + 2));
+        manager.allocate(dataNeutral.hz2, Range(-2, nx + 2), Range(-2, ny + 2));
+        manager.allocate(dataNeutral.x, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.y, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.z, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.xp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.yp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.zp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        if (data.rke)
+        {
+            manager.allocate(dataNeutral.delta_ke, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        }
+        
     }
 }
 

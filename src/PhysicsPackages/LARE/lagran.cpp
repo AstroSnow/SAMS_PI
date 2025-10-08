@@ -279,9 +279,8 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
             lagranNeutral.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
             lagranNeutral.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
         }, Range(-1,dataNeutral.nx+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nz+1));
-        
+//printf("Here 1\n");        
         shock_viscosity(dataNeutral, lagranNeutral);
-        
         set_dt(dataNeutral, lagranNeutral);
     }
     
@@ -343,7 +342,7 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
     portableWrapper::assign(lagran.fx_visc, 0.0);
     portableWrapper::assign(lagran.fy_visc, 0.0);
     portableWrapper::assign(lagran.fz_visc, 0.0);
-
+    
     // Compute cs
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         T_dataType rmin = portableWrapper::max(data.rho(ix, iy, iz), data.none_zero);
