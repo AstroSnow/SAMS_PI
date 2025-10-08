@@ -277,6 +277,11 @@ public:
      * Function to output data to disk
      */
     void output(simulationData &data,simulationData &dataNeutral);
+    
+    /**
+    *
+    */
+    void two_fluid_grid(simulationData &data,simulationData &dataNeutral);
 };
 
 #endif // SHARED_DATA_H

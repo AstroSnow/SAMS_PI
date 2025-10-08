@@ -37,7 +37,11 @@ int main(int argc, char *argv[]){
     varRegistry.allocateAll();
 		S.allocate(data,dataNeutral);
     S.grid(data);
-    //if (data.two_fluid) S.grid(dataNeutral);
+    if (data.two_fluid) {
+        printf("Initialising two-fluid grid \n");
+        S.two_fluid_grid(data,dataNeutral);
+        printf("Initialising two-fluid grid \n");
+        }
     data.visc2_norm=data.visc2;
 		//portableWrapper::fence();
 	

@@ -14,7 +14,10 @@
 */
 #include "shared_data.h"
 
-void two_fluid_grid(simulationData &data){
-
+void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
+ /*
+ This is my work around for allocating the grid properties to the neutral data structure
+ */
+ dataNeutral.cv=data.cv;
 
 }
