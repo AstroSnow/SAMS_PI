@@ -103,7 +103,7 @@ void writeDiagnosticsCore(simulationData &data,simulationData &dataNeutral, writ
         getHostVersion(dataNeutral, manager, dataNeutral.rho, host);
         writer.writeData("rho_n", host.data());
 
-        getHostVersion(dataNeutral, manager, data.energy_neutral, host);
+        getHostVersion(dataNeutral, manager, dataNeutral.energy_neutral, host);
         writer.writeData("energy_n", host.data());
 
         getHostVersion(dataNeutral, manager, dataNeutral.vx, host);
