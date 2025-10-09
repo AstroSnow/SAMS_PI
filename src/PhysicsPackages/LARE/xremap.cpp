@@ -122,10 +122,7 @@ void simulation::remap_x(simulationData &data, remapData &remap_data) {
             data.rho(ix,iy,iz) = (remap_data.rho1(ix,iy,iz) * data.cv1(ix,iy,iz) + remap_data.dm(ixm,iy,iz) - remap_data.dm(ix,iy,iz)) / remap_data.cv2(ix,iy,iz);
         },
     Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
-///////////////////////////////////
-printf("\n%p",&remap_data.rho1(4,0,0));
-printf("\n%f\n",remap_data.rho1(4,0,0));
-///////////////////////////////////
+    
     if (!data.is_neutral){
     x_energy_flux<&simulationData::energy_electron>(data, remap_data);
     
