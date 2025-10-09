@@ -136,9 +136,12 @@ void simulation::energy_correction(simulationData &data)
     portableWrapper::applyKernel(
         LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
             T_dataType dke = portableWrapper::max(-data.delta_ke(ix, iy, iz), 0.0) / (data.rho(ix, iy, iz) * data.cv(ix, iy, iz));
-            data.energy_electron(ix, iy, iz) += 0.5 * dke;
-            data.energy_ion(ix, iy, iz) += 0.5 * dke;
-            data.energy_neutral(ix, iy, iz) += 0.5 * dke; //Neutral energy correction - not sure about this
+            if (!data.is_neutral){
+                data.energy_electron(ix, iy, iz) += 0.5 * dke;
+                data.energy_ion(ix, iy, iz) += 0.5 * dke;
+            } else {
+                data.energy_neutral(ix, iy, iz) += 0.5 * dke; //Neutral energy correction - not sure about this
+            }
         },
         Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
 }
