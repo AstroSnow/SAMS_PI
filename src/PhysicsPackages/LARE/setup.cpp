@@ -27,7 +27,6 @@
     SAMS::typeID type = typeRegistry.getTypeID<T_dataType>();
     varRegistry.registerVariable("energy_electron", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
     varRegistry.registerVariable("energy_ion", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
-    varRegistry.registerVariable("energy_neutral", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
     varRegistry.registerVariable("rho", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
     varRegistry.registerVariable("vx", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
     varRegistry.registerVariable("vy", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
@@ -84,13 +83,6 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
         const auto& vardef = varRegistry.getVariable("energy_ion");
         const auto& dims = vardef.getDimensions();
         manager.wrap(data.energy_ion, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
-                                                Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
-                                                Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
-    }
-    {
-        const auto& vardef = varRegistry.getVariable("energy_neutral");
-        const auto& dims = vardef.getDimensions();
-        manager.wrap(data.energy_neutral, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
                                                 Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
                                                 Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
     }
