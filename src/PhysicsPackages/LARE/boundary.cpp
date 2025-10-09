@@ -207,6 +207,14 @@ void simulation::energy_bcs(simulationData &data)
             data.energy_ion(0, portableWrapper::Range(), portableWrapper::Range()), 
             data.energy_ion(1, portableWrapper::Range(), portableWrapper::Range())
         );
+        portableWrapper::assign(
+            data.energy_neutral(-1, portableWrapper::Range(), portableWrapper::Range()), 
+            data.energy_neutral(2, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.energy_neutral(0, portableWrapper::Range(), portableWrapper::Range()), 
+            data.energy_neutral(1, portableWrapper::Range(), portableWrapper::Range())
+        );
     }
 
     if (data.xbc_max == BCType::BC_OTHER){
@@ -225,6 +233,14 @@ void simulation::energy_bcs(simulationData &data)
         portableWrapper::assign(
             data.energy_ion(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
             data.energy_ion(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.energy_neutral(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
+            data.energy_neutral(data.nx, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.energy_neutral(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
+            data.energy_neutral(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
         );
     }
 
@@ -245,6 +261,14 @@ void simulation::energy_bcs(simulationData &data)
             data.energy_ion(portableWrapper::Range(), 0, portableWrapper::Range()), 
             data.energy_ion(portableWrapper::Range(), 1, portableWrapper::Range())
         );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), -1, portableWrapper::Range()), 
+            data.energy_neutral(portableWrapper::Range(), 2, portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), 0, portableWrapper::Range()), 
+            data.energy_neutral(portableWrapper::Range(), 1, portableWrapper::Range())
+        );
     }
 
     if (data.ybc_max == BCType::BC_OTHER){
@@ -264,6 +288,14 @@ void simulation::energy_bcs(simulationData &data)
             data.energy_ion(portableWrapper::Range(), data.ny + 2, portableWrapper::Range()), 
             data.energy_ion(portableWrapper::Range(), data.ny - 1, portableWrapper::Range())
         );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), data.ny + 1, portableWrapper::Range()), 
+            data.energy_neutral(portableWrapper::Range(), data.ny, portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), data.ny + 2, portableWrapper::Range()), 
+            data.energy_neutral(portableWrapper::Range(), data.ny - 1, portableWrapper::Range())
+        );
     }
     if (data.zbc_min == BCType::BC_OTHER){
         portableWrapper::assign(
@@ -282,6 +314,14 @@ void simulation::energy_bcs(simulationData &data)
             data.energy_ion(portableWrapper::Range(), portableWrapper::Range(), 0), 
             data.energy_ion(portableWrapper::Range(), portableWrapper::Range(), 1)
         );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), -1), 
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), 2)
+        );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), 0), 
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), 1)
+        );
     }
     if (data.zbc_max == BCType::BC_OTHER){
         portableWrapper::assign(
@@ -299,6 +339,14 @@ void simulation::energy_bcs(simulationData &data)
         portableWrapper::assign(
             data.energy_ion(portableWrapper::Range(), portableWrapper::Range(), data.nz + 2), 
             data.energy_ion(portableWrapper::Range(), portableWrapper::Range(), data.nz - 1)
+        );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), data.nz + 1), 
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), data.nz)
+        );
+        portableWrapper::assign(
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), data.nz + 2), 
+            data.energy_neutral(portableWrapper::Range(), portableWrapper::Range(), data.nz - 1)
         );
     }
 }
