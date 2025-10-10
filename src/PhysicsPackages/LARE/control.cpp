@@ -88,6 +88,7 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   printf("Setting up initial conditions\n"); 
   
   char shock_tube_problem[8]="sod";
+  //char shock_tube_problem[8]="briowu";
   
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);
@@ -115,29 +116,31 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   T_dataType by_R = 0.0;
   T_dataType bz_R = 0.0;
   ////////////////////////////////////////////////////
-  if (shock_tube_problem == "sod"){
+  if (std::strcmp(shock_tube_problem,"sod")==0){
       // Sod Shock tube
-      T_dataType rho_L = 1.0;
-      T_dataType P_L = 1.0;
-      T_dataType vx_L = 0.0;
-      T_dataType bx_L = 0.75;
-      T_dataType by_L = 1.0;
+      printf("Sod Shock Tube \n");
+      rho_L = 1.0;
+      P_L = 1.0;
+      vx_L = 0.0;
       
-      T_dataType rho_R = 0.125;
-      T_dataType P_R = 0.1;
-      T_dataType vx_R = 0.0;
-      T_dataType bx_R = 0.75;
-      T_dataType by_R = -1.0;
+      rho_R = 0.125;
+      P_R = 0.1;
+      vx_R = 0.0;
   }
-  if (shock_tube_problem == "briowu"){
-      // Sod Shock tube
-      T_dataType rho_L = 1.0;
-      T_dataType P_L = 1.0;
-      T_dataType vx_L = 0.0;
+  if (std::strcmp(shock_tube_problem,"briowu")==0){
+      // Brio & Wu Shock tube
+      printf("Brio Wu Shock Tube \n");
+      rho_L = 1.0;
+      P_L = 1.0;
+      vx_L = 0.0;
+      bx_L = 0.75;
+      by_L = 1.0;
       
-      T_dataType rho_R = 0.125;
-      T_dataType P_R = 0.1;
-      T_dataType vx_R = 0.0;
+      rho_R = 0.125;
+      P_R = 0.1;
+      vx_R = 0.0;
+      bx_R = 0.75;
+      by_R = -1.0;
   }
   ////////////////////////////////////////////////////
 
