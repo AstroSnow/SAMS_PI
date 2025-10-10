@@ -79,10 +79,23 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         data.vz(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
         dataNeutral.vz(ix,iy,iz)-=data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
         
+        //Energy source terms
+        data.energy_ion(ix,iy,iz)=data.energy_ion(ix,iy,iz)+data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
+                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
+                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
+        data.energy_electron(ix,iy,iz)=data.energy_electron(ix,iy,iz)+data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
+                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
+                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
+        data.energy_neutral(ix,iy,iz)=data.energy_neutral(ix,iy,iz)-data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
+                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
+                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));        
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 
-
-    
-    //Apply source terms
 
 }
