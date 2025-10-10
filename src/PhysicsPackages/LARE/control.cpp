@@ -87,6 +87,8 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   
   printf("Setting up initial conditions\n"); 
   
+  char shock_tube_problem[8]="sod";
+  
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);
   portableWrapper::assign(data.vz,0.0);
@@ -95,16 +97,44 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   portableWrapper::assign(data.by,0.0);
   portableWrapper::assign(data.bz,0.0);
   
-  
-  ////////////////////////////////////////////////////
-  // Sod Shock tube
+  //declare some arrays. Rewritten from the shock tube declaration
   T_dataType rho_L = 1.0;
   T_dataType P_L = 1.0;
   T_dataType vx_L = 0.0;
-  
+  T_dataType vy_L = 0.0;
+  T_dataType vz_L = 0.0;
+  T_dataType bx_L = 0.0;
+  T_dataType by_L = 0.0;
+  T_dataType bz_L = 0.0; 
   T_dataType rho_R = 0.125;
   T_dataType P_R = 0.1;
   T_dataType vx_R = 0.0;
+  T_dataType vy_R = 0.0;
+  T_dataType vz_R = 0.0;
+  T_dataType bx_R = 0.0;
+  T_dataType by_R = 0.0;
+  T_dataType bz_R = 0.0;
+  ////////////////////////////////////////////////////
+  if (shock_tube_problem == "sod"){
+      // Sod Shock tube
+      T_dataType rho_L = 1.0;
+      T_dataType P_L = 1.0;
+      T_dataType vx_L = 0.0;
+      
+      T_dataType rho_R = 0.125;
+      T_dataType P_R = 0.1;
+      T_dataType vx_R = 0.0;
+  }
+  if (shock_tube_problem == "briowu"){
+      // Sod Shock tube
+      T_dataType rho_L = 1.0;
+      T_dataType P_L = 1.0;
+      T_dataType vx_L = 0.0;
+      
+      T_dataType rho_R = 0.125;
+      T_dataType P_R = 0.1;
+      T_dataType vx_R = 0.0;
+  }
   ////////////////////////////////////////////////////
 
   portableWrapper::assign(data.rho,rho_R);
@@ -113,14 +143,14 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
 
   //Some Neutral conditions
   if (data.two_fluid) {
-    portableWrapper::assign(dataNeutral.vx,vx_L);
+    portableWrapper::assign(dataNeutral.vx,vx_R);
     portableWrapper::assign(dataNeutral.vy,0.0);
     portableWrapper::assign(dataNeutral.vz,0.0);
     portableWrapper::assign(dataNeutral.bx,0.0);
     portableWrapper::assign(dataNeutral.by,0.0);
     portableWrapper::assign(dataNeutral.bz,0.0);
-    portableWrapper::assign(dataNeutral.rho,rho_L);
-    portableWrapper::assign(dataNeutral.energy_neutral,P_L/rho_L/(data.gas_gamma-1.0));    
+    portableWrapper::assign(dataNeutral.rho,rho_R);
+    portableWrapper::assign(dataNeutral.energy_neutral,P_R/rho_R/(data.gas_gamma-1.0));    
   }
 
   portableWrapper::applyKernel(
@@ -132,9 +162,9 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       data.energy_ion(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
       data.energy_electron(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
       if (data.two_fluid) {
-          dataNeutral.vx(ix, iy, iz) = vx_R;
-          dataNeutral.rho(ix, iy, iz) = rho_R;
-          dataNeutral.energy_neutral(ix, iy, iz) = P_R/rho_R/(data.gas_gamma-1.0);  
+          dataNeutral.vx(ix, iy, iz) = vx_L;
+          dataNeutral.rho(ix, iy, iz) = rho_L;
+          dataNeutral.energy_neutral(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);  
       }
     } 
 
