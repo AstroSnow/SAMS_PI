@@ -120,10 +120,14 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       T_dataType rho_L = 1.0;
       T_dataType P_L = 1.0;
       T_dataType vx_L = 0.0;
+      T_dataType bx_L = 0.75;
+      T_dataType by_L = 1.0;
       
       T_dataType rho_R = 0.125;
       T_dataType P_R = 0.1;
       T_dataType vx_R = 0.0;
+      T_dataType bx_R = 0.75;
+      T_dataType by_R = -1.0;
   }
   if (shock_tube_problem == "briowu"){
       // Sod Shock tube
@@ -138,17 +142,23 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   ////////////////////////////////////////////////////
 
   portableWrapper::assign(data.rho,rho_R);
+  portableWrapper::assign(data.vx,vx_R);
+  portableWrapper::assign(data.vy,vy_R);
+  portableWrapper::assign(data.vz,vz_R);
+  portableWrapper::assign(data.bx,bx_R);
+  portableWrapper::assign(data.by,by_R);
+  portableWrapper::assign(data.bz,bz_R);
   portableWrapper::assign(data.energy_ion,P_R/2.0/rho_R/(data.gas_gamma-1.0));
   portableWrapper::assign(data.energy_electron,P_R/2.0/rho_R/(data.gas_gamma-1.0));
 
   //Some Neutral conditions
   if (data.two_fluid) {
     portableWrapper::assign(dataNeutral.vx,vx_R);
-    portableWrapper::assign(dataNeutral.vy,0.0);
-    portableWrapper::assign(dataNeutral.vz,0.0);
-    portableWrapper::assign(dataNeutral.bx,0.0);
-    portableWrapper::assign(dataNeutral.by,0.0);
-    portableWrapper::assign(dataNeutral.bz,0.0);
+    portableWrapper::assign(dataNeutral.vy,vy_R);
+    portableWrapper::assign(dataNeutral.vz,vz_R);
+    portableWrapper::assign(dataNeutral.bx,bx_R);
+    portableWrapper::assign(dataNeutral.by,by_R);
+    portableWrapper::assign(dataNeutral.bz,bz_R);
     portableWrapper::assign(dataNeutral.rho,rho_R);
     portableWrapper::assign(dataNeutral.energy_neutral,P_R/rho_R/(data.gas_gamma-1.0));    
   }
@@ -158,11 +168,18 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     
     if (data.xb(ix) < 0.5) {
       data.vx(ix, iy, iz) = vx_L;
+      data.vy(ix, iy, iz) = vy_L;
+      data.vz(ix, iy, iz) = vz_L;
+      data.bx(ix, iy, iz) = bx_L;
+      data.by(ix, iy, iz) = by_L;
+      data.bz(ix, iy, iz) = bz_L;
       data.rho(ix, iy, iz) = rho_L;
       data.energy_ion(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
       data.energy_electron(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
       if (data.two_fluid) {
           dataNeutral.vx(ix, iy, iz) = vx_L;
+          dataNeutral.vy(ix, iy, iz) = vy_L;
+          dataNeutral.vz(ix, iy, iz) = vz_L;
           dataNeutral.rho(ix, iy, iz) = rho_L;
           dataNeutral.energy_neutral(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);  
       }
