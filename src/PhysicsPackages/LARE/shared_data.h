@@ -75,6 +75,9 @@ struct simulationData{
     bool rke; // Remap phase kinetic energy correction
     bool two_fluid; // Flag for the two-fluid version of the code
     bool is_neutral; // Is this a neutral fluid
+    
+    //Two-fluid constants
+    T_dataType alpha0; //Reference collisional timescale
 
     //Shock viscosity coefficients
     T_dataType visc1; // Linear shock viscosity coefficient

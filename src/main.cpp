@@ -48,14 +48,6 @@ int main(int argc, char *argv[]){
 		//portableWrapper::fence();
 	
 	portableWrapper::fence();
-	
-	if (data.two_fluid){
-	    data.rho(1,0,0)=1.0;
-        dataNeutral.rho(1,0,0)=2.0;
-        printf("\n %f %f \n",data.rho(1,0,0),dataNeutral.rho(1,0,0));
-        printf("\n%p",&data.rho(1,0,0));
-        printf("\n%p \n",&dataNeutral.rho(1,0,0));
-    }
 
     S.initial_conditions(data,dataNeutral);
 		portableWrapper::fence();
@@ -80,6 +72,7 @@ int main(int argc, char *argv[]){
         S.energy_correction(dataNeutral);
       }
       S.eta_calc(data);            // lagran.cpp
+      if (data.two_fluid) S.two_fluid_source(data,dataNeutral);
     }
     t.end();
 

@@ -72,6 +72,7 @@ void simulation::controlvariables(simulationData &data) {
   
   // Two-fluid flag
   data.two_fluid=true;
+  data.alpha0=1.0;
 
   // Output frequency and directory
   data.dt_snapshots = 0.02;
