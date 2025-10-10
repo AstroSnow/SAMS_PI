@@ -14,45 +14,62 @@
 */
 #include "shared_data.h"
 
+////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
- /*
- This is my work around for allocating the grid properties to the neutral data structure
- */
- dataNeutral.cv=data.cv;
- dataNeutral.dxab=data.dxab;
- dataNeutral.dyab=data.dyab;
- dataNeutral.dzab=data.dzab;
- dataNeutral.dxac=data.dxac;
- dataNeutral.dyac=data.dyac;
- dataNeutral.dzac=data.dzac;
- dataNeutral.cv1=data.cv1;
- dataNeutral.cvc=data.cvc;
- dataNeutral.xc=data.xc;
- dataNeutral.yc=data.yc;
- dataNeutral.zc=data.zc;
- dataNeutral.xb=data.xb;
- dataNeutral.yb=data.yb;
- dataNeutral.zb=data.zb;
- dataNeutral.xb_global=data.xb_global;
- dataNeutral.yb_global=data.yb_global;
- dataNeutral.zb_global=data.zb_global;
- dataNeutral.dxc=data.dxc;
- dataNeutral.dyc=data.dyc;
- dataNeutral.dzc=data.dzc;
- dataNeutral.dxb=data.dxb;
- dataNeutral.dyb=data.dyb;
- dataNeutral.dzb=data.dzb;
- dataNeutral.hy=data.hy;
- dataNeutral.hz=data.hz;
- dataNeutral.hyc=data.hyc;
- dataNeutral.hzc=data.hzc;
- dataNeutral.hz1=data.hz1;
- dataNeutral.hz2=data.hz2;
- dataNeutral.x=data.x;
- dataNeutral.y=data.y;
- dataNeutral.z=data.z;
- dataNeutral.xp=data.xp;
- dataNeutral.yp=data.yp;
- dataNeutral.zp=data.zp;
+     /*
+     This is my work around for allocating the grid properties to the neutral data structure
+     */
+     dataNeutral.cv=data.cv;
+     dataNeutral.dxab=data.dxab;
+     dataNeutral.dyab=data.dyab;
+     dataNeutral.dzab=data.dzab;
+     dataNeutral.dxac=data.dxac;
+     dataNeutral.dyac=data.dyac;
+     dataNeutral.dzac=data.dzac;
+     dataNeutral.cv1=data.cv1;
+     dataNeutral.cvc=data.cvc;
+     dataNeutral.xc=data.xc;
+     dataNeutral.yc=data.yc;
+     dataNeutral.zc=data.zc;
+     dataNeutral.xb=data.xb;
+     dataNeutral.yb=data.yb;
+     dataNeutral.zb=data.zb;
+     dataNeutral.xb_global=data.xb_global;
+     dataNeutral.yb_global=data.yb_global;
+     dataNeutral.zb_global=data.zb_global;
+     dataNeutral.dxc=data.dxc;
+     dataNeutral.dyc=data.dyc;
+     dataNeutral.dzc=data.dzc;
+     dataNeutral.dxb=data.dxb;
+     dataNeutral.dyb=data.dyb;
+     dataNeutral.dzb=data.dzb;
+     dataNeutral.hy=data.hy;
+     dataNeutral.hz=data.hz;
+     dataNeutral.hyc=data.hyc;
+     dataNeutral.hzc=data.hzc;
+     dataNeutral.hz1=data.hz1;
+     dataNeutral.hz2=data.hz2;
+     dataNeutral.x=data.x;
+     dataNeutral.y=data.y;
+     dataNeutral.z=data.z;
+     dataNeutral.xp=data.xp;
+     dataNeutral.yp=data.yp;
+     dataNeutral.zp=data.zp;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutral){
+
+    using Range = portableWrapper::Range;
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        //Get Temperatures
+        T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
+        
+    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+
+
+    
+    //Apply source terms
 
 }

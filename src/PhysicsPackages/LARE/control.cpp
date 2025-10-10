@@ -16,7 +16,7 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=10; // Number of cells in the x-direction
+  data.nx=400; // Number of cells in the x-direction
   data.ny=2; // Number of cells in the y-direction
   data.nz=2; // Number of cells in the z-direction
 
@@ -24,7 +24,7 @@ void simulation::controlvariables(simulationData &data) {
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = 2;
+  data.nsteps = -1;
   data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
@@ -107,16 +107,19 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   ////////////////////////////////////////////////////
 
   portableWrapper::assign(data.rho,rho_R);
-  portableWrapper::assign(data.energy_ion,P_R/rho_R/(data.gas_gamma-1.0));
-  portableWrapper::assign(data.energy_electron,P_R/rho_R/(data.gas_gamma-1.0));
+  portableWrapper::assign(data.energy_ion,P_R/2.0/rho_R/(data.gas_gamma-1.0));
+  portableWrapper::assign(data.energy_electron,P_R/2.0/rho_R/(data.gas_gamma-1.0));
 
   //Some Neutral conditions
   if (data.two_fluid) {
-    portableWrapper::assign(dataNeutral.vx,0.0);
-    portableWrapper::assign(dataNeutral.vx,0.0);
-    portableWrapper::assign(dataNeutral.vx,0.0);
-    portableWrapper::assign(dataNeutral.rho,0.1);
-    portableWrapper::assign(dataNeutral.energy_neutral,0.1);    
+    portableWrapper::assign(dataNeutral.vx,vx_L);
+    portableWrapper::assign(dataNeutral.vy,0.0);
+    portableWrapper::assign(dataNeutral.vz,0.0);
+    portableWrapper::assign(dataNeutral.bx,0.0);
+    portableWrapper::assign(dataNeutral.by,0.0);
+    portableWrapper::assign(dataNeutral.bz,0.0);
+    portableWrapper::assign(dataNeutral.rho,rho_L);
+    portableWrapper::assign(dataNeutral.energy_neutral,P_L/rho_L/(data.gas_gamma-1.0));    
   }
 
   portableWrapper::applyKernel(
@@ -125,7 +128,13 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     if (data.xb(ix) < 0.5) {
       data.vx(ix, iy, iz) = vx_L;
       data.rho(ix, iy, iz) = rho_L;
-      data.energy_ion(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);
+      data.energy_ion(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
+      data.energy_electron(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
+      if (data.two_fluid) {
+          dataNeutral.vx(ix, iy, iz) = vx_R;
+          dataNeutral.rho(ix, iy, iz) = rho_R;
+          dataNeutral.energy_neutral(ix, iy, iz) = P_R/rho_R/(data.gas_gamma-1.0);  
+      }
     } 
 
     //printf("%ld %f %f \n",ix,data.rho(ix,iy,iz),dataNeutral.rho(ix,iy,iz));

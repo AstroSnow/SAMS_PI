@@ -74,7 +74,11 @@ int main(int argc, char *argv[]){
       S.eulerian_remap(data); // remap.cpp
       if (data.two_fluid) S.eulerian_remap(dataNeutral);
       data.step++;
-      if (data.rke) S.energy_correction(data); // diagnostics.cpp
+      if (data.two_fluid) dataNeutral.step++;
+      if (data.rke) {
+        S.energy_correction(data); // diagnostics.cpp
+        S.energy_correction(dataNeutral);
+      }
       S.eta_calc(data);            // lagran.cpp
     }
     t.end();
