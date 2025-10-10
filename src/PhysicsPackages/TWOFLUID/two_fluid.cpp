@@ -90,7 +90,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
-        data.energy_neutral(ix,iy,iz)=data.energy_neutral(ix,iy,iz)-data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        dataNeutral.energy_neutral(ix,iy,iz)=dataNeutral.energy_neutral(ix,iy,iz)-data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
