@@ -67,7 +67,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
 
         //This needs temeprature dependence
-        T_dataType ac=0.1*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+        T_dataType ac=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
         
         //Apply the velocity exchange terms
         data.vx(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
