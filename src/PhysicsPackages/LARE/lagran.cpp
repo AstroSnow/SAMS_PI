@@ -565,6 +565,7 @@ void set_dt(simulationData &data, lagranData &lagran) {
         T_dataType w1 = (data.bx(ix, iy, iz) * data.bx(ix, iy, iz) +
                          data.by(ix, iy, iz) * data.by(ix, iy, iz) +
                          data.bz(ix, iy, iz) * data.bz(ix, iy, iz)) / data.mu0_si / rho0;
+        if (data.is_neutral) w1=0.0;
         T_dataType c_visc2 = data.p_visc(ix, iy, iz) / rho0;
 
         T_dataType length  = portableWrapper::min({dhx, dhy, dhz});
