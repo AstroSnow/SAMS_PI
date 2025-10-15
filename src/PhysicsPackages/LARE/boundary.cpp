@@ -26,7 +26,7 @@ void simulation::boundary_conditions(simulationData &data)
 void simulation::bfield_bcs(simulationData &data)
 {
     if (data.xbc_min == BCType::BC_OTHER){
-        portableWrapper::assign(
+        /*portableWrapper::assign(
             data.bx(-2, portableWrapper::Range(), portableWrapper::Range()), 
             data.bx(2, portableWrapper::Range(), portableWrapper::Range())
         );
@@ -49,6 +49,30 @@ void simulation::bfield_bcs(simulationData &data)
         portableWrapper::assign(
             data.bz(portableWrapper::Range(0, 0), portableWrapper::Range(), portableWrapper::Range()), 
             data.bz(portableWrapper::Range(1, 1), portableWrapper::Range(), portableWrapper::Range())
+        );*/
+        portableWrapper::assign(
+            data.bx(-2, portableWrapper::Range(), portableWrapper::Range()), 
+            data.bx( 2, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.bx(-1, portableWrapper::Range(), portableWrapper::Range()), 
+            data.bx( 1, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.by(-1, portableWrapper::Range(), portableWrapper::Range()), 
+            data.by( 2, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.by(0, portableWrapper::Range(), portableWrapper::Range()), 
+            data.by(1, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.bz(-1, portableWrapper::Range(), portableWrapper::Range()), 
+            data.bz( 2, portableWrapper::Range(), portableWrapper::Range())
+        );
+        portableWrapper::assign(
+            data.bz( 0, portableWrapper::Range(), portableWrapper::Range()), 
+            data.bz( 1, portableWrapper::Range(), portableWrapper::Range())
         );
     }
 
