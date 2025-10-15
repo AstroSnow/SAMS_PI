@@ -115,6 +115,32 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
+void ion_rec_rates(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion){
 
+
+    T_dataType T0=1.0e4;
+    T_dataType n0=1.0e14;
+    T_dataType t_ir=1.0e5;
+	//Formulation from Popescu+2019 paper
+	//Empirical estimates for the rates
+
+	//Calculate electron temperature in eV
+	T_dataType Te_0=T0/1.1604e4;
+	T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //n0 converted to m^-3
+
+	//initial equilibrium fractions
+	T_dataType ioneq=(2.6e-19/std::sqrt(Te_0))/(2.91e-14/(0.232+13.6/Te_0)*std::pow(13.6/Te_0,0.39)*std::exp(-13.6/Te_0));
+	T_dataType f_n=ioneq/(ioneq+1.0);
+	T_dataType f_p=1.0-f_n;
+	T_dataType f_p_p=2.0*f_p/(f_n+2.0*f_p);
+	
+    T_dataType tfac=0.5*f_p_p/f_p; //Normalisation assumes sound speed normalisation
+	
+
+	Gm_rec=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
+	Gm_ion=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
+	Gm_ion=Gm_ion/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
