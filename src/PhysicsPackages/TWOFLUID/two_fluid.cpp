@@ -60,10 +60,14 @@ void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutral){
 
+    //data.two_fluid_timestep=1.0;
+    
+    //Calculate the source terms for the two-fluid interactions
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
         T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
         T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
 
         //This needs temeprature dependence
@@ -94,8 +98,23 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
-                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));        
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
+                        
+        //Two-fluid time-step
+        //T_dataType collisional_timestep_temp=0.3/(ac*data.rho(ix,iy,iz));
+        //if (data.two_fluid_timestep < collisional_timestep_temp) printf("%f \n", collisional_timestep_temp); 
+        //data.two_fluid_timestep=collisional_timestep_temp;
+        //collisional_timestep_temp=0.3/(ac*dataNeutral.rho(ix,iy,iz));
+        //if (data.two_fluid_timestep < collisional_timestep_temp) data.two_fluid_timestep=collisional_timestep_temp;
+              
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-
-
+    
+    
+    //Two-fluid time-step
+    //printf("%f \n",data.two_fluid_timestep);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////
