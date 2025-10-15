@@ -78,6 +78,7 @@ struct simulationData{
     
     //Two-fluid constants
     T_dataType alpha0; //Reference collisional timescale
+    T_dataType two_fluid_timestep; //Reference collisional timescale
 
     //Shock viscosity coefficients
     T_dataType visc1; // Linear shock viscosity coefficient
