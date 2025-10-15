@@ -69,7 +69,7 @@ int main(int argc, char *argv[]){
       if (data.two_fluid) dataNeutral.step++;
       if (data.rke) {
         S.energy_correction(data); // diagnostics.cpp
-        S.energy_correction(dataNeutral);
+        if (data.two_fluid) S.energy_correction(dataNeutral);
       }
       S.eta_calc(data);            // lagran.cpp
       if (data.two_fluid) S.two_fluid_source(data,dataNeutral);
