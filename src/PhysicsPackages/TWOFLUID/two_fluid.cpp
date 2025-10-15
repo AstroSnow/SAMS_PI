@@ -118,10 +118,10 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
 void ion_rec_rates(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion){
 
 
-    T_dataType T0=1.0e4;
-    T_dataType n0=1.0e14;
-    T_dataType t_ir=1.0e5;
-	//Formulation from Popescu+2019 paper
+    T_dataType T0=1.0e4; //Reference temperature
+    T_dataType n0=1.0e14; //Reference electron number density
+    T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
+	//Formulation from Snow+2021 paper
 	//Empirical estimates for the rates
 
 	//Calculate electron temperature in eV
