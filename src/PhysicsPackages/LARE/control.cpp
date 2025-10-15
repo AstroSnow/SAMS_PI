@@ -159,9 +159,9 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     portableWrapper::assign(dataNeutral.vx,vx_R);
     portableWrapper::assign(dataNeutral.vy,vy_R);
     portableWrapper::assign(dataNeutral.vz,vz_R);
-    portableWrapper::assign(dataNeutral.bx,bx_R);
-    portableWrapper::assign(dataNeutral.by,by_R);
-    portableWrapper::assign(dataNeutral.bz,bz_R);
+    portableWrapper::assign(dataNeutral.bx,0.0);
+    portableWrapper::assign(dataNeutral.by,0.0);
+    portableWrapper::assign(dataNeutral.bz,0.0);
     portableWrapper::assign(dataNeutral.rho,rho_R);
     portableWrapper::assign(dataNeutral.energy_neutral,P_R/rho_R/(data.gas_gamma-1.0));    
   }
@@ -202,14 +202,14 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
 //printf("\n%p",&data.rho(1,0,0));
 //printf("\n%p \n",&dataNeutral.rho(1,0,0));
 
-  std::cout << "Range of vx: " << portableWrapper::minval(data.vx) << " to " << portableWrapper::maxval(data.vx) << "\n";
-  std::cout << "Range of vy: " << portableWrapper::minval(data.vy) << " to " << portableWrapper::maxval(data.vy) << "\n";
-  std::cout << "Range of vz: " << portableWrapper::minval(data.vz) << " to " << portableWrapper::maxval(data.vz) << "\n";
+  //std::cout << "Range of vx: " << portableWrapper::minval(data.vx) << " to " << portableWrapper::maxval(data.vx) << "\n";
+  //std::cout << "Range of vy: " << portableWrapper::minval(data.vy) << " to " << portableWrapper::maxval(data.vy) << "\n";
+  //std::cout << "Range of vz: " << portableWrapper::minval(data.vz) << " to " << portableWrapper::maxval(data.vz) << "\n";
 
   T_dataType bmult = 000.0;
-  portableWrapper::assign(data.bx,0.00);
-  portableWrapper::assign(data.by,0.00);
-  portableWrapper::assign(data.bz,0.00);
+  //portableWrapper::assign(data.bx,0.00);
+  //portableWrapper::assign(data.by,0.00);
+  //portableWrapper::assign(data.bz,0.00);
   // Set the initial density field in kg/m^3
   //portableWrapper::assign(data.rho, 1.0e-6);
 
