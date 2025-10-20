@@ -191,14 +191,14 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
         {
             const auto& vardef = varRegistry.getVariable("Gm_rec");
             const auto& dims = vardef.getDimensions();
-            manager.wrap(dataNeutral.Gm_rec, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+            manager.wrap(data.Gm_rec, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
                                                     Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
                                                     Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
         }
         {
             const auto& vardef = varRegistry.getVariable("Gm_ion");
             const auto& dims = vardef.getDimensions();
-            manager.wrap(dataNeutral.Gm_ion, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+            manager.wrap(data.Gm_ion, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
                                                     Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
                                                     Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
         }
