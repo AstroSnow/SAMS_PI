@@ -14,6 +14,9 @@
 */
 #include "shared_data.h"
 
+void set_dt(simulationData &data, simulationData &dataNeutral);
+void ion_rec_rates_empirical(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion);
+
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
      /*
@@ -100,23 +103,21 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
                         
-        //Two-fluid time-step
-        //T_dataType collisional_timestep_temp=0.3/(ac*data.rho(ix,iy,iz));
-        //if (data.two_fluid_timestep < collisional_timestep_temp) printf("%f \n", collisional_timestep_temp); 
-        //data.two_fluid_timestep=collisional_timestep_temp;
-        //collisional_timestep_temp=0.3/(ac*dataNeutral.rho(ix,iy,iz));
-        //if (data.two_fluid_timestep < collisional_timestep_temp) data.two_fluid_timestep=collisional_timestep_temp;
+        //
               
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     
+    //Set the timestep for the collisions
+    set_dt(data, dataNeutral);
     
     //Two-fluid time-step
-    //printf("%f \n",data.two_fluid_timestep);
+    printf("%f \n",data.two_fluid_timestep);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-void ion_rec_rates(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion){
+void ion_rec_rates_empirical(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion){
 
+    //Much of this should go elsewhere
 
     T_dataType T0=1.0e4; //Reference temperature
     T_dataType n0=1.0e14; //Reference electron number density
@@ -124,9 +125,8 @@ void ion_rec_rates(auto temperature_electron,auto numberDensity_electron, auto G
 	//Formulation from Snow+2021 paper
 	//Empirical estimates for the rates
 
-	//Calculate electron temperature in eV
-	T_dataType Te_0=T0/1.1604e4;
-	T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //n0 converted to m^-3
+	T_dataType Te_0=T0/1.1604e4; //Calculate electron temperature in eV
+	T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
 
 	//initial equilibrium fractions
 	T_dataType ioneq=(2.6e-19/std::sqrt(Te_0))/(2.91e-14/(0.232+13.6/Te_0)*std::pow(13.6/Te_0,0.39)*std::exp(-13.6/Te_0));
@@ -144,3 +144,38 @@ void ion_rec_rates(auto temperature_electron,auto numberDensity_electron, auto G
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
+
+void set_dt(simulationData &data,simulationData &dataNeutral) {
+
+    using Range = portableWrapper::Range;
+
+    int i0 = data.geometry == geometryType::Cartesian ? 0:1;
+
+    //Now need to do a map and reduction
+    data.two_fluid_timestep = data.dt_multiplier * 
+    portableWrapper::applyReduction(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        //Get Temperatures
+        T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
+
+        //This needs temeprature dependence
+        T_dataType ac=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+        
+        T_dataType collisional_timestep_plasma=0.3/(ac*data.rho(ix,iy,iz));
+        T_dataType collisional_timestep_neutral=0.3/(ac*dataNeutral.rho(ix,iy,iz));
+        
+        T_dataType t1;
+        
+        if (collisional_timestep_plasma < collisional_timestep_neutral){
+            t1=collisional_timestep_plasma;
+        } else{
+            t1=collisional_timestep_neutral;
+        }
+                return t1;
+    }, LAMBDA(T_dataType &a, const T_dataType &b) {
+        a=portableWrapper::min(a, b);
+    }, data.largest_number,
+    Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
+
+}
