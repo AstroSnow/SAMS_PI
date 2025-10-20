@@ -20,7 +20,7 @@
  * Register variables with the portable array manager.
  */
 
- void simulation::registerVars(bool two_fluid){
+ void simulation::registerVars(bool two_fluid,bool ion_rec_empirical){
 
     auto& varRegistry = SAMS::getvariableRegistry();
     auto& typeRegistry = SAMS::gettypeRegistry();
@@ -43,6 +43,10 @@
         varRegistry.registerVariable("bx_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
         varRegistry.registerVariable("by_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",2));
         varRegistry.registerVariable("bz_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2, SAMS::staggerType::HALF_CELL));
+        if (ion_rec_empirical){
+            varRegistry.registerVariable("Gm_rec", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
+            varRegistry.registerVariable("Gm_ion", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",2), SAMS::dimension("Y",2), SAMS::dimension("Z",2));
+        }
     }
  }
 
@@ -182,7 +186,26 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
         manager.allocate(data.delta_ke, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
     }
     
-        if (data.two_fluid){
+    //Map the ionisation/recombination arrays
+    if (data.ion_rec_empirical){
+        {
+            const auto& vardef = varRegistry.getVariable("Gm_rec");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.Gm_rec, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("Gm_ion");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.Gm_ion, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+    }
+    
+    //Set the two_fluid arrays
+    if (data.two_fluid){
         {
             const auto& vardef = varRegistry.getVariable("energy_neutral");
             const auto& dims = vardef.getDimensions();

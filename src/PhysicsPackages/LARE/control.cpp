@@ -24,7 +24,7 @@ void simulation::controlvariables(simulationData &data) {
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = -1;
+  data.nsteps = 1;
   data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
@@ -72,6 +72,7 @@ void simulation::controlvariables(simulationData &data) {
   
   // Two-fluid flag
   data.two_fluid=true;
+  data.ion_rec_empirical=true;
   data.alpha0=1.0;
 
   // Output frequency and directory

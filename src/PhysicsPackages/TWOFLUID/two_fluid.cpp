@@ -15,7 +15,7 @@
 #include "shared_data.h"
 
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral);
-void ion_rec_rates_empirical(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion);
+void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
@@ -103,8 +103,6 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
                         
-        //
-              
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     
     //Set the timestep for the collisions
@@ -115,10 +113,9 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-void ion_rec_rates_empirical(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion){
+void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 
     //Much of this should go elsewhere
-
     T_dataType T0=1.0e4; //Reference temperature
     T_dataType n0=1.0e14; //Reference electron number density
     T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
@@ -137,9 +134,20 @@ void ion_rec_rates_empirical(auto temperature_electron,auto numberDensity_electr
     T_dataType tfac=0.5*f_p_p/f_p; //Normalisation assumes sound speed normalisation
 	
 
-	Gm_rec=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
-	Gm_ion=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
-	Gm_ion=Gm_ion/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;
+    using Range = portableWrapper::Range;
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        //Get Temperatures
+        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType numberDensity_electron=data.rho(ix,iy,iz); // This isn't actually the numebr density. Neet to fix
+
+        //Get ionisation and recomination rates
+
+    	data.Gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
+    	data.Gm_ion(ix,iy,iz)=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
+    	data.Gm_ion(ix,iy,iz)=data.Gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;        
+              
+    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+
 
 }
 

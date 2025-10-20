@@ -75,10 +75,15 @@ struct simulationData{
     bool rke; // Remap phase kinetic energy correction
     bool two_fluid; // Flag for the two-fluid version of the code
     bool is_neutral; // Is this a neutral fluid
+    bool ion_rec_empirical; //Are the empirical ionisation rates called
     
     //Two-fluid constants
     T_dataType alpha0; //Reference collisional timescale
     T_dataType two_fluid_timestep; //Reference collisional timescale
+    
+    //Ionisation and recombination arrays
+    volumeArray Gm_ion; // ionisation rate
+    volumeArray Gm_rec; // recombination rate
 
     //Shock viscosity coefficients
     T_dataType visc1; // Linear shock viscosity coefficient
@@ -214,7 +219,7 @@ public:
     /**
      * Register variables with the portable array manager.
      */
-    void registerVars(bool two_fluid);
+    void registerVars(bool two_fluid,bool ion_rec_empirical);
 
     /**
      * Allocate the simulation data arrays

@@ -34,7 +34,7 @@ int main(int argc, char *argv[]){
 		printf("Finished initialising two-fluid arrays \n");
 	}
     
-    S.registerVars(data.two_fluid);
+    S.registerVars(data.two_fluid,data.ion_rec_empirical);
     auto& varRegistry = SAMS::getvariableRegistry();
     varRegistry.allocateAll();
 		S.allocate(data,dataNeutral);
