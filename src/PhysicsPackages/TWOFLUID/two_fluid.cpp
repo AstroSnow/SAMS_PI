@@ -113,7 +113,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     set_dt_collisional(data, dataNeutral);
     
     //Set the ionisation/recombination timestep
-    set_dt_ion_rec(data,dataNeutral);
+    if (data.ion_rec_empirical) set_dt_ion_rec(data,dataNeutral);
     
     //Two-fluid time-step
     printf("%f \n",data.two_fluid_timestep);
