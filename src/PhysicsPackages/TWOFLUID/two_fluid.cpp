@@ -16,6 +16,7 @@
 
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
+void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
@@ -111,6 +112,9 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     //Set the timestep for the collisions
     set_dt_collisional(data, dataNeutral);
     
+    //Set the ionisation/recombination timestep
+    set_dt_ion_rec(data,dataNeutral);
+    
     //Two-fluid time-step
     printf("%f \n",data.two_fluid_timestep);
 }
@@ -187,5 +191,27 @@ void set_dt_collisional(simulationData &data,simulationData &dataNeutral) {
         a=portableWrapper::min(a, b);
     }, data.largest_number,
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
+
+    using Range = portableWrapper::Range;
+
+    int i0 = data.geometry == geometryType::Cartesian ? 0:1;
+
+    //Now need to do a map and reduction
+    T_dataType ir_timestep= data.dt_multiplier * 
+    portableWrapper::applyReduction(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {        
+        T_dataType t1=1.0/(data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz));
+        return t1;
+    }, LAMBDA(T_dataType &a, const T_dataType &b) {
+        a=portableWrapper::min(a, b);
+    }, data.largest_number,
+    Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
+    
+    if (ir_timestep < data.two_fluid_timestep) data.two_fluid_timestep=ir_timestep;
 
 }
