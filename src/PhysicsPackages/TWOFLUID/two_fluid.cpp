@@ -146,10 +146,8 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 
         //Get ionisation and recomination rates
     	data.Gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
-printf("here1 \n");
     	data.Gm_ion(ix,iy,iz)=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
     	data.Gm_ion(ix,iy,iz)=data.Gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;        
-printf("here2 \n");              
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 
 
