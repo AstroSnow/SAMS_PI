@@ -14,7 +14,7 @@
 */
 #include "shared_data.h"
 
-void set_dt(simulationData &data, simulationData &dataNeutral);
+void set_dt_collisional(simulationData &data, simulationData &dataNeutral);
 void ion_rec_rates_empirical(auto temperature_electron,auto numberDensity_electron, auto Gm_rec, auto Gm_ion);
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     
     //Set the timestep for the collisions
-    set_dt(data, dataNeutral);
+    set_dt_collisional(data, dataNeutral);
     
     //Two-fluid time-step
     printf("%f \n",data.two_fluid_timestep);
@@ -145,7 +145,7 @@ void ion_rec_rates_empirical(auto temperature_electron,auto numberDensity_electr
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-void set_dt(simulationData &data,simulationData &dataNeutral) {
+void set_dt_collisional(simulationData &data,simulationData &dataNeutral) {
 
     using Range = portableWrapper::Range;
 
