@@ -116,7 +116,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     if (data.ion_rec_empirical) set_dt_ion_rec(data,dataNeutral);
     
     //Two-fluid time-step
-    printf("%f \n",data.two_fluid_timestep);
+    printf("dt two-fluid %f \n",data.two_fluid_timestep);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
