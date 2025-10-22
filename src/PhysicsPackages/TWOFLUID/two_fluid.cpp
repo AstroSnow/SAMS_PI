@@ -120,15 +120,15 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-
+//Formulation from Snow+2021 paper
+//Empirical estimates for the rates
+//Controlled using the data.ion_rec_empirical in control.cpp
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 
     //Much of this should go elsewhere
     T_dataType T0=1.0e4; //Reference temperature
     T_dataType n0=1.0e14; //Reference electron number density
     T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
-	//Formulation from Snow+2021 paper
-	//Empirical estimates for the rates
 
 	T_dataType Te_0=T0/1.1604e4; //Calculate electron temperature in eV
 	T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
@@ -158,7 +158,8 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-
+//Collisional timestep calculation
+//Assuming normalisation to the sound speed
 void set_dt_collisional(simulationData &data,simulationData &dataNeutral) {
 
     using Range = portableWrapper::Range;
@@ -195,7 +196,7 @@ void set_dt_collisional(simulationData &data,simulationData &dataNeutral) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-
+//Timestep associated with ionisation/recombination
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
 
     using Range = portableWrapper::Range;
@@ -205,7 +206,7 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
     //Now need to do a map and reduction
     T_dataType ir_timestep= data.dt_multiplier * 
     portableWrapper::applyReduction(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {        
-        T_dataType t1=1.0/(data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz));
+        T_dataType t1=std::abs(1.0/(data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz)));
         return t1;
     }, LAMBDA(T_dataType &a, const T_dataType &b) {
         a=portableWrapper::min(a, b);
