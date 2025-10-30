@@ -13,7 +13,7 @@
    limitations under the License.
 */
 #include "shared_data.h"
-#include "../TWOFLUID/two_fluid.h"
+//#include "../TWOFLUID/two_fluid.h"
 
 /**
  * Class representing data only needed during the lagrangian step
@@ -299,6 +299,13 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     }
     //Lagrangian step data is automatically deallocated when lagranManager goes out of scope
 
+    //Add the sources for the two fluid to the half step
+    //MIGHT MESS WITH BCS?
+    //CHECK DT
+    if (data.two_fluid){
+        two_fluid_source(data,dataNeutral);
+    }
+    
 }
 
 void shock_viscosity(simulationData &data, lagranData &lagran) {
