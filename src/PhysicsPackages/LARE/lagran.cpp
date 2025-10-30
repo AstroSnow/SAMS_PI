@@ -13,41 +13,12 @@
    limitations under the License.
 */
 #include "shared_data.h"
+#include "../TWOFLUID/two_fluid.h"
 
 /**
  * Class representing data only needed during the lagrangian step
  */
 struct lagranData
-{
-    bool neutral_flag; //Species flag
-    volumeArray bx1; // X-magnetic field at half timestep
-    volumeArray by1; // Y-magnetic field at half timestep
-    volumeArray bz1; // Z-magnetic field at half timestep
-    volumeArray alpha1; // Alpha1 coefficient for magnetic field update
-    volumeArray alpha2; // Alpha2 coefficient for magnetic field update
-    volumeArray alpha3; // Alpha3 coefficient for magnetic field update
-    volumeArray visc_heat; // Viscous heating
-    volumeArray pressure; // Pressure array
-    volumeArray p_e; // Electron pressure
-    volumeArray p_i; // Ion pressure
-    volumeArray rho_v; // Density at half timestep
-    volumeArray cv_v; // Control volume at half timestep
-    volumeArray fx; // X-force
-    volumeArray fy; // Y-force
-    volumeArray fz; // Z-force
-    volumeArray fx_visc; // X-viscous force
-    volumeArray fy_visc; // Y-viscous force
-    volumeArray fz_visc; // Z-viscous force
-    volumeArray flux_x; // X-flux
-    volumeArray flux_y; // Y-flux
-    volumeArray flux_z; // Z-flux
-    volumeArray curlb; // Curl of the magnetic field
-};
-
-/**
- * Class representing data only needed during the lagrangian step
- */
-struct lagranDataNeutral
 {
     bool neutral_flag; //Species flag
     volumeArray bx1; // X-magnetic field at half timestep
