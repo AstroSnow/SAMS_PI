@@ -17,6 +17,7 @@
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
+T_dataType get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
@@ -73,9 +74,9 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
         T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
         T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
-
-        //This needs temeprature dependence
-        T_dataType ac=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+        
+        T_dataType ac;
+        get_ac(data.alpha0,temperature_ion,temperature_neutral);
         
         //Apply the velocity exchange terms
         data.vx(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
@@ -118,6 +119,15 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     //Two-fluid time-step
     printf("dt two-fluid %f \n",data.two_fluid_timestep);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+//Get the collisional coupling coefficient
+T_dataType get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral){
+
+    return alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //Formulation from Snow+2021 paper
