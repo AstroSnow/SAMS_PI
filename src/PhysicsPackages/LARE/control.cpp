@@ -17,14 +17,14 @@
 void simulation::controlvariables(simulationData &data) {
 
   data.nx=400; // Number of cells in the x-direction
-  data.ny=2; // Number of cells in the y-direction
-  data.nz=2; // Number of cells in the z-direction
+  data.ny=5; // Number of cells in the y-direction
+  data.nz=5; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = 1;
+  data.nsteps = 1000;
   data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
@@ -41,10 +41,10 @@ void simulation::controlvariables(simulationData &data) {
   // Boundary conditions
   data.xbc_min = BCType::BC_OTHER;
   data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_OTHER;
-  data.ybc_max = BCType::BC_OTHER;
-  data.zbc_min = BCType::BC_OTHER;
-  data.zbc_max = BCType::BC_OTHER;
+  data.ybc_min = BCType::BC_PERIODIC;
+  data.ybc_max = BCType::BC_PERIODIC;
+  data.zbc_min = BCType::BC_PERIODIC;
+  data.zbc_max = BCType::BC_PERIODIC;
 
   // Grid stretching
   data.x_stretch = false;
@@ -71,8 +71,9 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=true;
-  data.ion_rec_empirical=true;
+  data.two_fluid=false;
+  data.ion_rec=false;
+  data.ion_rec_empirical=false;
   data.alpha0=1.0;
 
   // Output frequency and directory
@@ -88,8 +89,8 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   
   printf("Setting up initial conditions\n"); 
   
-  char shock_tube_problem[8]="sod";
-  //char shock_tube_problem[8]="briowu";
+  //char shock_tube_problem[8]="sod";
+  char shock_tube_problem[8]="briowu";
   
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);
@@ -196,22 +197,5 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     portableWrapper::Range(0, data.ny),
     portableWrapper::Range(0, data.nz)
   );
-
-//data.rho(1,0,0)=1.0;
-//dataNeutral.rho(1,0,0)=2.0;
-//printf("\n %f %f \n",data.rho(1,0,0),dataNeutral.rho(1,0,0));
-//printf("\n%p",&data.rho(1,0,0));
-//printf("\n%p \n",&dataNeutral.rho(1,0,0));
-
-  //std::cout << "Range of vx: " << portableWrapper::minval(data.vx) << " to " << portableWrapper::maxval(data.vx) << "\n";
-  //std::cout << "Range of vy: " << portableWrapper::minval(data.vy) << " to " << portableWrapper::maxval(data.vy) << "\n";
-  //std::cout << "Range of vz: " << portableWrapper::minval(data.vz) << " to " << portableWrapper::maxval(data.vz) << "\n";
-
-  T_dataType bmult = 000.0;
-  //portableWrapper::assign(data.bx,0.00);
-  //portableWrapper::assign(data.by,0.00);
-  //portableWrapper::assign(data.bz,0.00);
-  // Set the initial density field in kg/m^3
-  //portableWrapper::assign(data.rho, 1.0e-6);
 
 }

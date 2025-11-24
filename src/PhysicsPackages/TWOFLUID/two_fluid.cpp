@@ -67,6 +67,10 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
 
     //data.two_fluid_timestep=1.0;
     
+    //Get the ionisation rates
+    if (data.ion_rec_empirical) ion_rec_rates_empirical(data,dataNeutral);
+    
+    
     //Calculate the source terms for the two-fluid interactions
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
@@ -77,6 +81,14 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         
         T_dataType ac;
         get_ac(data.alpha0,temperature_ion,temperature_neutral);
+        
+        
+        //Mass source terms
+        if (data.ion_rec){
+            data.rho(ix,iy,iz)+=dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz)
+                               -data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz);
+        }
+        
         
         //Apply the velocity exchange terms
         data.vx(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
@@ -107,8 +119,6 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
                         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     
-    //Get the ionisation rates
-    if (data.ion_rec_empirical) ion_rec_rates_empirical(data,dataNeutral);
     
     //Set the timestep for the collisions
     set_dt_collisional(data, dataNeutral);
