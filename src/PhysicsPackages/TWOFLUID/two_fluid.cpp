@@ -16,6 +16,7 @@
 
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
+void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
 T_dataType get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
@@ -83,12 +84,6 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         get_ac(data.alpha0,temperature_ion,temperature_neutral);
         
         
-        //Mass source terms
-        if (data.ion_rec){
-            data.rho(ix,iy,iz)+=dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz)
-                               -data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz);
-        }
-        
         
         //Apply the velocity exchange terms
         data.vx(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
@@ -116,6 +111,15 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
+        
+        
+        //IR Source Terms
+        //NEED TO BE CAREFUL WITH WHEN I APPLY SOURCE TERMS!
+        if (data.ion_rec){
+            data.rho(ix,iy,iz)+=dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz)
+                               -data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz);
+        }
+        
                         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     
@@ -172,6 +176,19 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
     	data.Gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
     	data.Gm_ion(ix,iy,iz)=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
     	data.Gm_ion(ix,iy,iz)=data.Gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;        
+    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//Get the source terms for the IR rates
+void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral){	
+
+    using Range = portableWrapper::Range;
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        //Get Temperatures
+        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);        
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 
 
