@@ -20,6 +20,11 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral)
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
 T_dataType get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
+struct data_two_fluid_source
+{
+    volumeArray source_mass; // mass source term
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
      /*
