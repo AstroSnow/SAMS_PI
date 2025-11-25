@@ -215,6 +215,9 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
 
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+    
+        plasma_ir_source.source_mass(ix,iy,iz)  = data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)-data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)
+        neutral_ir_source.source_mass(ix,iy,iz) =-data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)+data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)
         //Get Temperatures
         T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);        
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
