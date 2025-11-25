@@ -20,9 +20,14 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral)
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
 T_dataType get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
-struct data_two_fluid_source
+struct data_two_fluid_source_ir
 {
     volumeArray source_mass; // mass source term
+    volumeArray source_v_x; // velocity source term
+    volumeArray source_v_y; // velocity source term
+    volumeArray source_v_z; // velocity source term
+    volumeArray source_energy; // energy source term
+    
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -73,9 +78,16 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
 
     //data.two_fluid_timestep=1.0;
     
-    //Get the ionisation rates
-    if (data.ion_rec_empirical) ion_rec_rates_empirical(data,dataNeutral);
+    data_two_fluid_source_ir plasma_ir_source;
+    data_two_fluid_source_ir neutral_ir_source;
+    portableWrapper::portableArrayManager irSourceManager;
+    using Range = portableWrapper::Range;
     
+    //Get the ionisation rates
+    if (data.ion_rec_empirical){
+        irSourceManager.allocate(plasma_ir_source.source_mass, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+        ion_rec_rates_empirical(data,dataNeutral);
+    }
     
     //Calculate the source terms for the two-fluid interactions
     using Range = portableWrapper::Range;
