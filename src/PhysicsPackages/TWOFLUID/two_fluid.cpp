@@ -216,10 +216,22 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
     
+        //Mass source terms
         plasma_ir_source.source_mass(ix,iy,iz)  = data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)-data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz);
         neutral_ir_source.source_mass(ix,iy,iz) =-data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)+data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz);
-        //Get Temperatures
-        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);        
+        
+        //Velocity source terms
+        T_dataType v_D_x  =  data.vx(ix,iy,iz) - dataNeutral.vx(ix,iy,iz); //Drift velocity in the x-direction
+        T_dataType v_D_y  =  data.vy(ix,iy,iz) - dataNeutral.vy(ix,iy,iz); //Drift velocity in the y-direction
+        T_dataType v_D_z  =  data.vz(ix,iy,iz) - dataNeutral.vz(ix,iy,iz); //Drift velocity in the z-direction
+        plasma_ir_source.source_v_x(ix,iy,iz) = -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_x/data.rho(ix,iy,iz);
+        plasma_ir_source.source_v_y(ix,iy,iz) = -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_y/data.rho(ix,iy,iz);
+        plasma_ir_source.source_v_z(ix,iy,iz) = -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_z/data.rho(ix,iy,iz);
+        neutral_ir_source.source_v_x(ix,iy,iz) = data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_x/dataNeutral.rho(ix,iy,iz);
+        neutral_ir_source.source_v_y(ix,iy,iz) = data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_y/dataNeutral.rho(ix,iy,iz);
+        neutral_ir_source.source_v_z(ix,iy,iz) = data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_z/dataNeutral.rho(ix,iy,iz);
+        
+        
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 
 
