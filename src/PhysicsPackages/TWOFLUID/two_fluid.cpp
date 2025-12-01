@@ -207,22 +207,22 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
     
         //Mass source terms
-        plasma_ir_source.source_mass(ix,iy,iz)  = data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)-data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz);
-        neutral_ir_source.source_mass(ix,iy,iz) =-data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)+data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz);
+        plasma_ir_source.source_mass(ix,iy,iz)  += data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)-data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz);
+        neutral_ir_source.source_mass(ix,iy,iz) +=-data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)+data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz);
         
         //Velocity source terms
         T_dataType v_D_x  =  data.vx(ix,iy,iz) - dataNeutral.vx(ix,iy,iz); //Drift velocity in the x-direction
         T_dataType v_D_y  =  data.vy(ix,iy,iz) - dataNeutral.vy(ix,iy,iz); //Drift velocity in the y-direction
         T_dataType v_D_z  =  data.vz(ix,iy,iz) - dataNeutral.vz(ix,iy,iz); //Drift velocity in the z-direction
-        plasma_ir_source.source_v_x(ix,iy,iz) = -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_x/data.rho(ix,iy,iz);
-        plasma_ir_source.source_v_y(ix,iy,iz) = -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_y/data.rho(ix,iy,iz);
-        plasma_ir_source.source_v_z(ix,iy,iz) = -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_z/data.rho(ix,iy,iz);
-        neutral_ir_source.source_v_x(ix,iy,iz) = data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_x/dataNeutral.rho(ix,iy,iz);
-        neutral_ir_source.source_v_y(ix,iy,iz) = data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_y/dataNeutral.rho(ix,iy,iz);
-        neutral_ir_source.source_v_z(ix,iy,iz) = data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_z/dataNeutral.rho(ix,iy,iz);
+        plasma_ir_source.source_v_x(ix,iy,iz) += -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_x/data.rho(ix,iy,iz);
+        plasma_ir_source.source_v_y(ix,iy,iz) += -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_y/data.rho(ix,iy,iz);
+        plasma_ir_source.source_v_z(ix,iy,iz) += -data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*v_D_z/data.rho(ix,iy,iz);
+        neutral_ir_source.source_v_x(ix,iy,iz) += data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_x/dataNeutral.rho(ix,iy,iz);
+        neutral_ir_source.source_v_y(ix,iy,iz) += data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_y/dataNeutral.rho(ix,iy,iz);
+        neutral_ir_source.source_v_z(ix,iy,iz) += data.Gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*v_D_z/dataNeutral.rho(ix,iy,iz);
         
         //Energy source terms
-        plasma_ir_source.source_energy(ix,iy,iz) = -0.5*(data.Gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
+        plasma_ir_source.source_energy(ix,iy,iz) += -0.5*(data.Gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
                                                                                 data.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
                                                                                 data.vz(ix,iy,iz)*data.vz(ix,iy,iz))
                                                         -data.Gm_ion(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
@@ -232,7 +232,7 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
                                                         )
                                                    -(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)); //Is this electron or ion energy (or mean energy)? is the half needed?
         
-        neutral_ir_source.source_energy(ix,iy,iz) = 0.5*(data.Gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
+        neutral_ir_source.source_energy(ix,iy,iz) += 0.5*(data.Gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
                                                                                 data.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
                                                                                 data.vz(ix,iy,iz)*data.vz(ix,iy,iz))
                                                                                 *data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)
