@@ -41,10 +41,10 @@ void simulation::controlvariables(simulationData &data) {
   // Boundary conditions
   data.xbc_min = BCType::BC_OTHER;
   data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_PERIODIC;
-  data.ybc_max = BCType::BC_PERIODIC;
-  data.zbc_min = BCType::BC_PERIODIC;
-  data.zbc_max = BCType::BC_PERIODIC;
+  data.ybc_min = BCType::BC_OTHER;
+  data.ybc_max = BCType::BC_OTHER;
+  data.zbc_min = BCType::BC_OTHER;
+  data.zbc_max = BCType::BC_OTHER;
 
   // Grid stretching
   data.x_stretch = false;
@@ -89,8 +89,8 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   
   printf("Setting up initial conditions\n"); 
   
-  //char shock_tube_problem[8]="sod";
-  char shock_tube_problem[8]="briowu";
+  char shock_tube_problem[8]="sod";
+  //char shock_tube_problem[8]="briowu";
   
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);

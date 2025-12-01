@@ -273,6 +273,12 @@ public:
      * @param data Simulation data struct
      */
     void eta_calc(simulationData &data);
+    
+    /**
+     * Timestep calculation
+     * @param data Simulation data struct
+     */
+    void set_dt(simulationData &data);
 
     /**
      * Core remap control function

@@ -520,7 +520,7 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
     portableWrapper::fence();
 }
 
-void set_dt(simulationData &data) {
+void simulation::set_dt(simulationData &data) {
 
     using Range = portableWrapper::Range;
 
