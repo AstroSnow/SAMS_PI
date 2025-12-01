@@ -117,7 +117,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         T_dataType ac;
         get_ac(data.alpha0,temperature_ion,temperature_neutral);
         
-        
+        //Note that the factor of 0.5 in these is due to Strang splitting
         //Mass exchange terms
         data.rho(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_mass(ix,iy,iz);
         dataNeutral.rho(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_mass(ix,iy,iz);
