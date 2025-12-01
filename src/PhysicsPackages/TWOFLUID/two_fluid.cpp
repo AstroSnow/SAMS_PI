@@ -117,31 +117,19 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         
         
         //Apply the velocity exchange terms
-        data.vx(ix,iy,iz)       +=0.5*data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
-        dataNeutral.vx(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
+        data.vx(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_x(ix,iy,iz);
+        dataNeutral.vx(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_x(ix,iy,iz);
         
-        data.vy(ix,iy,iz)       +=0.5*data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vy(ix,iy,iz));
+        data.vy(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_y(ix,iy,iz);
         dataNeutral.vy(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
         
-        data.vz(ix,iy,iz)       +=0.5*data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
+        data.vz(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_z(ix,iy,iz);
         dataNeutral.vz(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
         
         //Energy source terms - the 3/2 here needs fixing
-        data.energy_ion(ix,iy,iz)=data.energy_ion(ix,iy,iz)+0.5*data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
-                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
-                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
-                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
-                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
-        data.energy_electron(ix,iy,iz)=data.energy_electron(ix,iy,iz)+0.5*data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
-                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
-                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
-                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
-                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
-        dataNeutral.energy_neutral(ix,iy,iz)=dataNeutral.energy_neutral(ix,iy,iz)-0.5*data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
-                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
-                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
-                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
-                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
+        data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
+        data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
+        dataNeutral.energy_neutral(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_energy(ix,iy,iz);  
         
         
         //IR Source Terms
