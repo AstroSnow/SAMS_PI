@@ -63,7 +63,10 @@ int main(int argc, char *argv[]){
       if ((data.step >= data.nsteps && data.nsteps >= 0) || (data.time >= data.t_end))
         break;
       S.set_dt(data); // timestep of fluid
-      if (data.two_fluid) S.set_dt(dataNeutral);
+      if (data.two_fluid) {
+        S.set_dt(dataNeutral); //Get fluid timestep of neutrals
+        S.two_fluid_source(data,dataNeutral); // First step of Strang-split two-fluid sources
+      }
       S.lagrangian_step(data,dataNeutral);    // lagran.cpp
       S.eulerian_remap(data); // remap.cpp
       if (data.two_fluid) S.eulerian_remap(dataNeutral);
@@ -74,7 +77,7 @@ int main(int argc, char *argv[]){
         if (data.two_fluid) S.energy_correction(dataNeutral);
       }
       S.eta_calc(data);            // lagran.cpp
-      if (data.two_fluid) S.two_fluid_source(data,dataNeutral);
+      if (data.two_fluid) S.two_fluid_source(data,dataNeutral); // Second step of Strang-split two-fluid sources
     }
     t.end();
 
