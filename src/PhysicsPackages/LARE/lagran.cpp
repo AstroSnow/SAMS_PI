@@ -47,7 +47,7 @@ struct lagranData
 
 
 void shock_viscosity(simulationData &data, lagranData &lagran);
-void set_dt(simulationData &data, lagranData &lagran);
+void set_dt(simulationData &data);
 void resistive_effects(simulation& sim, simulationData &data, lagranData &lagran);
 void rkstep(simulation& sim, simulationData &data, lagranData &lagran);
 void bstep(simulation &sim, simulationData &data, lagranData &lagran);
@@ -252,12 +252,12 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
         }, Range(-1,dataNeutral.nx+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nz+1));
 //printf("Here 1\n");        
         shock_viscosity(dataNeutral, lagranNeutral);
-        set_dt(dataNeutral, lagranNeutral);
+        set_dt(dataNeutral);
     }
     
     //////////////////////////////////////////////////////////////////////////////////////////////
     
-    set_dt(data, lagran);
+    set_dt(data);
     
     
     //Set dt to be the minimum of the neutral and plasma times
@@ -520,7 +520,7 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
     portableWrapper::fence();
 }
 
-void set_dt(simulationData &data, lagranData &lagran) {
+void set_dt(simulationData &data) {
 
     using Range = portableWrapper::Range;
 
@@ -538,7 +538,19 @@ void set_dt(simulationData &data, lagranData &lagran) {
         T_dataType dhz = dz * data.hzc(ix, iy);
 
         T_dataType rho0 = portableWrapper::max(data.rho(ix, iy, iz), data.none_zero);
-        T_dataType cs2 = data.gas_gamma * lagran.pressure(ix, iy, iz) / rho0;
+        
+        T_dataType pressure;
+        
+        if (data.is_neutral){
+            T_dataType p_n = (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.energy_neutral(ix, iy, iz);
+            pressure = p_n;
+        } else{
+            T_dataType p_e = (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.energy_electron(ix, iy, iz);
+            T_dataType p_i = (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.energy_ion(ix, iy, iz);
+            pressure = p_e + p_i;
+        }
+        
+        T_dataType cs2 = data.gas_gamma * pressure / rho0;
 
         T_dataType w1 = (data.bx(ix, iy, iz) * data.bx(ix, iy, iz) +
                          data.by(ix, iy, iz) * data.by(ix, iy, iz) +
