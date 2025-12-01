@@ -108,6 +108,12 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     if (data.ion_rec) get_ion_rec_source_terms(data,dataNeutral,plasma_ir_source,neutral_ir_source);
     
     
+    // Make sure the timestep is the same in both species
+    //Set dt to be the minimum of the neutral and plasma times
+    printf("dt=%f %f \n",data.dt,dataNeutral.dt);
+    data.dt=std::min(dataNeutral.dt,data.dt);
+    dataNeutral.dt=data.dt;
+    
     //Set the timestep for the collisions
     set_dt_collisional(data, dataNeutral);
     
