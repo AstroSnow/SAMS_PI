@@ -26,6 +26,7 @@ struct data_two_fluid_source_ir
 };
 
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral);
+void get_collisional_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
 void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
@@ -84,23 +85,25 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     portableWrapper::portableArrayManager irSourceManager;
     using Range = portableWrapper::Range;
     
+    irSourceManager.allocate(plasma_ir_source.source_mass, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(plasma_ir_source.source_v_x, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(plasma_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(plasma_ir_source.source_v_z, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(plasma_ir_source.source_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(neutral_ir_source.source_mass, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(neutral_ir_source.source_v_x, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(neutral_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(neutral_ir_source.source_v_z, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(neutral_ir_source.source_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    
     //Get the ionisation rates
-    if (data.ion_rec_empirical){
-        irSourceManager.allocate(plasma_ir_source.source_mass, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(plasma_ir_source.source_v_x, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(plasma_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(plasma_ir_source.source_v_z, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(plasma_ir_source.source_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(neutral_ir_source.source_mass, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(neutral_ir_source.source_v_x, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(neutral_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(neutral_ir_source.source_v_z, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        irSourceManager.allocate(neutral_ir_source.source_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
-        
+    if (data.ion_rec_empirical){        
         ion_rec_rates_empirical(data,dataNeutral);
     }
     
     //Calculate the source terms for the two-fluid interactions
+    get_collisional_source_terms(data,dataNeutral,plasma_ir_source,neutral_ir_source);
+    
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
@@ -114,27 +117,27 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         
         
         //Apply the velocity exchange terms
-        data.vx(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
-        dataNeutral.vx(ix,iy,iz)-=data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
+        data.vx(ix,iy,iz)       +=0.5*data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
+        dataNeutral.vx(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
         
-        data.vy(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vy(ix,iy,iz));
-        dataNeutral.vy(ix,iy,iz)-=data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
+        data.vy(ix,iy,iz)       +=0.5*data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vy(ix,iy,iz));
+        dataNeutral.vy(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
         
-        data.vz(ix,iy,iz)       +=data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
-        dataNeutral.vz(ix,iy,iz)-=data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
+        data.vz(ix,iy,iz)       +=0.5*data.dt*ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
+        dataNeutral.vz(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
         
         //Energy source terms - the 3/2 here needs fixing
-        data.energy_ion(ix,iy,iz)=data.energy_ion(ix,iy,iz)+data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        data.energy_ion(ix,iy,iz)=data.energy_ion(ix,iy,iz)+0.5*data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
-        data.energy_electron(ix,iy,iz)=data.energy_electron(ix,iy,iz)+data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        data.energy_electron(ix,iy,iz)=data.energy_electron(ix,iy,iz)+0.5*data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
-        dataNeutral.energy_neutral(ix,iy,iz)=dataNeutral.energy_neutral(ix,iy,iz)-data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        dataNeutral.energy_neutral(ix,iy,iz)=dataNeutral.energy_neutral(ix,iy,iz)-0.5*data.dt*ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
@@ -252,6 +255,51 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
                                                         )
                                                    +(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz)); //Is this electron or ion energy (or mean energy)? is the half needed?
         
+        
+    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//Get the source terms for the IR rates
+void get_collisional_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source){	
+
+    using Range = portableWrapper::Range;
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            
+        //Get Temperatures
+        T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
+        
+        T_dataType ac;
+        get_ac(data.alpha0,temperature_ion,temperature_neutral);
+        
+        
+        
+        //Apply the velocity exchange terms
+        plasma_ir_source.source_v_x(ix,iy,iz)+=ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
+        neutral_ir_source.source_v_x(ix,iy,iz)-=ac*(data.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
+        
+        plasma_ir_source.source_v_y(ix,iy,iz)+=ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vy(ix,iy,iz));
+        neutral_ir_source.source_v_y(ix,iy,iz)-=ac*(data.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
+        
+        plasma_ir_source.source_v_z(ix,iy,iz)+=ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
+        neutral_ir_source.source_v_z(ix,iy,iz)-=ac*(data.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
+        
+        //Energy source terms - the 3/2 here needs fixing
+        plasma_ir_source.source_energy(ix,iy,iz)=ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
+                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
+                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
+        neutral_ir_source.source_energy(ix,iy,iz)=-ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+                        (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
+                        (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
+                        (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
+                                   
         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 
