@@ -104,6 +104,9 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     //Calculate the source terms for the two-fluid interactions
     get_collisional_source_terms(data,dataNeutral,plasma_ir_source,neutral_ir_source);
     
+    //Calculate the source terms for Ionisation/recombination
+    if (data.ion_rec) get_ion_rec_source_terms(data,dataNeutral,plasma_ir_source,neutral_ir_source);
+    
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
@@ -115,6 +118,9 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         get_ac(data.alpha0,temperature_ion,temperature_neutral);
         
         
+        //Mass exchange terms
+        data.rho(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_mass(ix,iy,iz);
+        dataNeutral.rho(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_mass(ix,iy,iz);
         
         //Apply the velocity exchange terms
         data.vx(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_x(ix,iy,iz);
@@ -131,13 +137,6 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
         dataNeutral.energy_neutral(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_energy(ix,iy,iz);  
         
-        
-        //IR Source Terms
-        //NEED TO BE CAREFUL WITH WHEN I APPLY SOURCE TERMS!
-        if (data.ion_rec){
-            data.rho(ix,iy,iz)+=dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz)
-                               -data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz);
-        }
         
                         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
