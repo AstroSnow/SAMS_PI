@@ -62,7 +62,7 @@ int main(int argc, char *argv[]){
       std::cout << data.step << " " << data.time << std::endl;
       if ((data.step >= data.nsteps && data.nsteps >= 0) || (data.time >= data.t_end))
         break;
-      S.set_dt(data);
+      S.set_dt(data); // timestep of fluid
       if (data.two_fluid) S.set_dt(dataNeutral);
       S.lagrangian_step(data,dataNeutral);    // lagran.cpp
       S.eulerian_remap(data); // remap.cpp

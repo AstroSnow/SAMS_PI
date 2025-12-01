@@ -252,12 +252,12 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
         }, Range(-1,dataNeutral.nx+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nz+1));
 //printf("Here 1\n");        
         shock_viscosity(dataNeutral, lagranNeutral);
-        set_dt(dataNeutral);
+        //set_dt(dataNeutral);
     }
     
     //////////////////////////////////////////////////////////////////////////////////////////////
     
-    set_dt(data);
+    //set_dt(data);
     
     
     //Set dt to be the minimum of the neutral and plasma times
