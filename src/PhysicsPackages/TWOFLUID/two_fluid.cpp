@@ -107,6 +107,16 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     //Calculate the source terms for Ionisation/recombination
     if (data.ion_rec) get_ion_rec_source_terms(data,dataNeutral,plasma_ir_source,neutral_ir_source);
     
+    
+    //Set the timestep for the collisions
+    set_dt_collisional(data, dataNeutral);
+    
+    //Set the ionisation/recombination timestep
+    if (data.ion_rec_empirical) set_dt_ion_rec(data,dataNeutral);
+    
+    //Two-fluid time-step
+    printf("dt two-fluid %f \n",data.two_fluid_timestep);
+    
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
@@ -141,15 +151,6 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
                         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     
-    
-    //Set the timestep for the collisions
-    set_dt_collisional(data, dataNeutral);
-    
-    //Set the ionisation/recombination timestep
-    if (data.ion_rec_empirical) set_dt_ion_rec(data,dataNeutral);
-    
-    //Two-fluid time-step
-    printf("dt two-fluid %f \n",data.two_fluid_timestep);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
