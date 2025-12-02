@@ -31,7 +31,7 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
 void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
-T_dataType get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
+//void get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral){
@@ -97,6 +97,9 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     irSourceManager.allocate(neutral_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(neutral_ir_source.source_v_z, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(neutral_ir_source.source_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    
+    //Get collisional coefficient
+    get_ac(data,dataNeutral,plasma_ir_source);
     
     //Get the ionisation rates
     if (data.ion_rec_empirical){        
