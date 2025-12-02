@@ -271,7 +271,28 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
         get_ac(data.alpha0,temperature_ion,temperature_neutral);
         
         
+        //Get ac and rho at the location of v (vertex)
+        //T_dataType ac_vertex=
+        T_dataType rho_plasma_vertex=  (data.rho(ix  , iy  , iz  ) + 
+                                        data.rho(ix+1, iy  , iz  ) + 
+                                        data.rho(ix  , iy+1, iz  ) + 
+                                        data.rho(ix+1, iy+1, iz  ) + 
+                                        data.rho(ix  , iy  , iz+1) + 
+                                        data.rho(ix+1, iy  , iz+1) + 
+                                        data.rho(ix  , iy+1, iz+1) + 
+                                        data.rho(ix+1, iy+1, iz+1))* 
+                                        0.125;
+        T_dataType rho_neutral_vertex=  (dataNeutral.rho(ix  , iy  , iz  ) + 
+                                         dataNeutral.rho(ix+1, iy  , iz  ) + 
+                                         dataNeutral.rho(ix  , iy+1, iz  ) + 
+                                         dataNeutral.rho(ix+1, iy+1, iz  ) + 
+                                         dataNeutral.rho(ix  , iy  , iz+1) + 
+                                         dataNeutral.rho(ix+1, iy  , iz+1) + 
+                                         dataNeutral.rho(ix  , iy+1, iz+1) + 
+                                         dataNeutral.rho(ix+1, iy+1, iz+1))* 
+                                         0.125;
         
+                
         //Apply the velocity exchange terms
         plasma_ir_source.source_v_x(ix,iy,iz)+=ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
         neutral_ir_source.source_v_x(ix,iy,iz)-=ac*(data.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
