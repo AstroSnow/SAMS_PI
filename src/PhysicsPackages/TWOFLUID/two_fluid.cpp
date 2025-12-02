@@ -22,10 +22,11 @@ struct data_two_fluid_source_ir
     volumeArray source_v_y; // velocity source term
     volumeArray source_v_z; // velocity source term
     volumeArray source_energy; // energy source term
-    
+    volumeArray ac; //coupling coeficient
 };
 
-void set_dt_collisional(simulationData &data, simulationData &dataNeutral);
+void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source);
+void set_dt_collisional(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source);
 void get_collisional_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
 void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
@@ -85,6 +86,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     portableWrapper::portableArrayManager irSourceManager;
     using Range = portableWrapper::Range;
     
+    irSourceManager.allocate(plasma_ir_source.ac, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(plasma_ir_source.source_mass, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(plasma_ir_source.source_v_x, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(plasma_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
@@ -115,7 +117,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     dataNeutral.dt=data.dt;
     
     //Set the timestep for the collisions
-    set_dt_collisional(data, dataNeutral);
+    set_dt_collisional(data, dataNeutral, plasma_ir_source);
     
     //Set the ionisation/recombination timestep
     if (data.ion_rec_empirical) set_dt_ion_rec(data,dataNeutral);
@@ -130,8 +132,8 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
         T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
         
-        T_dataType ac;
-        get_ac(data.alpha0,temperature_ion,temperature_neutral);
+        //T_dataType ac;
+        //get_ac(data.alpha0,temperature_ion,temperature_neutral);
         
         //Note that the factor of 0.5 in these is due to Strang splitting
         //Mass exchange terms
@@ -143,10 +145,10 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         dataNeutral.vx(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_x(ix,iy,iz);
         
         data.vy(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_y(ix,iy,iz);
-        dataNeutral.vy(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
+        dataNeutral.vy(ix,iy,iz)-=0.5*data.dt*(data.rho(ix,iy,iz)       *dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
         
         data.vz(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_z(ix,iy,iz);
-        dataNeutral.vz(ix,iy,iz)-=0.5*data.dt*ac*(data.rho(ix,iy,iz)       *dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
+        dataNeutral.vz(ix,iy,iz)-=0.5*data.dt*(data.rho(ix,iy,iz)       *dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
         
         //Energy source terms - the 3/2 here needs fixing
         data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
@@ -161,9 +163,18 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //Get the collisional coupling coefficient
-T_dataType get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral){
+void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source){
 
-    return alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+    using Range = portableWrapper::Range;
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        //Get Temperatures
+        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
+        
+        plasma_ir_source.ac(ix,iy,iz)=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+    	}, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    //return alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
 
 }
 
@@ -267,12 +278,20 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
         T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
         T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
         
-        T_dataType ac;
-        get_ac(data.alpha0,temperature_ion,temperature_neutral);
+        //T_dataType ac;
+        //get_ac(data.alpha0,temperature_ion,temperature_neutral);
         
         
         //Get ac and rho at the location of v (vertex)
-        //T_dataType ac_vertex=
+        T_dataType ac_vertex=(plasma_ir_source.ac(ix  , iy  , iz  ) + 
+                                        plasma_ir_source.ac(ix+1, iy  , iz  ) + 
+                                        plasma_ir_source.ac(ix  , iy+1, iz  ) + 
+                                        plasma_ir_source.ac(ix+1, iy+1, iz  ) + 
+                                        plasma_ir_source.ac(ix  , iy  , iz+1) + 
+                                        plasma_ir_source.ac(ix+1, iy  , iz+1) + 
+                                        plasma_ir_source.ac(ix  , iy+1, iz+1) + 
+                                        plasma_ir_source.ac(ix+1, iy+1, iz+1))* 
+                                        0.125;
         T_dataType rho_plasma_vertex=  (data.rho(ix  , iy  , iz  ) + 
                                         data.rho(ix+1, iy  , iz  ) + 
                                         data.rho(ix  , iy+1, iz  ) + 
@@ -294,22 +313,22 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
         
                 
         //Apply the velocity exchange terms
-        plasma_ir_source.source_v_x(ix,iy,iz)+=ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
-        neutral_ir_source.source_v_x(ix,iy,iz)-=ac*(data.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
+        plasma_ir_source.source_v_x(ix,iy,iz)+=ac_vertex*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
+        neutral_ir_source.source_v_x(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
         
-        plasma_ir_source.source_v_y(ix,iy,iz)+=ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vy(ix,iy,iz));
-        neutral_ir_source.source_v_y(ix,iy,iz)-=ac*(data.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
+        plasma_ir_source.source_v_y(ix,iy,iz)+=ac_vertex*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vy(ix,iy,iz));
+        neutral_ir_source.source_v_y(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
         
-        plasma_ir_source.source_v_z(ix,iy,iz)+=ac*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
-        neutral_ir_source.source_v_z(ix,iy,iz)-=ac*(data.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
+        plasma_ir_source.source_v_z(ix,iy,iz)+=ac_vertex*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
+        neutral_ir_source.source_v_z(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
         
         //Energy source terms - the 3/2 here needs fixing
-        plasma_ir_source.source_energy(ix,iy,iz)=ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        plasma_ir_source.source_energy(ix,iy,iz)=plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
-        neutral_ir_source.source_energy(ix,iy,iz)=-ac*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        neutral_ir_source.source_energy(ix,iy,iz)=-plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
@@ -324,7 +343,7 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
 ////////////////////////////////////////////////////////////////////////////////////////
 //Collisional timestep calculation
 //Assuming normalisation to the sound speed
-void set_dt_collisional(simulationData &data,simulationData &dataNeutral) {
+void set_dt_collisional(simulationData &data,simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source) {
 
     using Range = portableWrapper::Range;
 
@@ -334,23 +353,23 @@ void set_dt_collisional(simulationData &data,simulationData &dataNeutral) {
     data.two_fluid_timestep = data.dt_multiplier * 
     portableWrapper::applyReduction(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
-        T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
-        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
-        T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
+        //T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+        //T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+        //T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
 
         //This needs temeprature dependence
-        T_dataType ac=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+        //T_dataType ac=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
         
-        T_dataType collisional_timestep_plasma=0.3/(ac*data.rho(ix,iy,iz));
-        T_dataType collisional_timestep_neutral=0.3/(ac*dataNeutral.rho(ix,iy,iz));
+        T_dataType collisional_timestep_plasma=0.3/(plasma_ir_source.ac(ix,iy,iz)*data.rho(ix,iy,iz));
+        T_dataType collisional_timestep_neutral=0.3/(plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz));
         
-        T_dataType t1;
+        T_dataType t1 = std::min(collisional_timestep_plasma,collisional_timestep_neutral);
         
-        if (collisional_timestep_plasma < collisional_timestep_neutral){
-            t1=collisional_timestep_plasma;
-        } else{
-            t1=collisional_timestep_neutral;
-        }
+        //if (collisional_timestep_plasma < collisional_timestep_neutral){
+        //    t1=collisional_timestep_plasma;
+        //} else{
+        //    t1=collisional_timestep_neutral;
+        //}
                 return t1;
     }, LAMBDA(T_dataType &a, const T_dataType &b) {
         a=portableWrapper::min(a, b);
