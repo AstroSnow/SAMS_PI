@@ -378,9 +378,12 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
         T_indexType iym = iy - 1, iyp = iy + 1;
         T_indexType ixm = ix - 1, ixp = ix + 1;
 
-        T_dataType dx = 1;//data.dxb(ix);
-        T_dataType dy = 1;//data.dyb(iy) * data.hyc(ix);
-        T_dataType dz = 1;//data.dzb(iz) * data.hz2(ix, iy);
+        //T_dataType dx = 1;//data.dxb(ix);
+        //T_dataType dy = 1;//data.dyb(iy) * data.hyc(ix);
+        //T_dataType dz = 1;//data.dzb(iz) * data.hz2(ix, iy);
+        T_dataType dx = data.dxb(ix);
+        T_dataType dy = data.dyb(iy) * data.hyc(ix);
+        T_dataType dz = data.dzb(iz) * data.hz2(ix, iy);
 
         T_dataType a1 = lagran.alpha1(ix, iyp, izp) * dy * dz;
         T_dataType a2 = lagran.alpha1(ixp, iyp, izp) * dy * dz;
