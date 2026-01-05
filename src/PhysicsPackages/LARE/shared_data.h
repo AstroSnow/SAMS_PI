@@ -163,6 +163,24 @@ struct simulationData{
     bool isyUB = false; // Is this processor on the y-max boundary
     bool iszLB = false; // Is this processor on the z-min boundary
     bool iszUB = false; // Is this processor on the z-max boundary
+    
+    //Some stored left and right conditions for the shock tube problems
+    T_dataType rho_L;
+    T_dataType vx_L;
+    T_dataType vy_L;
+    T_dataType vz_L;
+    T_dataType bx_L;
+    T_dataType by_L;
+    T_dataType bz_L;
+    T_dataType en_L;
+    T_dataType rho_R;
+    T_dataType vx_R;
+    T_dataType vy_R;
+    T_dataType vz_R;
+    T_dataType bx_R;
+    T_dataType by_R;
+    T_dataType bz_R;
+    T_dataType en_R;
 };
 
 class simulation{
