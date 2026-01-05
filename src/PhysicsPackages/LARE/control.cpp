@@ -16,9 +16,9 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=256; // Number of cells in the x-direction
-  data.ny=7; // Number of cells in the y-direction
-  data.nz=7; // Number of cells in the z-direction
+  data.nx=10; // Number of cells in the x-direction
+  data.ny=2; // Number of cells in the y-direction
+  data.nz=2; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
@@ -71,7 +71,7 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=false;
+  data.two_fluid=true;
   data.ion_rec=false;
   data.ion_rec_empirical=false;
   data.alpha0=1.0;
@@ -86,8 +86,8 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
 
   SAMS::cout << "Setting up initial conditions" << std::endl;
 
-  //char shock_tube_problem[8]="sod";
-  char shock_tube_problem[8]="briowu";
+  char shock_tube_problem[8]="sod";
+  //char shock_tube_problem[8]="briowu";
   
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);
@@ -202,17 +202,16 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     data.energy_ion(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
     data.energy_electron(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
       if (data.two_fluid) {
-          dataNeutral.vx(ix, iy, iz) = vx_L;
-          dataNeutral.vy(ix, iy, iz) = vy_L;
-          dataNeutral.vz(ix, iy, iz) = vz_L;
-          dataNeutral.rho(ix, iy, iz) = rho_L;
-          dataNeutral.energy_neutral(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);  
+          dataNeutral.vx(ix, iy, iz) = vx_L+(vx_R-vx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+          dataNeutral.vy(ix, iy, iz) = vy_L+(vy_R-vy_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+          dataNeutral.vz(ix, iy, iz) = vz_L+(vz_R-vz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+          dataNeutral.rho(ix, iy, iz) = rho_L+(rho_R-rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+          dataNeutral.energy_neutral(ix, iy, iz) = en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
       }
-    } 
+    }, 
 
     //printf("%ld %f %f \n",ix,data.rho(ix,iy,iz),dataNeutral.rho(ix,iy,iz));
 
-    },
     portableWrapper::Range(0, data.nx),
     portableWrapper::Range(0, data.ny),
     portableWrapper::Range(0, data.nz)

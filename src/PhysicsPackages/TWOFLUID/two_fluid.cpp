@@ -405,6 +405,7 @@ void set_dt_collisional(simulationData &data,simulationData &dataNeutral, data_t
         
         T_dataType t1 = std::min(collisional_timestep_plasma,collisional_timestep_neutral);
         
+        printf("ix,iy,iz, t1 :  %li %li %li %f %f \n",ix,iy,iz,collisional_timestep_plasma,plasma_ir_source.ac(ix,iy,iz));
         //if (collisional_timestep_plasma < collisional_timestep_neutral){
         //    t1=collisional_timestep_plasma;
         //} else{
