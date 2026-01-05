@@ -16,27 +16,27 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=128; // Number of cells in the x-direction
-  data.ny=128; // Number of cells in the y-direction
-  data.nz=128; // Number of cells in the z-direction
+  data.nx=256; // Number of cells in the x-direction
+  data.ny=7; // Number of cells in the y-direction
+  data.nz=7; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
   data.nsteps = 100;
-  data.t_end = 60.0 * 60.0 * 24.0; // One day in seconds
+  data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
   data.geometry = geometryType::Cartesian;
 
   // Domain limits
-  data.x_min = -1.0e6;
-  data.x_max = 1.0e6;
-  data.y_min = -1.0e6;
-  data.y_max = 1.0e6;
-  data.z_min = -1.0e6;
-  data.z_max = 1.0e6;
+  data.x_min = -0.5;
+  data.x_max = 0.5;
+  data.y_min = -1.0;
+  data.y_max = 1.0;
+  data.z_min = -1.0;
+  data.z_max = 1.0;
 
   // Boundary conditions
   data.xbc_min = BCType::BC_OTHER;
@@ -79,52 +79,153 @@ void simulation::initial_conditions(simulationData &data) {
   using Range = portableWrapper::Range;
 
   SAMS::cout << "Setting up initial conditions" << std::endl;
-  // Set initial conditions for the simulation
+
+  //char shock_tube_problem[8]="sod";
+  char shock_tube_problem[8]="briowu";
+  
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);
   portableWrapper::assign(data.vz,0.0);
- 
-  T_dataType v0 = 0.e3;
-  T_dataType a0 = 1.0e5;
-  T_dataType a2 = a0 * a0;
-  T_dataType amp = 0.5;
-
-  T_dataType xcentre = 0.0;
-  T_dataType ycentre = 0.5e6;
-  T_dataType zcentre = 0.0;
-
-  if (SAMS::getMPIManager().getRank() == 0 && SAMS::getMPIManager().getSize() > 1) {
-    amp=0.0;
+  
+  portableWrapper::assign(data.bx,0.0);
+  portableWrapper::assign(data.by,0.0);
+  portableWrapper::assign(data.bz,0.0);
+  
+  //declare some arrays. Rewritten from the shock tube declaration
+  T_dataType rho_L = 1.0;
+  T_dataType P_L = 1.0;
+  T_dataType vx_L = 0.0;
+  T_dataType vy_L = 0.0;
+  T_dataType vz_L = 0.0;
+  T_dataType bx_L = 0.0;
+  T_dataType by_L = 0.0;
+  T_dataType bz_L = 0.0; 
+  T_dataType rho_R = 0.125;
+  T_dataType P_R = 0.1;
+  T_dataType vx_R = 0.0;
+  T_dataType vy_R = 0.0;
+  T_dataType vz_R = 0.0;
+  T_dataType bx_R = 0.0;
+  T_dataType by_R = 0.0;
+  T_dataType bz_R = 0.0;
+  ////////////////////////////////////////////////////
+  if (std::strcmp(shock_tube_problem,"sod")==0){
+      // Sod Shock tube
+      printf("Sod Shock Tube \n");
+      rho_L = 1.0;
+      P_L = 1.0;
+      vx_L = 0.0;
+      
+      rho_R = 0.125;
+      P_R = 0.1;
+      vx_R = 0.0;
   }
+  if (std::strcmp(shock_tube_problem,"briowu")==0){
+      // Brio & Wu Shock tube
+      printf("Brio Wu Shock Tube \n");
+      rho_L = 1.0;
+      P_L = 1.0;
+      vx_L = 0.0;
+      bx_L = 0.75;
+      by_L = 1.0;
+      
+      rho_R = 0.125;
+      P_R = 0.1;
+      vx_R = 0.0;
+      bx_R = 0.75;
+      by_R = -1.0;
+  }
+  
+  T_dataType en_L =P_L/2.0/rho_L/(data.gas_gamma-1.0);
+  T_dataType en_R =P_R/2.0/rho_R/(data.gas_gamma-1.0);
+  
+  //Assign perminent values for BCs
+  data.rho_L=rho_L;
+  data.vx_L=vx_L;
+  data.vy_L=vy_L;
+  data.vz_L=vz_L;
+  data.bx_L=bx_L;
+  data.by_L=by_L;
+  data.bz_L=bz_L;
+  data.en_L=en_L;
+  data.rho_R=rho_R;
+  data.vx_R=vx_R;
+  data.vy_R=vy_R;
+  data.vz_R=vz_R;
+  data.bx_R=bx_R;
+  data.by_R=by_R;
+  data.bz_R=bz_R;
+  data.en_R=en_R;
+  
+  T_dataType w_lay=0.01;
+  ////////////////////////////////////////////////////
 
-  // Set the initial thermal energy of electrons and ions
-  T_dataType T0 = 1.e6;
-  T_dataType energy = 0.5 * kb_si * T0 / mh_si / (data.gas_gamma - 1.0);
-  portableWrapper::assign(data.energy_electron, energy);
-  portableWrapper::assign(data.energy_ion, energy);
+  portableWrapper::assign(data.rho,rho_R);
+  portableWrapper::assign(data.vx,vx_R);
+  portableWrapper::assign(data.vy,vy_R);
+  portableWrapper::assign(data.vz,vz_R);
+  portableWrapper::assign(data.bx,bx_R);
+  portableWrapper::assign(data.by,by_R);
+  portableWrapper::assign(data.bz,bz_R);
+  portableWrapper::assign(data.energy_ion,P_R/2.0/rho_R/(data.gas_gamma-1.0));
+  portableWrapper::assign(data.energy_electron,P_R/2.0/rho_R/(data.gas_gamma-1.0));
+
+  //Some Neutral conditions
+  /*if (data.two_fluid) {
+    portableWrapper::assign(dataNeutral.vx,vx_R);
+    portableWrapper::assign(dataNeutral.vy,vy_R);
+    portableWrapper::assign(dataNeutral.vz,vz_R);
+    portableWrapper::assign(dataNeutral.bx,0.0);
+    portableWrapper::assign(dataNeutral.by,0.0);
+    portableWrapper::assign(dataNeutral.bz,0.0);
+    portableWrapper::assign(dataNeutral.rho,rho_R);
+    portableWrapper::assign(dataNeutral.energy_neutral,P_R/rho_R/(data.gas_gamma-1.0));    
+    }
+  */
 
   portableWrapper::applyKernel(
     LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
-      T_dataType x2 = (data.xc(ix)-xcentre) * (data.xc(ix)-xcentre);
-      T_dataType y2 = (data.yc(iy)-ycentre) * (data.yc(iy)-ycentre);
-      T_dataType z2 = (data.zc(iz)-zcentre) * (data.zc(iz)-zcentre);
-      T_dataType r2 = x2 + y2 + z2;
-      T_dataType v = v0 * std::exp(-r2 / a2);
-      data.energy_electron(ix,iy,iz) *= (1.0+amp*std::exp(-r2 / a2));
-      data.energy_ion(ix,iy,iz) *= (1.0+amp*std::exp(-r2 / a2));
+    
+    data.vx(ix, iy, iz)=vx_L+(vx_R-vx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.vy(ix, iy, iz)=vy_L+(vy_R-vy_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.vz(ix, iy, iz)=vz_L+(vz_R-vz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.bx(ix, iy, iz)=bx_L+(bx_R-bx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.by(ix, iy, iz)=by_L+(by_R-by_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.bz(ix, iy, iz)=bz_L+(bz_R-bz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.rho(ix, iy, iz)=rho_L+(rho_R-rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.energy_ion(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    data.energy_electron(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+    /*if (data.xb(ix) < 0.5) {
+      data.vx(ix, iy, iz) = vx_L;
+      data.vy(ix, iy, iz) = vy_L;
+      data.vz(ix, iy, iz) = vz_L;
+      data.bx(ix, iy, iz) = bx_L;
+      data.by(ix, iy, iz) = by_L;
+      data.bz(ix, iy, iz) = bz_L;
+      data.rho(ix, iy, iz) = rho_L;
+      data.energy_ion(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
+      data.energy_electron(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
+      //if (data.two_fluid) {
+      //    dataNeutral.vx(ix, iy, iz) = vx_L;
+      //    dataNeutral.vy(ix, iy, iz) = vy_L;
+      //    dataNeutral.vz(ix, iy, iz) = vz_L;
+      //    dataNeutral.rho(ix, iy, iz) = rho_L;
+      //    dataNeutral.energy_neutral(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);  
+      //}
+    }*/
+
+    //printf("%ld %f %f \n",ix,data.rho(ix,iy,iz),dataNeutral.rho(ix,iy,iz));
+
     },
-    portableWrapper::Range(-1, data.nx+2),
-    portableWrapper::Range(-1, data.ny+2),
-    portableWrapper::Range(-1, data.nz+2)
+    portableWrapper::Range(0, data.nx),
+    portableWrapper::Range(0, data.ny),
+    portableWrapper::Range(0, data.nz)
   );
 
+  //if (SAMS::getMPIManager().getRank() == 0 && SAMS::getMPIManager().getSize() > 1) {
+  //  amp=0.0;
+  //}
 
-  T_dataType bmult = 000.0;
-  portableWrapper::assign(data.bx,0.01*bmult);
-  portableWrapper::assign(data.by,0.00*bmult);
-  portableWrapper::assign(data.bz,0.00*bmult);
-  // Set the initial density field in kg/m^3
-  portableWrapper::assign(data.rho, 1.0e-6);
 
   if (data.rke) portableWrapper::assign(data.delta_ke, 0.0);
 
