@@ -32,54 +32,66 @@ void simulation::bfield_bcs(simulationData &data)
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
             data.bx(-2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bx(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.bx(2, portableWrapper::Range(), portableWrapper::Range())
+            data.bx_L
         );
         portableWrapper::assign(
             data.bx(portableWrapper::Range(-1, -1), portableWrapper::Range(), portableWrapper::Range()), 
-            data.bx(portableWrapper::Range(1, 1), portableWrapper::Range(), portableWrapper::Range())
+            //data.bx(portableWrapper::Range(1, 1), portableWrapper::Range(), portableWrapper::Range())
+            data.bx_L
         );
         portableWrapper::assign(
             data.by(portableWrapper::Range(-1, -1), portableWrapper::Range(), portableWrapper::Range()), 
-            data.by(portableWrapper::Range(2, 2), portableWrapper::Range(), portableWrapper::Range())
+            //data.by(portableWrapper::Range(2, 2), portableWrapper::Range(), portableWrapper::Range())
+            data.by_L
         );
         portableWrapper::assign(
             data.by(portableWrapper::Range(0, 0), portableWrapper::Range(), portableWrapper::Range()), 
-            data.by(portableWrapper::Range(1, 1), portableWrapper::Range(), portableWrapper::Range())
+            //data.by(portableWrapper::Range(1, 1), portableWrapper::Range(), portableWrapper::Range())
+            data.by_L
         );
         portableWrapper::assign(
             data.bz(portableWrapper::Range(-1, -1), portableWrapper::Range(), portableWrapper::Range()), 
-            data.bz(portableWrapper::Range(2, 2), portableWrapper::Range(), portableWrapper::Range())
+            //data.bz(portableWrapper::Range(2, 2), portableWrapper::Range(), portableWrapper::Range())
+            data.bz_L
         );
         portableWrapper::assign(
             data.bz(portableWrapper::Range(0, 0), portableWrapper::Range(), portableWrapper::Range()), 
-            data.bz(portableWrapper::Range(1, 1), portableWrapper::Range(), portableWrapper::Range())
+            //data.bz(portableWrapper::Range(1, 1), portableWrapper::Range(), portableWrapper::Range())
+            data.bz_L
         );
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
         portableWrapper::assign(
             data.bx(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bx(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.bx(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.bx_R
         );
         portableWrapper::assign(
             data.bx(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bx(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            //data.bx(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            data.bx_R
         );
         portableWrapper::assign(
             data.by(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.by(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            //data.by(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            data.by_R
         );
         portableWrapper::assign(
             data.by(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.by(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.by(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.by_R
         );
         portableWrapper::assign(
             data.bz(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bz(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            //data.bz(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            data.bz_R
         );
         portableWrapper::assign(
             data.bz(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bz(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.bz(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.bz_R
         );
     }
 
@@ -199,38 +211,46 @@ void simulation::energy_bcs(simulationData &data)
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
             data.energy_electron(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_electron(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_electron(2, portableWrapper::Range(), portableWrapper::Range())
+            data.en_L
         );
         portableWrapper::assign(
             data.energy_electron(0, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_electron(1, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_electron(1, portableWrapper::Range(), portableWrapper::Range())
+            data.en_L
         );
         portableWrapper::assign(
             data.energy_ion(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_ion(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_ion(2, portableWrapper::Range(), portableWrapper::Range())
+            data.en_L
         );
         portableWrapper::assign(
             data.energy_ion(0, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_ion(1, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_ion(1, portableWrapper::Range(), portableWrapper::Range())
+            data.en_L
         );
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
         portableWrapper::assign(
             data.energy_electron(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_electron(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_electron(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            data.en_R
         );
         portableWrapper::assign(
             data.energy_electron(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_electron(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_electron(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.en_R
         );
         portableWrapper::assign(
             data.energy_ion(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_ion(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_ion(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            data.en_R
         );
         portableWrapper::assign(
             data.energy_ion(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.energy_ion(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.energy_ion(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.en_R
         );
     }
 
@@ -315,22 +335,26 @@ void simulation::density_bcs(simulationData &data)
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
             data.rho(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.rho(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.rho(2, portableWrapper::Range(), portableWrapper::Range())
+            data.rho_L
         );
         portableWrapper::assign(
             data.rho(0, portableWrapper::Range(), portableWrapper::Range()), 
-            data.rho(1, portableWrapper::Range(), portableWrapper::Range())
+            //data.rho(1, portableWrapper::Range(), portableWrapper::Range())
+            data.rho_L
         );
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
         portableWrapper::assign(
             data.rho(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.rho(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.rho(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.rho_R
         );
         portableWrapper::assign(
             data.rho(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.rho(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            //data.rho(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            data.rho_R
         );
     }
 
@@ -377,48 +401,58 @@ void simulation::velocity_bcs(simulationData &data)
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
             data.vx(portableWrapper::Range(-2,0), portableWrapper::Range(), portableWrapper::Range()), 
-            0.0
+            //0.0
+            data.vx_L
         );
         portableWrapper::assign(
             data.vy(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy(1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy(1, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_L
         );
         portableWrapper::assign(
             data.vy(-2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy(2, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_L
         );
 
         portableWrapper::assign(
             data.vz(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz(1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz(1, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_L
         );
         portableWrapper::assign(
             data.vz(-2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz(2, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_L
         );
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
         portableWrapper::assign(
             data.vx(portableWrapper::Range(data.nx, data.nx + 2), portableWrapper::Range(), portableWrapper::Range()), 
-            0.0
+            //0.0
+            data.vx_R
         );
 
         portableWrapper::assign(
             data.vy(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy(data.nx-1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy(data.nx-1, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_R
         );
         portableWrapper::assign(
             data.vy(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy(data.nx-2, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy(data.nx-2, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_R
         );
         portableWrapper::assign(
             data.vz(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz(data.nx, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_R
         );
         portableWrapper::assign(
             data.vz(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz(data.nx-1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz(data.nx-1, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_R
         );
     }
 
@@ -433,7 +467,8 @@ void simulation::velocity_bcs(simulationData &data)
         );
         portableWrapper::assign(
             data.vy(portableWrapper::Range(), portableWrapper::Range(-2,0), portableWrapper::Range()), 
-            0.0
+            data.vy(portableWrapper::Range(), portableWrapper::Range(0,2), portableWrapper::Range())
+            //0.0
         );
         portableWrapper::assign(
             data.vz(portableWrapper::Range(), -1, portableWrapper::Range()), 
@@ -455,8 +490,9 @@ void simulation::velocity_bcs(simulationData &data)
             data.vx(portableWrapper::Range(), data.ny - 2, portableWrapper::Range())
         );
         portableWrapper::assign(
-            data.vy(portableWrapper::Range(), portableWrapper::Range(data.ny, data.ny + 2), portableWrapper::Range()), 
-            0.0
+            data.vy(portableWrapper::Range(), portableWrapper::Range(data.ny, data.ny + 2), portableWrapper::Range()),
+            data.vy(portableWrapper::Range(), portableWrapper::Range(data.ny-2, data.ny), portableWrapper::Range()) 
+            //0.0
         );
         portableWrapper::assign(
             data.vz(portableWrapper::Range(), data.ny + 1, portableWrapper::Range()), 
@@ -524,57 +560,68 @@ void simulation::remap_v_bcs(simulationData &data)
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
             data.vx1(portableWrapper::Range(-2,0), portableWrapper::Range(), portableWrapper::Range()), 
-            0.0
+            //0.0
+            data.vx_L
         );
 
         portableWrapper::assign(
             data.vy1(-2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy1(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy1(2, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_L
         );
 
         portableWrapper::assign(
             data.vy1(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy1(1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy1(1, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_L
         );
 
         portableWrapper::assign(
             data.vz1(-2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz1(2, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz1(2, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_L
         );
 
         portableWrapper::assign(
             data.vz1(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz1(1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz1(1, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_L
         );
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
         portableWrapper::assign(
             data.vx1(portableWrapper::Range(data.nx, data.nx + 2), portableWrapper::Range(), portableWrapper::Range()), 
-            0.0
+            //0.0
+            data.vx_R
         );
         portableWrapper::assign(
             data.vy1(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy1(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy1(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_R
         );
         portableWrapper::assign(
             data.vy1(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vy1(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            //data.vy1(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            data.vy_R
         );
         portableWrapper::assign(
             data.vz1(data.nx + 1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz1(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz1(data.nx - 1, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_R
         );
         portableWrapper::assign(
             data.vz1(data.nx + 2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.vz1(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            //data.vz1(data.nx - 2, portableWrapper::Range(), portableWrapper::Range())
+            data.vz_R
         );
     }
 
     if (data.ybc_min == BCType::BC_OTHER && data.isyLB){
         portableWrapper::assign(
             data.vy1(portableWrapper::Range(), portableWrapper::Range(-2,0), portableWrapper::Range()), 
-            0.0
+            data.vy1(portableWrapper::Range(), portableWrapper::Range(0,2), portableWrapper::Range())
+            //0.0
         );
         portableWrapper::assign(
             data.vx1(portableWrapper::Range(), -2, portableWrapper::Range()), 
@@ -597,7 +644,8 @@ void simulation::remap_v_bcs(simulationData &data)
     if (data.ybc_max == BCType::BC_OTHER && data.isyUB){
         portableWrapper::assign(
             data.vy1(portableWrapper::Range(), portableWrapper::Range(data.ny, data.ny + 2), portableWrapper::Range()), 
-            0.0
+            data.vy1(portableWrapper::Range(), portableWrapper::Range(data.ny-2, data.ny), portableWrapper::Range())
+            //0.0
         );
         portableWrapper::assign(
             data.vx1(portableWrapper::Range(), data.ny + 1, portableWrapper::Range()), 
