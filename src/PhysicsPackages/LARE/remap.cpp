@@ -31,7 +31,6 @@ void simulation::eulerian_remap(simulationData &data) {
     remapManager.allocate(remap_data.rho_v, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
     remapManager.allocate(remap_data.rho_v1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
     //Flux is one element larger in the direction of remap, so it is allocated in each remap function
-
     if (data.rke)
     {
         portableWrapper::assign(data.delta_ke, 0.0);

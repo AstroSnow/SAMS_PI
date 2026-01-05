@@ -138,6 +138,7 @@ void simulation::remap_y(simulationData &data, remapData &remap_data) {
         }, Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
     portableWrapper::fence();
 
+    if (!data.is_neutral){
     y_energy_flux<&simulationData::energy_electron>(data, remap_data);
     portableWrapper::applyKernel(
         LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
@@ -164,6 +165,21 @@ void simulation::remap_y(simulationData &data, remapData &remap_data) {
                 (remap_data.cv2(ix, iy, iz) * data.rho(ix, iy, iz));
         }, Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
     portableWrapper::fence();
+    } else {    
+    //neutral energy flux
+    y_energy_flux<&simulationData::energy_neutral>(data, remap_data);
+    portableWrapper::applyKernel(
+        LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            T_indexType iym = iy - 1;
+            data.energy_neutral(ix, iy, iz) = 
+                (
+                    data.energy_neutral(ix, iy, iz) * data.cv1(ix, iy, iz) * remap_data.rho1(ix, iy, iz) + 
+                    remap_data.flux(ix, iym, iz) - remap_data.flux(ix, iy, iz)
+                ) /
+                (remap_data.cv2(ix, iy, iz) * data.rho(ix, iy, iz));
+        }, Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
+    portableWrapper::fence();
+    }
 
     // Redefine dyb1, cv1, cv2, dm and vy1 for velocity (vertex) cells.
     // In some of these calculations the flux variable is used as a temporary array

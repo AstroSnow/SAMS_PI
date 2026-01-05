@@ -43,7 +43,7 @@ void getHostVersion(simulationData &data, portableWrapper::portableArrayManager 
 }
 
 template <typename T_writer>
-void writeDiagnosticsCore(std::string Name, simulationData &data, writer<T_writer> &writer)
+void writeDiagnosticsCore(std::string Name, simulationData &data,simulationData &dataNeutral, writer<T_writer> &writer)
 {
     portableWrapper::portableArrayManager manager;
     hostVolumeArray host;
@@ -60,6 +60,15 @@ void writeDiagnosticsCore(std::string Name, simulationData &data, writer<T_write
     writer.template registerData<T_dataType>("bx", "MeshCC");
     writer.template registerData<T_dataType>("by", "MeshCC");
     writer.template registerData<T_dataType>("bz", "MeshCC");
+
+    //Allocate a name for the neutral volumes
+    if (data.two_fluid){
+        writer.template registerData<T_dataType>("rho_n", "MeshCC");
+        writer.template registerData<T_dataType>("energy_n", "MeshCC");
+        writer.template registerData<T_dataType>("vx_n", "MeshCC");
+        writer.template registerData<T_dataType>("vy_n", "MeshCC");
+        writer.template registerData<T_dataType>("vz_n", "MeshCC");
+    }
 
     writer.writeRectilinearMesh("MeshCC", &data.xc(1), &data.yc(1), &data.zc(1));
 
@@ -89,19 +98,39 @@ void writeDiagnosticsCore(std::string Name, simulationData &data, writer<T_write
 
     getHostVersion(data, manager, data.bz, host);
     writer.writeData("bz", host.data());
+    
+    //Writing data for neutrals
+    if (data.two_fluid){
+        getHostVersion(dataNeutral, manager, dataNeutral.rho, host);
+        writer.writeData("rho_n", host.data());
+
+        getHostVersion(dataNeutral, manager, dataNeutral.energy_neutral, host);
+        writer.writeData("energy_n", host.data());
+
+        getHostVersion(dataNeutral, manager, dataNeutral.vx, host);
+        writer.writeData("vx_n", host.data());
+
+        getHostVersion(dataNeutral, manager, dataNeutral.vy, host);
+        writer.writeData("vy_n", host.data());
+
+        getHostVersion(dataNeutral, manager, dataNeutral.vz, host);
+        writer.writeData("vz_n", host.data());
+    
+    }
 
     writer.closeFile();
 }
 
-void simulation::output(simulationData &data)
+void simulation::output(simulationData &data,simulationData &dataNeutral)
 {
 #if defined(USE_HDF5)
     HDF5File writer;
 #else
     simpleFile writer;
 #endif
+
     std::string Name = "diagnostics_step_" + std::to_string(data.step);
-    writeDiagnosticsCore(Name, data, writer);
+    writeDiagnosticsCore(Name, data, dataNeutral, writer);
 }
 
 void simulation::energy_correction(simulationData &data)
@@ -110,8 +139,12 @@ void simulation::energy_correction(simulationData &data)
     portableWrapper::applyKernel(
         LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
             T_dataType dke = portableWrapper::max(-data.delta_ke(ix, iy, iz), 0.0) / (data.rho(ix, iy, iz) * data.cv(ix, iy, iz));
-            data.energy_electron(ix, iy, iz) += 0.5 * dke;
-            data.energy_ion(ix, iy, iz) += 0.5 * dke;
+            if (!data.is_neutral){
+                data.energy_electron(ix, iy, iz) += 0.5 * dke;
+                data.energy_ion(ix, iy, iz) += 0.5 * dke;
+            } else {
+                data.energy_neutral(ix, iy, iz) += 0.5 * dke; //Neutral energy correction - not sure about this
+            }
         },
         Range(1, data.nx), Range(1, data.ny), Range(1, data.nz));
 }

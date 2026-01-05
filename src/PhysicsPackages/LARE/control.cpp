@@ -69,12 +69,18 @@ void simulation::controlvariables(simulationData &data) {
 
   // Remap kinetic energy correction
   data.rke = true;
+  
+  // Two-fluid flag
+  data.two_fluid=false;
+  data.ion_rec=false;
+  data.ion_rec_empirical=false;
+  data.alpha0=1.0;
 
   // Output frequency and directory
-  data.dt_snapshots = 10.0;
+  data.dt_snapshots = 0.02;
 }
 
-void simulation::initial_conditions(simulationData &data) {
+void simulation::initial_conditions(simulationData &data,simulationData &dataNeutral) {
 
   using Range = portableWrapper::Range;
 
@@ -195,24 +201,14 @@ void simulation::initial_conditions(simulationData &data) {
     data.rho(ix, iy, iz)=rho_L+(rho_R-rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
     data.energy_ion(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
     data.energy_electron(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    /*if (data.xb(ix) < 0.5) {
-      data.vx(ix, iy, iz) = vx_L;
-      data.vy(ix, iy, iz) = vy_L;
-      data.vz(ix, iy, iz) = vz_L;
-      data.bx(ix, iy, iz) = bx_L;
-      data.by(ix, iy, iz) = by_L;
-      data.bz(ix, iy, iz) = bz_L;
-      data.rho(ix, iy, iz) = rho_L;
-      data.energy_ion(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
-      data.energy_electron(ix, iy, iz) = P_L/2.0/rho_L/(data.gas_gamma-1.0);
-      //if (data.two_fluid) {
-      //    dataNeutral.vx(ix, iy, iz) = vx_L;
-      //    dataNeutral.vy(ix, iy, iz) = vy_L;
-      //    dataNeutral.vz(ix, iy, iz) = vz_L;
-      //    dataNeutral.rho(ix, iy, iz) = rho_L;
-      //    dataNeutral.energy_neutral(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);  
-      //}
-    }*/
+      if (data.two_fluid) {
+          dataNeutral.vx(ix, iy, iz) = vx_L;
+          dataNeutral.vy(ix, iy, iz) = vy_L;
+          dataNeutral.vz(ix, iy, iz) = vz_L;
+          dataNeutral.rho(ix, iy, iz) = rho_L;
+          dataNeutral.energy_neutral(ix, iy, iz) = P_L/rho_L/(data.gas_gamma-1.0);  
+      }
+    } 
 
     //printf("%ld %f %f \n",ix,data.rho(ix,iy,iz),dataNeutral.rho(ix,iy,iz));
 
@@ -221,10 +217,6 @@ void simulation::initial_conditions(simulationData &data) {
     portableWrapper::Range(0, data.ny),
     portableWrapper::Range(0, data.nz)
   );
-
-  //if (SAMS::getMPIManager().getRank() == 0 && SAMS::getMPIManager().getSize() > 1) {
-  //  amp=0.0;
-  //}
 
 
   if (data.rke) portableWrapper::assign(data.delta_ke, 0.0);

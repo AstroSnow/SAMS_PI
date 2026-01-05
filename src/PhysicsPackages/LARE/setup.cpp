@@ -20,7 +20,7 @@
  * Register variables with the portable array manager.
  */
 
- void simulation::registerVars(){
+ void simulation::registerVars(bool two_fluid,bool ion_rec_empirical){
 
     auto& varRegistry = SAMS::getvariableRegistry();
     auto& typeRegistry = SAMS::gettypeRegistry();
@@ -53,13 +53,27 @@
     varRegistry.registerVariable("bz", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
 
     varRegistry.registerVariable("dm", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::CENTRED), SAMS::dimension("Y",ghosts, SAMS::staggerType::CENTRED), SAMS::dimension("Z",ghosts, SAMS::staggerType::CENTRED));
+    if (two_fluid){
+        varRegistry.registerVariable("energy_neutral", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
+        varRegistry.registerVariable("rho_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
+        varRegistry.registerVariable("vx_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+        varRegistry.registerVariable("vy_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+        varRegistry.registerVariable("vz_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+        varRegistry.registerVariable("bx_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
+        varRegistry.registerVariable("by_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts));
+        varRegistry.registerVariable("bz_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+        if (ion_rec_empirical){
+            varRegistry.registerVariable("Gm_rec", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
+            varRegistry.registerVariable("Gm_ion", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
+        }
+    }
  }
 
 /**
  * Allocate the data arrays for the simulation.
  * This allocates the permanent state arrays that are used throughout the simulation.
  */
-void simulation::allocate(simulationData &data)
+void simulation::allocate(simulationData &data,simulationData &dataNeutral)
 {
     T_sizeType nx, ny, nz;
 
@@ -199,6 +213,131 @@ void simulation::allocate(simulationData &data)
     if (data.rke)
     {
         manager.allocate(data.delta_ke, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+    }
+    
+    //Map the ionisation/recombination arrays
+    if (data.ion_rec_empirical){
+        {
+            const auto& vardef = varRegistry.getVariable("Gm_rec");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(data.Gm_rec, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("Gm_ion");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(data.Gm_ion, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+    }
+    
+    //Set the two_fluid arrays
+    if (data.two_fluid){
+        {
+            const auto& vardef = varRegistry.getVariable("energy_neutral");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.energy_neutral, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("rho_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.rho, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("vx_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.vx, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("vy_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.vy, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("vz_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.vz, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("bx_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.bx, static_cast<T_dataType*>(vardef.getDataPtr()), Range(0-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("by_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.by, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts),
+                                                    Range(0-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        }
+        {
+            const auto& vardef = varRegistry.getVariable("bz_n");
+            const auto& dims = vardef.getDimensions();
+            manager.wrap(dataNeutral.bz, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
+                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
+                                                    Range(0-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
+        } 
+        
+        manager.allocate(dataNeutral.p_visc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.vx1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.vy1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.vz1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.eta, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dxab, Range(-2, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dyab, Range(-1, nx + 2), Range(-2, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dzab, Range(-1, nx + 2), Range(-1, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.dxac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dyac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dzac, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.cv, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.cv1, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocate(dataNeutral.cvc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        manager.allocateManaged(dataNeutral.xc, Range(-1, nx + 2));
+        manager.allocateManaged(dataNeutral.yc, Range(-1, ny + 2));
+        manager.allocateManaged(dataNeutral.zc, Range(-1, nz + 2));
+        manager.allocate(dataNeutral.xb, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.yb, Range(-2, ny + 2));
+        manager.allocate(dataNeutral.zb, Range(-2, nz + 2));
+        manager.allocate(dataNeutral.xb_global, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.yb_global, Range(-2, ny + 2));
+        manager.allocate(dataNeutral.zb_global, Range(-2, nz + 2));
+        manager.allocate(dataNeutral.dxc, Range(-1, nx + 2));
+        manager.allocate(dataNeutral.dyc, Range(-1, ny + 2));
+        manager.allocate(dataNeutral.dzc, Range(-1, nz + 2));
+        manager.allocate(dataNeutral.dxb, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.dyb, Range(-2, ny + 2));
+        manager.allocate(dataNeutral.dzb, Range(-2, nz + 2));
+        manager.allocate(dataNeutral.hy, Range(-2, nx + 2));
+        manager.allocate(dataNeutral.hz, Range(-2, nx + 2), Range(-2, ny + 2));
+        manager.allocate(dataNeutral.hyc, Range(-1, nx + 2));
+        manager.allocate(dataNeutral.hzc, Range(-1, nx + 2), Range(-1, ny + 2));
+        manager.allocate(dataNeutral.hz1, Range(-2, nx + 2), Range(-2, ny + 2));
+        manager.allocate(dataNeutral.hz2, Range(-2, nx + 2), Range(-2, ny + 2));
+        manager.allocate(dataNeutral.x, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.y, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.z, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.xp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.yp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        manager.allocate(dataNeutral.zp, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));
+        if (data.rke)
+        {
+            manager.allocate(dataNeutral.delta_ke, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
+        }
+        
     }
 }
 

@@ -87,6 +87,18 @@ struct simulationData{
     //Physics selectors
     bool resistiveMHD; // Resistive MHD
     bool rke; // Remap phase kinetic energy correction
+    bool two_fluid; // Flag for the two-fluid version of the code
+    bool is_neutral; // Is this a neutral fluid
+    bool ion_rec; //Are Ionisation/Recombination rates included in some way
+    bool ion_rec_empirical; //Are the empirical ionisation rates called
+    
+    //Two-fluid constants
+    T_dataType alpha0; //Reference collisional timescale
+    T_dataType two_fluid_timestep; //Reference collisional timescale
+    
+    //Ionisation and recombination arrays
+    volumeArray Gm_ion; // ionisation rate
+    volumeArray Gm_rec; // recombination rate
 
     //Shock viscosity coefficients
     T_dataType visc1; // Linear shock viscosity coefficient
@@ -107,6 +119,7 @@ struct simulationData{
     //Physical arrays
     volumeArray energy_electron; // Electron specific internal energy
     volumeArray energy_ion; // Ion specific
+    volumeArray energy_neutral; // Electron specific internal energy
     volumeArray p_visc; // Viscous pressure
     volumeArray rho; // Density
     volumeArray vx; // X-velocity
@@ -250,7 +263,7 @@ public:
     /**
      * Register variables with the portable array manager.
      */
-    void registerVars();
+    void registerVars(bool two_fluid,bool ion_rec_empirical);
 
     /**
      * Allocate the simulation data arrays
@@ -261,7 +274,7 @@ public:
      * This function allocates the arrays in the simulationData struct.
      * It uses the portableArrayManager to handle the memory allocation and deallocation.
      */
-    void allocate(simulationData &data);
+    void allocate(simulationData &data,simulationData &dataNeutral);
 
     /**
      * Setup the simulation data
@@ -281,7 +294,7 @@ public:
      * @param data Simulation data struct
      * This function sets up the initial conditions for the simulation, including the initial values of the physical variables.
      */
-    void initial_conditions(simulationData &data);
+    void initial_conditions(simulationData &data,simulationData &dataNeutral);
 
     /**
      * Call all the boundary condition functions
@@ -296,13 +309,19 @@ public:
      * @param data Simulation data struct
      * This function performs a Lagrangian step for the simulation
      */
-    void lagrangian_step(simulationData &data);
+    void lagrangian_step(simulationData &data,simulationData &dataNeutral);
 
     /**
      * Calculate the resistivity eta based on current density
      * @param data Simulation data struct
      */
     void eta_calc(simulationData &data);
+    
+    /**
+     * Timestep calculation
+     * @param data Simulation data struct
+     */
+    void set_dt(simulationData &data);
 
     /**
      * Core remap control function
@@ -317,7 +336,17 @@ public:
     /**
      * Function to output data to disk
      */
-    void output(simulationData &data);
+    void output(simulationData &data,simulationData &dataNeutral);
+    
+    /**
+    *
+    */
+    void two_fluid_grid(simulationData &data,simulationData &dataNeutral);
+    
+    /**
+    *
+    */
+    void two_fluid_source(simulationData &data,simulationData &dataNeutral);
 };
 
 #endif // SHARED_DATA_H

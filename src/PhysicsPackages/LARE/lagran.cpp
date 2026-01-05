@@ -13,12 +13,14 @@
    limitations under the License.
 */
 #include "shared_data.h"
+//#include "../TWOFLUID/two_fluid.h"
 
 /**
  * Class representing data only needed during the lagrangian step
  */
 struct lagranData
 {
+    bool neutral_flag; //Species flag
     volumeArray bx1; // X-magnetic field at half timestep
     volumeArray by1; // Y-magnetic field at half timestep
     volumeArray bz1; // Z-magnetic field at half timestep
@@ -45,7 +47,7 @@ struct lagranData
 
 
 void shock_viscosity(simulationData &data, lagranData &lagran);
-void set_dt(simulationData &data, lagranData &lagran);
+void set_dt(simulationData &data);
 void resistive_effects(simulation& sim, simulationData &data, lagranData &lagran);
 void rkstep(simulation& sim, simulationData &data, lagranData &lagran);
 void bstep(simulation &sim, simulationData &data, lagranData &lagran);
@@ -94,11 +96,15 @@ DEVICEPREFIX INLINE T_dataType edge_viscosity(simulationData data, lagranData la
         // Find q_kur / abs(dv)
         T_dataType q_k_bar = rho_edge *
             (data.visc2_norm * dv + std::sqrt(data.visc2_norm * data.visc2_norm * dv2 + (data.visc1 * cs_edge) * (data.visc1 * cs_edge)));
+            //printf("edge visc = %d %d %d %f %f %f \n",i1,j1,k1,q_k_bar,lagran.rho_v(i1, j1, k1),cs_edge);
         return q_k_bar * (1.0 - psi) * dvdots;
     }
 
-void simulation::lagrangian_step(simulationData &data) {
+void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutral) {
     lagranData lagran;
+    lagranData lagranNeutral;
+    
+    lagran.neutral_flag=false;
     portableWrapper::portableArrayManager lagranManager;
     using Range = portableWrapper::Range;
     Range xcp = portableWrapper::Range(0, data.nx + 1);
@@ -133,7 +139,6 @@ void simulation::lagrangian_step(simulationData &data) {
     lagranManager.allocate(lagran.flux_y, data.xbLocalDomainRange, data.ybLocalDomainRange, data.zbLocalDomainRange);
     lagranManager.allocate(lagran.flux_z, data.xbLocalDomainRange, data.ybLocalDomainRange, data.zbLocalDomainRange);
     lagranManager.allocate(lagran.curlb, data.xbLocalDomainRange, data.ybLocalDomainRange, data.zbLocalDomainRange);
-
 
     //All of the arrays are deallocated when lagranManager goes out of scope
     // Initialize bx1, by1, bz1, p_e, p_i, pressure
@@ -187,7 +192,95 @@ void simulation::lagrangian_step(simulationData &data) {
     }, xbp, ybp, zbp);
 
     shock_viscosity(data, lagran);
-    set_dt(data, lagran);
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    // get the two-fluid properties
+    if (data.two_fluid){
+        lagranNeutral.neutral_flag=true;
+        lagranManager.allocate(lagranNeutral.bx1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+        lagranManager.allocate(lagranNeutral.by1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+        lagranManager.allocate(lagranNeutral.bz1, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-1, data.nz + 2));
+        lagranManager.allocate(lagranNeutral.alpha1, Range(0,data.nx+1), Range(0,data.ny+2), Range(0,data.nz+2));
+        lagranManager.allocate(lagranNeutral.alpha2, Range(-1,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+2));
+        lagranManager.allocate(lagranNeutral.alpha3, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(0,data.nz+1));
+        lagranManager.allocate(lagranNeutral.visc_heat, Range(0,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+1));
+        lagranManager.allocate(lagranNeutral.pressure, Range(-1,data.nx+2), Range(-1,data.ny+2), Range(-1,data.nz+2));
+        lagranManager.allocate(lagranNeutral.rho_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+        lagranManager.allocate(lagranNeutral.cv_v, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+        lagranManager.allocate(lagranNeutral.fx, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fy, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fz, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fx_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fy_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.fz_visc, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.flux_x, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.flux_y, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.flux_z, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+        lagranManager.allocate(lagranNeutral.curlb, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));    
+    
+        // Initialize bx1, by1, bz1, p_e, p_i, pressure
+        T_dataType gas_gamma_neutral = dataNeutral.gas_gamma;
+        volumeArray cvl_neutral = dataNeutral.cv;
+        volumeArray energy_neutral = dataNeutral.energy_neutral;
+        
+        portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            T_indexType izm = iz - 1;
+            T_indexType iym = iy - 1;
+            T_indexType ixm = ix - 1;
+            lagranNeutral.bx1(ix, iy, iz) = 0.0;
+            lagranNeutral.by1(ix, iy, iz) = 0.0;
+            lagranNeutral.bz1(ix, iy, iz) = 0.0;
+
+            lagranNeutral.pressure(ix, iy, iz) = (gas_gamma_neutral - 1.0) * dataNeutral.rho(ix, iy, iz) * energy_neutral(ix, iy, iz);
+        }, Range(-1,dataNeutral.nx+2), Range(-1,dataNeutral.ny+2), Range(-1,dataNeutral.nz+2));
+
+        // Compute rho_v and cv_v
+        portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            T_indexType izp = iz + 1;
+            T_indexType iyp = iy + 1;
+            T_indexType ixp = ix + 1;
+
+            T_dataType sum_rho_cv = dataNeutral.rho(ix, iy, iz) * cvl_neutral(ix, iy, iz) +
+                                dataNeutral.rho(ixp, iy, iz) * cvl_neutral(ixp, iy, iz) +
+                                dataNeutral.rho(ix, iyp, iz) * cvl_neutral(ix, iyp, iz) +
+                                dataNeutral.rho(ixp, iyp, iz) * cvl_neutral(ixp, iyp, iz) +
+                                dataNeutral.rho(ix, iy, izp) * cvl_neutral(ix, iy, izp) +
+                                dataNeutral.rho(ixp, iy, izp) * cvl_neutral(ixp, iy, izp) +
+                                dataNeutral.rho(ix, iyp, izp) * cvl_neutral(ix, iyp, izp) +
+                                dataNeutral.rho(ixp, iyp, izp) * cvl_neutral(ixp, iyp, izp);
+
+            T_dataType sum_cv = cvl_neutral(ix, iy, iz) +
+                                cvl_neutral(ixp, iy, iz) +
+                                cvl_neutral(ix, iyp, iz) +
+                                cvl_neutral(ixp, iyp, iz) +
+                                cvl_neutral(ix, iy, izp) +
+                                cvl_neutral(ixp, iy, izp) +
+                                cvl_neutral(ix, iyp, izp) +
+                                cvl_neutral(ixp, iyp, izp);
+            lagranNeutral.rho_v(ix, iy, iz) = sum_rho_cv / sum_cv;
+            lagranNeutral.cv_v(ix, iy, iz) = 0.125 * sum_cv; // Assuming a constant factor for control volume
+        }, Range(-1,dataNeutral.nx+1), Range(-1,dataNeutral.ny+1), Range(-1,dataNeutral.nz+1));
+//printf("Here 1\n");        
+        shock_viscosity(dataNeutral, lagranNeutral);
+        //set_dt(dataNeutral);
+    }
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    
+    //set_dt(data);
+    
+    
+    ////Set dt to be the minimum of the neutral and plasma times
+    //if (data.two_fluid) {
+    //    printf("dt=%f %f \n",data.dt,dataNeutral.dt);
+    //    if (data.dt < dataNeutral.dt) dataNeutral.dt=data.dt;
+    //    if (data.dt > dataNeutral.dt) data.dt=dataNeutral.dt;
+    //}
+    
+    //Set the time based on dt
+    data.time += data.dt;
+    if (data.two_fluid) dataNeutral.time +=dataNeutral.dt;
+    
     if (data.resistiveMHD){
         T_dataType dt_sub = data.dtr;
         int substeps = static_cast<int>(data.dt / dt_sub)+1;
@@ -206,8 +299,23 @@ void simulation::lagrangian_step(simulationData &data) {
     this->energy_bcs(data);
     this->density_bcs(data);
     this->velocity_bcs(data);
+    
+    if (data.two_fluid) {
+        predictor_corrector_step(*this, dataNeutral, lagranNeutral);
+
+        this->energy_bcs(dataNeutral);
+        this->density_bcs(dataNeutral);
+        this->velocity_bcs(dataNeutral);    
+    }
     //Lagrangian step data is automatically deallocated when lagranManager goes out of scope
 
+    //Add the sources for the two fluid to the half step
+    //MIGHT MESS WITH BCS?
+    //CHECK DT
+    if (data.two_fluid){
+        two_fluid_source(data,dataNeutral);
+    }
+    
 }
 
 void shock_viscosity(simulationData &data, lagranData &lagran) {
@@ -228,7 +336,7 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
     portableWrapper::assign(lagran.fx_visc, 0.0);
     portableWrapper::assign(lagran.fy_visc, 0.0);
     portableWrapper::assign(lagran.fz_visc, 0.0);
-
+    
     // Compute cs
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         T_dataType rmin = portableWrapper::max(data.rho(ix, iy, iz), data.none_zero);
@@ -275,6 +383,8 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
         T_dataType dxm = data.dxb(ixm);
         T_dataType dvdots = -(data.vx(i1, j1, k1) - data.vx(i2, j2, k2));
         T_dataType cs_edge = portableWrapper::min(cs_v(i1, j1, k1), cs_v(i2, j2, k2));
+        
+        //printf("%ld %f \n", ix, lagran.rho_v(ix,iy,iz));
         // Edge viscosities from Caramana
         lagran.alpha1(ix, iy, iz) = edge_viscosity(data, lagran,
             dvdots, dx, dxm, dxp, cs_edge,
@@ -349,6 +459,8 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
         data.p_visc(ix, iy, iz) = portableWrapper::max(data.p_visc(ix, iy, iz), -lagran.alpha1(ix, iy, iz) * std::sqrt(a1));
         data.p_visc(ix, iy, iz) = portableWrapper::max(data.p_visc(ix, iy, iz), -lagran.alpha2(ix, iy, iz) * std::sqrt(a2));
         data.p_visc(ix, iy, iz) = portableWrapper::max(data.p_visc(ix, iy, iz), -lagran.alpha3(ix, iy, iz) * std::sqrt(a9));
+
+        //printf("p_visc %ld, %f %f %f %f\n", ix ,data.p_visc(ix,iy,iz),lagran.alpha1(ix,iy,iz),lagran.alpha2(ix,iy,iz),lagran.alpha3(ix,iy,iz));
 
         T_dataType dx = data.dxb(ix);
         T_dataType dy = data.dyb(iy) * data.hyc(ix);
@@ -426,7 +538,7 @@ void shock_viscosity(simulationData &data, lagranData &lagran) {
     portableWrapper::fence();
 }
 
-void set_dt(simulationData &data, lagranData &lagran) {
+void simulation::set_dt(simulationData &data) {
 
     using Range = portableWrapper::Range;
 
@@ -444,24 +556,39 @@ void set_dt(simulationData &data, lagranData &lagran) {
         T_dataType dhz = dz * data.hzc(ix, iy);
 
         T_dataType rho0 = portableWrapper::max(data.rho(ix, iy, iz), data.none_zero);
-        T_dataType cs2 = data.gas_gamma * lagran.pressure(ix, iy, iz) / rho0;
+        
+        T_dataType pressure;
+        
+        if (data.is_neutral){
+            T_dataType p_n = (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.energy_neutral(ix, iy, iz);
+            pressure = p_n;
+        } else{
+            T_dataType p_e = (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.energy_electron(ix, iy, iz);
+            T_dataType p_i = (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.energy_ion(ix, iy, iz);
+            pressure = p_e + p_i;
+        }
+        
+        T_dataType cs2 = data.gas_gamma * pressure / rho0;
 
         T_dataType w1 = (data.bx(ix, iy, iz) * data.bx(ix, iy, iz) +
                          data.by(ix, iy, iz) * data.by(ix, iy, iz) +
                          data.bz(ix, iy, iz) * data.bz(ix, iy, iz)) / data.mu0_si / rho0;
+        if (data.is_neutral) w1=0.0;
         T_dataType c_visc2 = data.p_visc(ix, iy, iz) / rho0;
 
         T_dataType length  = portableWrapper::min({dhx, dhy, dhz});
 
         T_dataType t1  = length / (std::sqrt(c_visc2) + std::sqrt(cs2 + w1 + c_visc2));
-
+        //printf("%ld %f %f %f %f %f \n",ix, t1,cs2, w1, c_visc2,data.p_visc(ix, iy, iz));
         return t1;
     }, LAMBDA(T_dataType &a, const T_dataType &b) {
         a=portableWrapper::min(a, b);
     }, data.largest_number,
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
 
-    data.time += data.dt;
+    //printf("dt=%f \n",data.dt);
+
+    //data.time += data.dt;
 }
 
 void simulation::eta_calc(simulationData &data) {
@@ -632,13 +759,22 @@ void predictor_corrector_step(simulation &sim, simulationData &data, lagranData 
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
 
         T_dataType dv = data.cv1(ix, iy, iz) / data.cv(ix, iy, iz) - 1.0;
-        T_dataType e1_e = data.energy_electron(ix,iy,iz) - lagran.p_e(ix,iy,iz) * dv/data.rho(ix,iy,iz);
-        T_dataType e1_i = data.energy_ion(ix,iy,iz) - lagran.p_i(ix,iy,iz) * dv/data.rho(ix,iy,iz);
-        e1_i += lagran.visc_heat(ix, iy, iz) * data.dt/2.0 /data.rho(ix,iy,iz);
+        
+        //Pressure is slightly different in neutral fluid
+        if (lagran.neutral_flag) {
+            T_dataType e1_i = data.energy_neutral(ix,iy,iz) - lagran.pressure(ix,iy,iz) * dv/data.rho(ix,iy,iz);
+            e1_i += lagran.visc_heat(ix, iy, iz) * data.dt/2.0 /data.rho(ix,iy,iz);
+            lagran.pressure(ix, iy, iz) = e1_i * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
+        } else {
+            T_dataType e1_e = data.energy_electron(ix,iy,iz) - lagran.p_e(ix,iy,iz) * dv/data.rho(ix,iy,iz);
+            T_dataType e1_i = data.energy_ion(ix,iy,iz) - lagran.p_i(ix,iy,iz) * dv/data.rho(ix,iy,iz);
+            e1_i += lagran.visc_heat(ix, iy, iz) * data.dt/2.0 /data.rho(ix,iy,iz);
 
-        lagran.p_e(ix, iy, iz) = e1_e * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
-        lagran.p_i(ix, iy, iz) = e1_i * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
-        lagran.pressure(ix, iy, iz) = lagran.p_e(ix, iy, iz) + lagran.p_i(ix, iy, iz);
+            lagran.p_e(ix, iy, iz) = e1_e * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
+            lagran.p_i(ix, iy, iz) = e1_i * (data.gas_gamma - 1.0) * data.rho(ix, iy, iz) * data.cv(ix, iy, iz)/ data.cv1(ix, iy, iz);
+            lagran.pressure(ix, iy, iz) = lagran.p_e(ix, iy, iz) + lagran.p_i(ix, iy, iz);
+            //data.energy_electron(ix,iy,iz) = data.cv(ix,iy,iz);
+        }
 
     }, Range(0,data.nx+1), Range(0,data.ny+1), Range(0,data.nz+1));
 
@@ -812,9 +948,12 @@ void predictor_corrector_step(simulation &sim, simulationData &data, lagranData 
         data.cv1(ix, iy, iz) = vol;// * (1.0 + dv);
 
         // Energy at end of Lagrangian step
-        data.energy_electron(ix, iy, iz) -= dv * lagran.p_e(ix, iy, iz) / data.rho(ix, iy, iz);
-        data.energy_ion(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.p_i(ix, iy, iz)) / data.rho(ix, iy, iz);
-
+        if (lagran.neutral_flag) {
+            data.energy_neutral(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.pressure(ix, iy, iz)) / data.rho(ix, iy, iz);
+        } else {
+            data.energy_electron(ix, iy, iz) -= dv * lagran.p_e(ix, iy, iz) / data.rho(ix, iy, iz);
+            data.energy_ion(ix, iy, iz) += (data.dt * lagran.visc_heat(ix, iy, iz) - dv * lagran.p_i(ix, iy, iz)) / data.rho(ix, iy, iz);
+        }
         //Update density based on volume change
         data.rho(ix, iy, iz) /= (1.0 + dv);
 

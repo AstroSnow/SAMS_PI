@@ -108,6 +108,7 @@ set(SAMS_SOURCES
   src/main.cpp
   src/PhysicsPackages/LARE/control.cpp
   src/PhysicsPackages/LARE/setup.cpp
+  src/PhysicsPackages/TWOFLUID/two_fluid.cpp
   src/PhysicsPackages/LARE/boundary.cpp
   src/PhysicsPackages/LARE/lagran.cpp
   src/PhysicsPackages/LARE/diagnostics.cpp
@@ -139,6 +140,7 @@ message(STATUS "CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
 
 target_include_directories(sams PRIVATE ${HDF5_INCLUDE_DIRS})
 target_include_directories(sams PRIVATE "${CMAKE_SOURCE_DIR}/src/PhysicsPackages/LARE")
+target_include_directories(sams PRIVATE "${CMAKE_SOURCE_DIR}/src/PhysicsPackages/TWO_FLUID")
 target_include_directories(sams PRIVATE "${CMAKE_SOURCE_DIR}/src/PhysicsPackages/LARE/include")
 target_include_directories(sams PRIVATE "${CMAKE_SOURCE_DIR}/include/harness")
 target_include_directories(sams PRIVATE "${CMAKE_SOURCE_DIR}/include")
