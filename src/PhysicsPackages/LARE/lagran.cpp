@@ -312,9 +312,9 @@ void simulation::lagrangian_step(simulationData &data, simulationData &dataNeutr
     //Add the sources for the two fluid to the half step
     //MIGHT MESS WITH BCS?
     //CHECK DT
-    if (data.two_fluid){
-        two_fluid_source(data,dataNeutral);
-    }
+    //if (data.two_fluid){
+    //    two_fluid_source(data,dataNeutral);
+    //}
     
 }
 
