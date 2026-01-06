@@ -83,12 +83,15 @@ int main(int argc, char *argv[]){
 
 	portableWrapper::fence();
     S.boundary_conditions(data);
+    portableWrapper::fence();
     S.boundary_conditions(dataNeutral);
     portableWrapper::fence();
     timer t;
     t.begin("Main Loop");
     data.step=0;
     //data.time=0.0;
+
+printf("%f %f \n",dataNeutral.rho(-1,-1,-1),dataNeutral.energy_neutral(-1,-1,-1));
 
     while (true)
     {

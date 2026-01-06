@@ -17,8 +17,8 @@
 void simulation::controlvariables(simulationData &data) {
 
   data.nx=10; // Number of cells in the x-direction
-  data.ny=2; // Number of cells in the y-direction
-  data.nz=2; // Number of cells in the z-direction
+  data.ny=5; // Number of cells in the y-direction
+  data.nz=5; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
@@ -41,10 +41,10 @@ void simulation::controlvariables(simulationData &data) {
   // Boundary conditions
   data.xbc_min = BCType::BC_OTHER;
   data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_OTHER;
-  data.ybc_max = BCType::BC_OTHER;
-  data.zbc_min = BCType::BC_OTHER;
-  data.zbc_max = BCType::BC_OTHER;
+  data.ybc_min = BCType::BC_PERIODIC;
+  data.ybc_max = BCType::BC_PERIODIC;
+  data.zbc_min = BCType::BC_PERIODIC;
+  data.zbc_max = BCType::BC_PERIODIC;
 
   // Grid stretching
   data.x_stretch = false;
@@ -86,8 +86,8 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
 
   SAMS::cout << "Setting up initial conditions" << std::endl;
 
-  char shock_tube_problem[8]="sod";
-  //char shock_tube_problem[8]="briowu";
+  //char shock_tube_problem[8]="sod";
+  char shock_tube_problem[8]="briowu";
   
   portableWrapper::assign(data.vx,0.0);
   portableWrapper::assign(data.vy,0.0);
@@ -163,6 +163,25 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   data.bz_R=bz_R;
   data.en_R=en_R;
   
+  if (data.two_fluid){
+      dataNeutral.rho_L=rho_L;
+      dataNeutral.vx_L=vx_L;
+      dataNeutral.vy_L=vy_L;
+      dataNeutral.vz_L=vz_L;
+      dataNeutral.bx_L=bx_L;
+      dataNeutral.by_L=by_L;
+      dataNeutral.bz_L=bz_L;
+      dataNeutral.en_L=en_L;
+      dataNeutral.rho_R=rho_R;
+      dataNeutral.vx_R=vx_R;
+      dataNeutral.vy_R=vy_R;
+      dataNeutral.vz_R=vz_R;
+      dataNeutral.bx_R=bx_R;
+      dataNeutral.by_R=by_R;
+      dataNeutral.bz_R=bz_R;
+      dataNeutral.en_R=en_R;
+  }
+  
   T_dataType w_lay=0.01;
   ////////////////////////////////////////////////////
 
@@ -202,15 +221,18 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     data.energy_ion(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
     data.energy_electron(ix, iy, iz)=en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
       if (data.two_fluid) {
+          portableWrapper::assign(dataNeutral.bx,0.0);
+          portableWrapper::assign(dataNeutral.by,0.0);
+          portableWrapper::assign(dataNeutral.bz,0.0);
           dataNeutral.vx(ix, iy, iz) = vx_L+(vx_R-vx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
           dataNeutral.vy(ix, iy, iz) = vy_L+(vy_R-vy_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
           dataNeutral.vz(ix, iy, iz) = vz_L+(vz_R-vz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
           dataNeutral.rho(ix, iy, iz) = rho_L+(rho_R-rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
           dataNeutral.energy_neutral(ix, iy, iz) = en_L+(en_R-en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
       }
+      //printf("%ld %f %f \n",ix,data.energy_ion(ix,iy,iz),dataNeutral.energy_neutral(ix,iy,iz));
     }, 
 
-    //printf("%ld %f %f \n",ix,data.rho(ix,iy,iz),dataNeutral.rho(ix,iy,iz));
 
     portableWrapper::Range(0, data.nx),
     portableWrapper::Range(0, data.ny),

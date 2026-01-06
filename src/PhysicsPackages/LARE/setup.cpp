@@ -62,6 +62,13 @@
         varRegistry.registerVariable("bx_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
         varRegistry.registerVariable("by_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts));
         varRegistry.registerVariable("bz_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable("vx1_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+
+    varRegistry.registerVariable("vy1_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+
+    varRegistry.registerVariable("vz1_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
+    varRegistry.registerVariable("dm_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::CENTRED), SAMS::dimension("Y",ghosts, SAMS::staggerType::CENTRED), SAMS::dimension("Z",ghosts, SAMS::staggerType::CENTRED));
         if (ion_rec_empirical){
             varRegistry.registerVariable("Gm_rec", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
             varRegistry.registerVariable("Gm_ion", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
@@ -256,6 +263,14 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
         portableWrapper::assign(dataNeutral.by, 0.0);
         varRegistry.fillPPArray("bz_n", dataNeutral.bz);
         portableWrapper::assign(dataNeutral.bz, 0.0);
+        varRegistry.fillPPArray("vx1_n", dataNeutral.vx1);
+        portableWrapper::assign(data.vx1, 0.0);
+        varRegistry.fillPPArray("vy1_n", dataNeutral.vy1);
+        portableWrapper::assign(data.vy1, 0.0);
+        varRegistry.fillPPArray("vz1_n", dataNeutral.vz1);
+        portableWrapper::assign(data.vz1, 0.0);
+        varRegistry.fillPPArray("dm_n", dataNeutral.dm);
+        portableWrapper::assign(data.dm, 0.0);
         
         manager.allocate(dataNeutral.p_visc, Range(-1, nx + 2), Range(-1, ny + 2), Range(-1, nz + 2));
         manager.allocate(dataNeutral.vx1, Range(-2, nx + 2), Range(-2, ny + 2), Range(-2, nz + 2));

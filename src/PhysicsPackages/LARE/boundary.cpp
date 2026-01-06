@@ -26,9 +26,16 @@ void simulation::boundary_conditions(simulationData &data)
 
 void simulation::bfield_bcs(simulationData &data)
 {
-    SAMS::getvariableRegistry().haloExchange("bx");
-    SAMS::getvariableRegistry().haloExchange("by");
-    SAMS::getvariableRegistry().haloExchange("bz");
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("bx");
+        SAMS::getvariableRegistry().haloExchange("by");
+        SAMS::getvariableRegistry().haloExchange("bz");
+    } 
+    else {
+        SAMS::getvariableRegistry().haloExchange("bx_n");
+        SAMS::getvariableRegistry().haloExchange("by_n");
+        SAMS::getvariableRegistry().haloExchange("bz_n");
+    }
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
             data.bx(-2, portableWrapper::Range(), portableWrapper::Range()), 
@@ -229,8 +236,13 @@ void simulation::bfield_bcs(simulationData &data)
 
 void simulation::energy_bcs(simulationData &data)
 {
-    SAMS::getvariableRegistry().haloExchange("energy_electron");
-    SAMS::getvariableRegistry().haloExchange("energy_ion");
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("energy_electron");
+        SAMS::getvariableRegistry().haloExchange("energy_ion");
+    } 
+    else {
+        SAMS::getvariableRegistry().haloExchange("energy_neutral");
+    }
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         if(data.is_neutral){
             portableWrapper::assign(
@@ -430,7 +442,12 @@ void simulation::energy_bcs(simulationData &data)
 
 void simulation::density_bcs(simulationData &data)
 {
-    SAMS::getvariableRegistry().haloExchange("rho");
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("rho");
+    }
+    else {
+        SAMS::getvariableRegistry().haloExchange("rho_n");
+    }
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
             data.rho(-1, portableWrapper::Range(), portableWrapper::Range()), 
@@ -442,6 +459,7 @@ void simulation::density_bcs(simulationData &data)
             //data.rho(1, portableWrapper::Range(), portableWrapper::Range())
             data.rho_L
         );
+        printf("rho BC: %i %f \n",data.is_neutral,data.rho_L);
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
@@ -493,9 +511,17 @@ void simulation::density_bcs(simulationData &data)
 
 void simulation::velocity_bcs(simulationData &data)
 {
-    SAMS::getvariableRegistry().haloExchange("vx");
-    SAMS::getvariableRegistry().haloExchange("vy");
-    SAMS::getvariableRegistry().haloExchange("vz");
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("vx");
+        SAMS::getvariableRegistry().haloExchange("vy");
+        SAMS::getvariableRegistry().haloExchange("vz");
+    }
+    else {
+        SAMS::getvariableRegistry().haloExchange("vx_n");
+        SAMS::getvariableRegistry().haloExchange("vy_n");
+        SAMS::getvariableRegistry().haloExchange("vz_n");
+    }
+    
     //Other boundaries clamp v=0
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
@@ -652,9 +678,16 @@ void simulation::velocity_bcs(simulationData &data)
 
 void simulation::remap_v_bcs(simulationData &data)
 {
-    SAMS::getvariableRegistry().haloExchange("vx1");
-    SAMS::getvariableRegistry().haloExchange("vy1");
-    SAMS::getvariableRegistry().haloExchange("vz1");
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("vx1");
+        SAMS::getvariableRegistry().haloExchange("vy1");
+        SAMS::getvariableRegistry().haloExchange("vz1");
+    }
+    else {
+        SAMS::getvariableRegistry().haloExchange("vx1_n");
+        SAMS::getvariableRegistry().haloExchange("vy1_n");
+        SAMS::getvariableRegistry().haloExchange("vz1_n");    
+    }
     //Other boundaries clamp v=0
     if (data.xbc_min == BCType::BC_OTHER && data.isxLB){
         portableWrapper::assign(
@@ -813,7 +846,12 @@ void simulation::remap_v_bcs(simulationData &data)
 
 void simulation::dm_x_bcs(simulationData &data, remapData &remap_data)
 {
-    SAMS::getvariableRegistry().haloExchange("dm");
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("dm");
+    }
+    else {
+        SAMS::getvariableRegistry().haloExchange("dm_n");    
+    }
     //Continous flux at x-max boundary
     if (data.isxUB){
         portableWrapper::assign(
@@ -834,7 +872,12 @@ void simulation::dm_x_bcs(simulationData &data, remapData &remap_data)
 
 void simulation::dm_y_bcs(simulationData &data, remapData &remap_data)
 {
-    SAMS::getvariableRegistry().haloExchange("dm");
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("dm");
+    }
+    else {
+        SAMS::getvariableRegistry().haloExchange("dm_n");    
+    }
     //Continous flux at y-max boundary
     if (data.isyUB){
         portableWrapper::assign(
@@ -855,7 +898,12 @@ void simulation::dm_y_bcs(simulationData &data, remapData &remap_data)
 
 void simulation::dm_z_bcs(simulationData &data, remapData &remap_data)
 {
-    
+    if (!data.is_neutral){
+        SAMS::getvariableRegistry().haloExchange("dm");
+    }
+    else {
+        SAMS::getvariableRegistry().haloExchange("dm_n");    
+    }    
     //Continous flux at z-max boundary
     if (data.iszUB){
         portableWrapper::assign(

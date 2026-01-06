@@ -74,6 +74,13 @@ void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral
      dataNeutral.xp=data.xp;
      dataNeutral.yp=data.yp;
      dataNeutral.zp=data.zp;
+     dataNeutral.isxLB=data.isxLB;
+     dataNeutral.isxUB=data.isxUB;
+     dataNeutral.isyLB=data.isyLB;
+     dataNeutral.isyUB=data.isyUB;
+     dataNeutral.iszLB=data.iszLB;
+     dataNeutral.iszUB=data.iszUB;
+     
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -176,6 +183,9 @@ void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_so
         T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
         
         plasma_ir_source.ac(ix,iy,iz)=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
+        
+        printf("ix,iy,iz, t_i t_n ac :  %li %li %li %f %f %f \n",ix,iy,iz,dataNeutral.rho(ix,iy,iz),dataNeutral.energy_neutral(ix,iy,iz),plasma_ir_source.ac(ix,iy,iz));
+        
     	}, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     //return alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
 
