@@ -88,6 +88,7 @@ struct simulationData{
     bool resistiveMHD; // Resistive MHD
     bool rke; // Remap phase kinetic energy correction
     bool two_fluid; // Flag for the two-fluid version of the code
+    bool collisions; //Flag for enabling/disabling collisions (for testing)
     bool is_neutral; // Is this a neutral fluid
     bool ion_rec; //Are Ionisation/Recombination rates included in some way
     bool ion_rec_empirical; //Are the empirical ionisation rates called
@@ -346,7 +347,7 @@ public:
     /**
     *
     */
-    void two_fluid_source(simulationData &data,simulationData &dataNeutral);
+    void two_fluid_source(simulationData &data,simulationData &dataNeutral,bool first_step);
 };
 
 #endif // SHARED_DATA_H

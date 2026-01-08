@@ -84,7 +84,7 @@ void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutral){
+void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutral,bool first_step){
 
     //data.two_fluid_timestep=1.0;
     
@@ -105,6 +105,18 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     irSourceManager.allocate(neutral_ir_source.source_v_z, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(neutral_ir_source.source_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     
+    portableWrapper::assign(plasma_ir_source.source_mass,0.0);
+    portableWrapper::assign(plasma_ir_source.source_v_x,0.0);
+    portableWrapper::assign(plasma_ir_source.source_v_y,0.0);
+    portableWrapper::assign(plasma_ir_source.source_v_z,0.0);
+    portableWrapper::assign(plasma_ir_source.source_energy,0.0);
+    portableWrapper::assign(neutral_ir_source.source_mass,0.0);
+    portableWrapper::assign(neutral_ir_source.source_v_x,0.0);
+    portableWrapper::assign(neutral_ir_source.source_v_y,0.0);
+    portableWrapper::assign(neutral_ir_source.source_v_z,0.0);
+    portableWrapper::assign(neutral_ir_source.source_energy,0.0);
+    portableWrapper::assign(plasma_ir_source.ac,0.0);
+    
     //Get collisional coefficient
     get_ac(data,dataNeutral,plasma_ir_source);
     
@@ -122,52 +134,51 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     
     // Make sure the timestep is the same in both species
     //Set dt to be the minimum of the neutral and plasma times
-    printf("dt=%f %f \n",data.dt,dataNeutral.dt);
-    data.dt=std::min(dataNeutral.dt,data.dt);
-    dataNeutral.dt=data.dt;
+    if (first_step){        
+        //Set the timestep for the collisions
+        set_dt_collisional(data, dataNeutral, plasma_ir_source);
+        
+        //Set the ionisation/recombination timestep
+        if (data.ion_rec_empirical) set_dt_ion_rec(data,dataNeutral);
+        
+        printf("dt (plasma, neutral, two-fluid)=%f %f %f \n",data.dt,dataNeutral.dt,data.two_fluid_timestep);
+        
+        data.dt=std::min({dataNeutral.dt,data.dt,data.two_fluid_timestep});
+        dataNeutral.dt=data.dt;
+    }
     
-    //Set the timestep for the collisions
-    set_dt_collisional(data, dataNeutral, plasma_ir_source);
-    
-    //Set the ionisation/recombination timestep
-    if (data.ion_rec_empirical) set_dt_ion_rec(data,dataNeutral);
-    
-    //Two-fluid time-step
-    printf("dt two-fluid %f \n",data.two_fluid_timestep);
-    
-    using Range = portableWrapper::Range;
-    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
-        //Get Temperatures
-        T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
-        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
-        T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
-        
-        //T_dataType ac;
-        //get_ac(data.alpha0,temperature_ion,temperature_neutral);
-        
-        //Note that the factor of 0.5 in these is due to Strang splitting
-        //Mass exchange terms
-        data.rho(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_mass(ix,iy,iz);
-        dataNeutral.rho(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_mass(ix,iy,iz);
-        
-        //Apply the velocity exchange terms
-        data.vx(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_x(ix,iy,iz);
-        dataNeutral.vx(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_x(ix,iy,iz);
-        
-        data.vy(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_y(ix,iy,iz);
-        dataNeutral.vy(ix,iy,iz)-=0.5*data.dt*(data.rho(ix,iy,iz)       *dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
-        
-        data.vz(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_z(ix,iy,iz);
-        dataNeutral.vz(ix,iy,iz)-=0.5*data.dt*(data.rho(ix,iy,iz)       *dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
-        
-        //Energy source terms - the 3/2 here needs fixing
-        data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
-        data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
-        dataNeutral.energy_neutral(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_energy(ix,iy,iz);  
-        
-        
-                        
-    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    if (data.collisions){
+        using Range = portableWrapper::Range;
+        portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            //Get Temperatures
+            //T_dataType temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+            //T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+            //T_dataType temperature_neutral = data.gas_gamma*dataNeutral.energy_neutral(ix,iy,iz)*(data.gas_gamma-1.0);
+            
+            //T_dataType ac;
+            //get_ac(data.alpha0,temperature_ion,temperature_neutral);
+            
+            //Note that the factor of 0.5 in these is due to Strang splitting
+            //Mass exchange terms
+            data.rho(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_mass(ix,iy,iz);
+            dataNeutral.rho(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_mass(ix,iy,iz);
+            
+            //Apply the velocity exchange terms
+            data.vx(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_x(ix,iy,iz);
+            dataNeutral.vx(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_x(ix,iy,iz);
+            
+            data.vy(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_y(ix,iy,iz);
+            dataNeutral.vy(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_y(ix,iy,iz);
+            
+            data.vz(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_z(ix,iy,iz);
+            dataNeutral.vz(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_z(ix,iy,iz);
+            
+            //Energy source terms - the 3/2 here needs fixing
+            data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
+            //data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
+            dataNeutral.energy_neutral(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_energy(ix,iy,iz);                 
+        }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    }
     
 }
 
@@ -184,7 +195,8 @@ void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_so
         
         plasma_ir_source.ac(ix,iy,iz)=data.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
         
-        printf("ix,iy,iz, t_i t_n ac :  %li %li %li %f %f %f \n",ix,iy,iz,dataNeutral.rho(ix,iy,iz),dataNeutral.energy_neutral(ix,iy,iz),plasma_ir_source.ac(ix,iy,iz));
+//        printf("ix,iy,iz, t_i t_n ac :  %li %li %li %f %f %f \n",ix,iy,iz,dataNeutral.rho(ix,iy,iz),dataNeutral.energy_neutral(ix,iy,iz),plasma_ir_source.ac(ix,iy,iz));
+        //printf("ix,iy,iz, t_i t_n ac :  %li %li %li %f %f %f \n",ix,iy,iz,temperature_ion,temperature_neutral,plasma_ir_source.ac(ix,iy,iz));
         
     	}, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     //return alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
@@ -372,6 +384,8 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
         plasma_ir_source.source_v_z(ix,iy,iz)+=ac_vertex*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
         neutral_ir_source.source_v_z(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
         
+        //Get velocity at cell centre
+        
         //Energy source terms - the 3/2 here needs fixing
         plasma_ir_source.source_energy(ix,iy,iz)=plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
@@ -415,7 +429,7 @@ void set_dt_collisional(simulationData &data,simulationData &dataNeutral, data_t
         
         T_dataType t1 = std::min(collisional_timestep_plasma,collisional_timestep_neutral);
         
-        printf("ix,iy,iz, t1 :  %li %li %li %f %f \n",ix,iy,iz,collisional_timestep_plasma,plasma_ir_source.ac(ix,iy,iz));
+        //printf("ix,iy,iz, t1 :  %li %li %li %f %f \n",ix,iy,iz,collisional_timestep_plasma,plasma_ir_source.ac(ix,iy,iz));
         //if (collisional_timestep_plasma < collisional_timestep_neutral){
         //    t1=collisional_timestep_plasma;
         //} else{

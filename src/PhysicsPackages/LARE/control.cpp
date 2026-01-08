@@ -16,9 +16,9 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=64; // Number of cells in the x-direction
-  data.ny=5; // Number of cells in the y-direction
-  data.nz=5; // Number of cells in the z-direction
+  data.nx=128; // Number of cells in the x-direction
+  data.ny=1; // Number of cells in the y-direction
+  data.nz=1; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
@@ -41,8 +41,8 @@ void simulation::controlvariables(simulationData &data) {
   // Boundary conditions
   data.xbc_min = BCType::BC_OTHER;
   data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_OTHER;
-  data.ybc_max = BCType::BC_OTHER;
+  data.ybc_min = BCType::BC_PERIODIC;
+  data.ybc_max = BCType::BC_PERIODIC;
   data.zbc_min = BCType::BC_OTHER;
   data.zbc_max = BCType::BC_OTHER;
 
@@ -72,9 +72,10 @@ void simulation::controlvariables(simulationData &data) {
   
   // Two-fluid flag
   data.two_fluid=true;
+  data.collisions=true;
   data.ion_rec=false;
   data.ion_rec_empirical=false;
-  data.alpha0=1.0;
+  data.alpha0=1000.0;
 
   // Output frequency and directory
   data.dt_snapshots = 0.02;
@@ -168,18 +169,18 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       dataNeutral.vx_L=vx_L;
       dataNeutral.vy_L=vy_L;
       dataNeutral.vz_L=vz_L;
-      dataNeutral.bx_L=bx_L;
-      dataNeutral.by_L=by_L;
-      dataNeutral.bz_L=bz_L;
-      dataNeutral.en_L=en_L*2.0; //the factor of 2 is to pair up with total plasma pressure
+      dataNeutral.bx_L=0.0;
+      dataNeutral.by_L=0.0;
+      dataNeutral.bz_L=0.0;
+      dataNeutral.en_L=en_L; //the factor of 2 is to pair up with total plasma pressure
       dataNeutral.rho_R=rho_R;
       dataNeutral.vx_R=vx_R;
       dataNeutral.vy_R=vy_R;
       dataNeutral.vz_R=vz_R;
-      dataNeutral.bx_R=bx_R;
-      dataNeutral.by_R=by_R;
-      dataNeutral.bz_R=bz_R;
-      dataNeutral.en_R=en_R*2.0;
+      dataNeutral.bx_R=0.0;
+      dataNeutral.by_R=0.0;
+      dataNeutral.bz_R=0.0;
+      dataNeutral.en_R=en_R;
   }
   
   T_dataType w_lay=0.01;

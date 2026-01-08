@@ -459,7 +459,6 @@ void simulation::density_bcs(simulationData &data)
             //data.rho(1, portableWrapper::Range(), portableWrapper::Range())
             data.rho_L
         );
-        printf("rho BC: %i %f \n",data.is_neutral,data.rho_L);
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
@@ -592,8 +591,8 @@ void simulation::velocity_bcs(simulationData &data)
         );
         portableWrapper::assign(
             data.vy(portableWrapper::Range(), portableWrapper::Range(-2,0), portableWrapper::Range()), 
-            data.vy(portableWrapper::Range(), portableWrapper::Range(0,2), portableWrapper::Range())
-            //0.0
+            //data.vy(portableWrapper::Range(), portableWrapper::Range(0,2), portableWrapper::Range())
+            0.0
         );
         portableWrapper::assign(
             data.vz(portableWrapper::Range(), -1, portableWrapper::Range()), 
@@ -616,8 +615,8 @@ void simulation::velocity_bcs(simulationData &data)
         );
         portableWrapper::assign(
             data.vy(portableWrapper::Range(), portableWrapper::Range(data.ny, data.ny + 2), portableWrapper::Range()),
-            data.vy(portableWrapper::Range(), portableWrapper::Range(data.ny-2, data.ny), portableWrapper::Range()) 
-            //0.0
+            //data.vy(portableWrapper::Range(), portableWrapper::Range(data.ny-2, data.ny), portableWrapper::Range()) 
+            0.0
         );
         portableWrapper::assign(
             data.vz(portableWrapper::Range(), data.ny + 1, portableWrapper::Range()), 
