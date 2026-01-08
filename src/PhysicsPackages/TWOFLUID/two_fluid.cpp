@@ -22,6 +22,7 @@ struct data_two_fluid_source_ir
     volumeArray source_v_y; // velocity source term
     volumeArray source_v_z; // velocity source term
     volumeArray source_energy; // energy source term
+    volumeArray source_electron_energy; // energy source term
     volumeArray ac; //coupling coeficient
 };
 
@@ -99,6 +100,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     irSourceManager.allocate(plasma_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(plasma_ir_source.source_v_z, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(plasma_ir_source.source_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    irSourceManager.allocate(plasma_ir_source.source_electron_energy, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(neutral_ir_source.source_mass, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(neutral_ir_source.source_v_x, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     irSourceManager.allocate(neutral_ir_source.source_v_y, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
@@ -110,6 +112,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     portableWrapper::assign(plasma_ir_source.source_v_y,0.0);
     portableWrapper::assign(plasma_ir_source.source_v_z,0.0);
     portableWrapper::assign(plasma_ir_source.source_energy,0.0);
+    portableWrapper::assign(plasma_ir_source.source_electron_energy,0.0);
     portableWrapper::assign(neutral_ir_source.source_mass,0.0);
     portableWrapper::assign(neutral_ir_source.source_v_x,0.0);
     portableWrapper::assign(neutral_ir_source.source_v_y,0.0);
@@ -175,7 +178,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
             
             //Energy source terms - the 3/2 here needs fixing
             data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
-            //data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
+            //data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_electron_energy(ix,iy,iz);
             dataNeutral.energy_neutral(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_energy(ix,iy,iz);                 
         }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     }
