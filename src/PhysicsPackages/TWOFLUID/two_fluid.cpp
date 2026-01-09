@@ -388,9 +388,63 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
         neutral_ir_source.source_v_z(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
         
         //Get velocity at cell centre
+        T_dataType vx_centre=(data.vx(ix,iy,iz)+
+                              data.vx(ix  ,iy-1,iz)+
+                              data.vx(ix  ,iy  ,iz-1)+
+                              data.vx(ix  ,iy-1,iz-1)+
+                              data.vx(ix-1,iy  ,iz  )+
+                              data.vx(ix-1,iy-1,iz  )+
+                              data.vx(ix-1,iy  ,iz-1)+
+                              data.vx(ix-1,iy-1,iz-1))*
+                              0.125;
+        T_dataType vy_centre=(data.vy(ix,iy,iz)+
+                              data.vy(ix  ,iy-1,iz)+
+                              data.vy(ix  ,iy  ,iz-1)+
+                              data.vy(ix  ,iy-1,iz-1)+
+                              data.vy(ix-1,iy  ,iz  )+
+                              data.vy(ix-1,iy-1,iz  )+
+                              data.vy(ix-1,iy  ,iz-1)+
+                              data.vy(ix-1,iy-1,iz-1))*
+                              0.125;
+        T_dataType vz_centre=(data.vz(ix,iy,iz)+
+                              data.vz(ix  ,iy-1,iz)+
+                              data.vz(ix  ,iy  ,iz-1)+
+                              data.vz(ix  ,iy-1,iz-1)+
+                              data.vz(ix-1,iy  ,iz  )+
+                              data.vz(ix-1,iy-1,iz  )+
+                              data.vz(ix-1,iy  ,iz-1)+
+                              data.vz(ix-1,iy-1,iz-1))*
+                              0.125;
+        T_dataType vx_n_centre=(dataNeutral.vx(ix,iy,iz)+
+                              dataNeutral.vx(ix  ,iy-1,iz)+
+                              dataNeutral.vx(ix  ,iy  ,iz-1)+
+                              dataNeutral.vx(ix  ,iy-1,iz-1)+
+                              dataNeutral.vx(ix-1,iy  ,iz  )+
+                              dataNeutral.vx(ix-1,iy-1,iz  )+
+                              dataNeutral.vx(ix-1,iy  ,iz-1)+
+                              dataNeutral.vx(ix-1,iy-1,iz-1))*
+                              0.125;
+        T_dataType vy_n_centre=(dataNeutral.vy(ix,iy,iz)+
+                              dataNeutral.vy(ix  ,iy-1,iz)+
+                              dataNeutral.vy(ix  ,iy  ,iz-1)+
+                              dataNeutral.vy(ix  ,iy-1,iz-1)+
+                              dataNeutral.vy(ix-1,iy  ,iz  )+
+                              dataNeutral.vy(ix-1,iy-1,iz  )+
+                              dataNeutral.vy(ix-1,iy  ,iz-1)+
+                              dataNeutral.vy(ix-1,iy-1,iz-1))*
+                              0.125;
+        T_dataType vz_n_centre=(dataNeutral.vz(ix,iy,iz)+
+                              dataNeutral.vz(ix  ,iy-1,iz)+
+                              dataNeutral.vz(ix  ,iy  ,iz-1)+
+                              dataNeutral.vz(ix  ,iy-1,iz-1)+
+                              dataNeutral.vz(ix-1,iy  ,iz  )+
+                              dataNeutral.vz(ix-1,iy-1,iz  )+
+                              dataNeutral.vz(ix-1,iy  ,iz-1)+
+                              dataNeutral.vz(ix-1,iy-1,iz-1))*
+                              0.125;
         
         //Energy source terms - the 3/2 here needs fixing
-        plasma_ir_source.source_energy(ix,iy,iz)=plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        /*plasma_ir_source.source_energy(ix,iy,iz)=plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
@@ -399,6 +453,17 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
                         (dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz)*data.vx(ix,iy,iz))+\
                         (dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz)*data.vy(ix,iy,iz))+\
                         (dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz)*data.vz(ix,iy,iz)))\
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
+        */
+        plasma_ir_source.source_energy(ix,iy,iz)=plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+                        (vx_n_centre*vx_n_centre-vx_centre*vx_centre)+\
+                        (vy_n_centre*vy_n_centre-vy_centre*vy_centre)+\
+                        (vz_n_centre*vz_n_centre-vz_centre*vz_centre))\
+                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
+        neutral_ir_source.source_energy(ix,iy,iz)=-plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+                        (vx_n_centre*vx_n_centre-vx_centre*vx_centre)+\
+                        (vy_n_centre*vy_n_centre-vy_centre*vy_centre)+\
+                        (vz_n_centre*vz_n_centre-vz_centre*vz_centre))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
                                    
         
