@@ -378,14 +378,14 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
         
                 
         //Apply the velocity exchange terms
-        plasma_ir_source.source_v_x(ix,iy,iz)+=ac_vertex*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vx(ix,iy,iz));
-        neutral_ir_source.source_v_x(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vx(ix,iy,iz));
+        plasma_ir_source.source_v_x(ix,iy,iz)+=ac_vertex*dataNeutral.rho(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
+        neutral_ir_source.source_v_x(ix,iy,iz)-=ac_vertex*data.rho(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
         
-        plasma_ir_source.source_v_y(ix,iy,iz)+=ac_vertex*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vy(ix,iy,iz));
-        neutral_ir_source.source_v_y(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vy(ix,iy,iz));
+        plasma_ir_source.source_v_y(ix,iy,iz)+=ac_vertex*dataNeutral.rho(ix,iy,iz)*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
+        neutral_ir_source.source_v_y(ix,iy,iz)-=ac_vertex*data.rho(ix,iy,iz)*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
         
-        plasma_ir_source.source_v_z(ix,iy,iz)+=ac_vertex*(dataNeutral.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.vz(ix,iy,iz));
-        neutral_ir_source.source_v_z(ix,iy,iz)-=ac_vertex*(data.rho(ix,iy,iz)*dataNeutral.vz(ix,iy,iz)-data.rho(ix,iy,iz)       *data.vz(ix,iy,iz));
+        plasma_ir_source.source_v_z(ix,iy,iz)+=ac_vertex*dataNeutral.rho(ix,iy,iz)*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
+        neutral_ir_source.source_v_z(ix,iy,iz)-=ac_vertex*data.rho(ix,iy,iz)*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
         
         //Get velocity at cell centre
         T_dataType vx_centre=(data.vx(ix,iy,iz)+
