@@ -460,7 +460,7 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
                         (vy_n_centre*vy_n_centre-vy_centre*vy_centre)+\
                         (vz_n_centre*vz_n_centre-vz_centre*vz_centre))\
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
-        neutral_ir_source.source_energy(ix,iy,iz)=-plasma_ir_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(0.5*(\
+        neutral_ir_source.source_energy(ix,iy,iz)=-plasma_ir_source.ac(ix,iy,iz)*data.rho(ix,iy,iz)*(0.5*(\
                         (vx_n_centre*vx_n_centre-vx_centre*vx_centre)+\
                         (vy_n_centre*vy_n_centre-vy_centre*vy_centre)+\
                         (vz_n_centre*vz_n_centre-vz_centre*vz_centre))\
