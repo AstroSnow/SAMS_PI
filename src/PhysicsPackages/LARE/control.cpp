@@ -41,8 +41,8 @@ void simulation::controlvariables(simulationData &data) {
   // Boundary conditions
   data.xbc_min = BCType::BC_OTHER;
   data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_PERIODIC;
-  data.ybc_max = BCType::BC_PERIODIC;
+  data.ybc_min = BCType::BC_OTHER;
+  data.ybc_max = BCType::BC_OTHER;
   data.zbc_min = BCType::BC_OTHER;
   data.zbc_max = BCType::BC_OTHER;
 
@@ -71,11 +71,11 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=true;
+  data.two_fluid=false;
   data.collisions=true;
   data.ion_rec=false;
   data.ion_rec_empirical=false;
-  data.alpha0=1000.0;
+  data.alpha0=100.0;
 
   // Output frequency and directory
   data.dt_snapshots = 0.02;
@@ -209,36 +209,39 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
     }
   */
 
-  portableWrapper::applyKernel(
-    LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
-    
-    data.vx(ix, iy, iz)=data.vx_L+(data.vx_R-data.vx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.vy(ix, iy, iz)=data.vy_L+(data.vy_R-data.vy_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.vz(ix, iy, iz)=data.vz_L+(data.vz_R-data.vz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.bx(ix, iy, iz)=data.bx_L+(data.bx_R-data.bx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.by(ix, iy, iz)=data.by_L+(data.by_R-data.by_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.bz(ix, iy, iz)=data.bz_L+(data.bz_R-data.bz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.rho(ix, iy, iz)=data.rho_L+(data.rho_R-data.rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.energy_ion(ix, iy, iz)=data.en_L+(data.en_R-data.en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-    data.energy_electron(ix, iy, iz)=data.en_L+(data.en_R-data.en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-      if (data.two_fluid) {
-          portableWrapper::assign(dataNeutral.bx,0.0);
-          portableWrapper::assign(dataNeutral.by,0.0);
-          portableWrapper::assign(dataNeutral.bz,0.0);
-          dataNeutral.vx(ix, iy, iz) = dataNeutral.vx_L+(dataNeutral.vx_R-dataNeutral.vx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-          dataNeutral.vy(ix, iy, iz) = dataNeutral.vy_L+(dataNeutral.vy_R-dataNeutral.vy_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-          dataNeutral.vz(ix, iy, iz) = dataNeutral.vz_L+(dataNeutral.vz_R-dataNeutral.vz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-          dataNeutral.rho(ix, iy, iz) = dataNeutral.rho_L+(dataNeutral.rho_R-dataNeutral.rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-          dataNeutral.energy_neutral(ix, iy, iz) = dataNeutral.en_L+(dataNeutral.en_R-dataNeutral.en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
-      }
-      //printf("%ld %f %f \n",ix,data.energy_ion(ix,iy,iz),dataNeutral.energy_neutral(ix,iy,iz));
-    }, 
-
-
-    portableWrapper::Range(-1, data.nx+1),
-    portableWrapper::Range(-1, data.ny+1),
-    portableWrapper::Range(-1, data.nz+1)
-  );
+  if ((std::strcmp(shock_tube_problem,"briowu")==0) || (std::strcmp(shock_tube_problem,"sod")==0)){
+      portableWrapper::applyKernel(
+        LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        
+        data.vx(ix, iy, iz)=data.vx_L+(data.vx_R-data.vx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.vy(ix, iy, iz)=data.vy_L+(data.vy_R-data.vy_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.vz(ix, iy, iz)=data.vz_L+(data.vz_R-data.vz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.bx(ix, iy, iz)=data.bx_L+(data.bx_R-data.bx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.by(ix, iy, iz)=data.by_L+(data.by_R-data.by_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.bz(ix, iy, iz)=data.bz_L+(data.bz_R-data.bz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.rho(ix, iy, iz)=data.rho_L+(data.rho_R-data.rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.energy_ion(ix, iy, iz)=data.en_L+(data.en_R-data.en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+        data.energy_electron(ix, iy, iz)=data.en_L+(data.en_R-data.en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+          if (data.two_fluid) {
+              portableWrapper::assign(dataNeutral.bx,0.0);
+              portableWrapper::assign(dataNeutral.by,0.0);
+              portableWrapper::assign(dataNeutral.bz,0.0);
+              dataNeutral.vx(ix, iy, iz) = dataNeutral.vx_L+(dataNeutral.vx_R-dataNeutral.vx_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+              dataNeutral.vy(ix, iy, iz) = dataNeutral.vy_L+(dataNeutral.vy_R-dataNeutral.vy_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+              dataNeutral.vz(ix, iy, iz) = dataNeutral.vz_L+(dataNeutral.vz_R-dataNeutral.vz_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+              dataNeutral.rho(ix, iy, iz) = dataNeutral.rho_L+(dataNeutral.rho_R-dataNeutral.rho_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+              dataNeutral.energy_neutral(ix, iy, iz) = dataNeutral.en_L+(dataNeutral.en_R-dataNeutral.en_L)*(std::tanh(data.xb(ix)/w_lay)+1.0)*0.5;
+          }
+          //printf("%ld %f %f \n",ix,data.energy_ion(ix,iy,iz),dataNeutral.energy_neutral(ix,iy,iz));
+        }, 
+        portableWrapper::Range(-1, data.nx+1),
+        portableWrapper::Range(-1, data.ny+1),
+        portableWrapper::Range(-1, data.nz+1)
+      );
+  }
+  else{
+  printf("unknown initial condition");
+  }
 
 
   if (data.rke) portableWrapper::assign(data.delta_ke, 0.0);
