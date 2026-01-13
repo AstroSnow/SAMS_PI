@@ -189,10 +189,9 @@ static int calc_coeff_table(int nsamps) {
 }
 
 int main() {
-    std::cout << "e1(1.0)   = " << gen_exp_int(1.0, 1) << std::endl;
-    std::cout << "e1(0.001) = " << gen_exp_int(0.001, 1) << std::endl;
-    std::cout << "e1(500.0) = " << gen_exp_int(500.0, 1) << std::endl;
-
-    // int nsamps = 1;
-    // return calc_coeff_table(nsamps);
+    // std::cout << "e1(1.0)   = " << gen_exp_int(1.0, 1) << std::endl;
+    // std::cout << "e1(0.001) = " << gen_exp_int(0.001, 1) << std::endl;
+    // std::cout << "e1(500.0) = " << gen_exp_int(500.0, 1) << std::endl;
+    int nsamps = 1;
+    return calc_coeff_table(nsamps);
 }
