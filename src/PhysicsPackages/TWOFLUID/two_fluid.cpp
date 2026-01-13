@@ -168,13 +168,13 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
             
             //Apply the velocity exchange terms
             data.vx(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_x(ix,iy,iz);
-            dataNeutral.vx(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_x(ix,iy,iz);
+            dataNeutral.vx(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_v_x(ix,iy,iz);
             
             data.vy(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_y(ix,iy,iz);
-            dataNeutral.vy(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_y(ix,iy,iz);
+            dataNeutral.vy(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_v_y(ix,iy,iz);
             
             data.vz(ix,iy,iz)       +=0.5*data.dt*plasma_ir_source.source_v_z(ix,iy,iz);
-            dataNeutral.vz(ix,iy,iz)-=0.5*data.dt*neutral_ir_source.source_v_z(ix,iy,iz);
+            dataNeutral.vz(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_v_z(ix,iy,iz);
             
             //Energy source terms - the 3/2 here needs fixing
             data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
@@ -530,5 +530,12 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
     
     if (ir_timestep < data.two_fluid_timestep) data.two_fluid_timestep=ir_timestep;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//Routine for the reading the rates
+void simulation::two_fluid_read_rates(simulationData &data){
+
 
 }
