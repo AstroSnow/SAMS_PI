@@ -32,6 +32,7 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
 void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
+void interpolate_rates(simulationData &data,simulationData &dataNeutral);
 //void get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -533,6 +534,11 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//Routine for interpolating the rates
+void interpolate_rates(simulationData &data,simulationData &dataNeutral) {
+
+}
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for the reading the rates
 void simulation::two_fluid_read_rates(simulationData &data){
