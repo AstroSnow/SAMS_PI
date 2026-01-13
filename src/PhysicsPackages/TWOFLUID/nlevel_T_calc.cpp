@@ -6,37 +6,29 @@
 #include <iostream>
 #include <vector>
 
-// Translated from Fortran program radexpintcalc
-// Converted to C++20 with small, sensible fixes (use ti for temperature sweep,
-// use proper variables for ionisation integrals).
+static double gen_exp_int(double x, int n) {
+// Generalized exponential integral E_n(x) = \int_1^\infty exp(-x omega) / omega^n d omega
 
-static double ionexpfittest(double x, int n) {
+    const int nsteps = 1000.0;
 
-    // std::cout << " Start new integral x=" << x << " n=" << n << std::endl;
-
-    const double tol = 1.0e-6;
-    const double stepsize = 0.001;
-    
-    if (std::exp(-x) == 0.0) {
-        // std::cout << " Integral underflow x=" << x << " n=" << n << " result=0.0" << std::endl;
-        return 0.0;
+    if (n == 0) {
+        return std::exp(-x) / x; // Special case for n=0.
     } else {
-        double a = 1.0;
-        double fa = std::exp(-x * a) / std::pow(a, -n);
-        double en = 0.0;
-        double err = 1.1 * tol;
-        while ( err > tol ) {
-            double b = a + stepsize;
-            double fb = std::exp(-x * b) / std::pow(b, -n);
-            double inc = 0.5 * stepsize * (fa + fb);
-            en = en + inc;
-            err = inc / en;
-            // std::cout << " a = " << a << " b = " << b << " fa = " << fa <<  " fb = " << fb << std::endl;
-            a = b;
-            fa = fb;
+        // Numerical integration using trapezoidal rule for n>=1. We use a change of variable
+        // u = 1 / omega, to convert the integral from 1 to infinity into an integral from 0 
+        // to 1. The new function to integate change from exp(-x omega) / omega^n to
+        // exp(-x / u) * u^(n-2). Note latter function goes to zero as u -> 0 for n>=1, so no 
+        // singularity.
+        double h = 1.0 / nsteps;
+        double fa = 0.0; // integrand at lower limit
+        double fb = std::exp(-x) ; // integrand at upper limit
+        double t_end = 0.5 * (fa + fb);
+        double t_interior = 0.0;
+        for (int i = 1; i <= nsteps; ++i) {
+            double u = i * h;
+            t_interior += std::exp(-x / u) * std::pow(u, n - 2);
         }
-        //std::cout << " Completed integral x=" << x << " n=" << n << " result=" << en << std::endl;
-        return en;
+        return h * (t_end + t_interior);
     }
 }
 
@@ -127,10 +119,10 @@ int main() {
                 double yhat = Enn[ii][jj] / (kboltz * T);
                 double zhat = rnn[ii][jj] + Enn[ii][jj] / (kboltz * T);
 
-                double E1y = ionexpfittest(yhat, 1);
-                double E2y = ionexpfittest(yhat, 2);
-                double E1z = ionexpfittest(zhat, 1);
-                double E2z = ionexpfittest(zhat, 2);
+                double E1y = gen_exp_int(yhat, 1);
+                double E2y = gen_exp_int(yhat, 2);
+                double E1z = gen_exp_int(zhat, 1);
+                double E2z = gen_exp_int(zhat, 2);
 
                 double prefac = std::sqrt(8.0 * kboltz * T / (pi * melec)) * 2.0 * (double)ii * (double)ii / xrat[ii][jj] * pi * a0bohr * a0bohr * yhat * yhat;
 
@@ -144,13 +136,13 @@ int main() {
             double yn = Eion[ii] / (kboltz * T);
             double zn = rn[ii] + Eion[ii] / (kboltz * T);
 
-            double E0y = ionexpfittest(yn, 0);
-            double E1y = ionexpfittest(yn, 1);
-            double E2y = ionexpfittest(yn, 2);
+            double E0y = gen_exp_int(yn, 0);
+            double E1y = gen_exp_int(yn, 1);
+            double E2y = gen_exp_int(yn, 2);
 
-            double E0z = ionexpfittest(zn, 0);
-            double E1z = ionexpfittest(zn, 1);
-            double E2z = ionexpfittest(zn, 2);
+            double E0z = gen_exp_int(zn, 0);
+            double E1z = gen_exp_int(zn, 1);
+            double E2z = gen_exp_int(zn, 2);
 
             double ziyn = E0y - 2.0 * E1y + E2y;
             double zizn = E0z - 2.0 * E1z + E2z;
