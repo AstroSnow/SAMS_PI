@@ -348,6 +348,11 @@ public:
     *
     */
     void two_fluid_source(simulationData &data,simulationData &dataNeutral,bool first_step);
+    
+    /**
+    * Routine to read the rates for ionisation/recombination/excitation/de-excitation
+    */
+    void two_fluid_read_rates(simulationData &data);
 };
 
 #endif // SHARED_DATA_H
