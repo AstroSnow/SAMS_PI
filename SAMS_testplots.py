@@ -38,7 +38,7 @@ data = list(f[a_group_key])
 
 ################################################################################
 # Get PIP data as comparison
-filename='/home/ben/Documents/SAMS/PIP/Data/t0020.h5'
+filename='PIP_sod_shock_test.h5'
 #filename='/home/ben/Documents/SAMS/MPI/collisionless_100.h5'
 
 f2=h5py.File(filename, "r")
