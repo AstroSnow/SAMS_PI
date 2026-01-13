@@ -76,7 +76,10 @@ int main(int argc, char *argv[]){
     if (data.two_fluid) {
         printf("Initialising two-fluid grid \n");
         S.two_fluid_grid(data,dataNeutral);
-        printf("Initialising two-fluid grid \n");
+        if (data.ion_rec_nlevel){
+            printf("Getting rates \n");
+            S.two_fluid_read_rates(data);
+        }
     }
 
 		portableWrapper::fence();

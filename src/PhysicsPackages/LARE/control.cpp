@@ -75,6 +75,7 @@ void simulation::controlvariables(simulationData &data) {
   data.collisions=true;
   data.ion_rec=false;
   data.ion_rec_empirical=false;
+  data.ion_rec_nlevel=false;
   data.alpha0=100.0;
 
   // Output frequency and directory

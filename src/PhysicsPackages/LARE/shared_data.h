@@ -92,6 +92,7 @@ struct simulationData{
     bool is_neutral; // Is this a neutral fluid
     bool ion_rec; //Are Ionisation/Recombination rates included in some way
     bool ion_rec_empirical; //Are the empirical ionisation rates called
+    bool ion_rec_nlevel; //Are the empirical ionisation rates called
     
     //Two-fluid constants
     T_dataType alpha0; //Reference collisional timescale
