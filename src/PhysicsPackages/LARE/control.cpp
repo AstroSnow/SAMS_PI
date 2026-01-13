@@ -17,8 +17,8 @@
 void simulation::controlvariables(simulationData &data) {
 
   data.nx=128; // Number of cells in the x-direction
-  data.ny=1; // Number of cells in the y-direction
-  data.nz=1; // Number of cells in the z-direction
+  data.ny=2; // Number of cells in the y-direction
+  data.nz=2; // Number of cells in the z-direction
 
   data.dt_multiplier = 0.8; // Default multiplier for time step
   data.dt=0.0;
@@ -41,8 +41,8 @@ void simulation::controlvariables(simulationData &data) {
   // Boundary conditions
   data.xbc_min = BCType::BC_OTHER;
   data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_OTHER;
-  data.ybc_max = BCType::BC_OTHER;
+  data.ybc_min = BCType::BC_PERIODIC;
+  data.ybc_max = BCType::BC_PERIODIC;
   data.zbc_min = BCType::BC_OTHER;
   data.zbc_max = BCType::BC_OTHER;
 
@@ -56,7 +56,7 @@ void simulation::controlvariables(simulationData &data) {
   data.visc2 = 1.0;
 
   // Ratio of specific heat capacities
-  data.gas_gamma = 1.4;
+  data.gas_gamma = 1.66;
 
   // Average mass of an ion in proton masses
   data.mf = 1.2;
@@ -71,7 +71,7 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=false;
+  data.two_fluid=true;
   data.collisions=true;
   data.ion_rec=false;
   data.ion_rec_empirical=false;
@@ -172,7 +172,7 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       dataNeutral.bx_L=0.0;
       dataNeutral.by_L=0.0;
       dataNeutral.bz_L=0.0;
-      dataNeutral.en_L=en_L; //the factor of 2 is to pair up with total plasma pressure
+      dataNeutral.en_L=en_L*2.0; //the factor of 2 is to pair up with total plasma pressure
       dataNeutral.rho_R=rho_R;
       dataNeutral.vx_R=vx_R;
       dataNeutral.vy_R=vy_R;
@@ -180,7 +180,7 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       dataNeutral.bx_R=0.0;
       dataNeutral.by_R=0.0;
       dataNeutral.bz_R=0.0;
-      dataNeutral.en_R=en_R;
+      dataNeutral.en_R=en_R*2.0;
   }
   
   T_dataType w_lay=0.01;

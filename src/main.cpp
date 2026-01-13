@@ -22,7 +22,8 @@ int main(int argc, char *argv[]){
 
     SAMS::printWelcomeMessage();
     //MPI auto decomposition
-    mpi.autoDecomposition({false,false,false});
+    //mpi.autoDecomposition({false,false,false});    
+    mpi.autoDecomposition({true,true,true});
     //Initialize portable wrapper
     portableWrapper::initialize(argc, argv);
     SAMS::finishWelcomeMessage();
