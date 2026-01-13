@@ -13,25 +13,28 @@ static double gen_exp_int(double x, int n) {
         return std::exp(-x) / x; // Special case for n=0.
     } else {
         // Numerical integration using trapezoidal rule for n>=1. We use a change of variable
-        // u = 1 / omega, to convert the integral from 1 to infinity into an integral from 0 
-        // to 1. The new function to integate change from exp(-x omega) / omega^n to
-        // exp(-x / u) * u^(n-2). Note latter function goes to zero as u -> 0 for n>=1, so no 
-        // singularity.
-        const int nsteps = 1000.0;
-        double h = 1.0 / nsteps;
+        // u = 1 / (x * omega), to convert the integral from 1 to infinity into an integral from 0 
+        // to 1 / x. The new function to integate changes from exp(-x omega) / omega^n to
+        // exp(-1/u) * u^(n-2) with a scale factor of x^(n - 1). Note latter function goes 
+        // to zero as u -> 0 for n>=1, so no singularity.
+        const int nsteps = 100000.0;
+        double a = 0.0; // lower limit after change of variable
+        double b = 1.0 / x; // upper limit after change of variable
         double fa = 0.0; // integrand at lower limit
-        double fb = std::exp(-x) ; // integrand at upper limit
+        double fb = std::exp(-x) / std::pow(x, n - 2); // integrand at upper limit
+        double h = (b - a) / nsteps;
         double t_end = 0.5 * (fa + fb);
         double t_interior = 0.0;
-        for (int i = 1; i <= nsteps; ++i) {
+        for (int i = 1; i < nsteps; ++i) {
             double u = i * h;
-            t_interior += std::exp(-x / u) * std::pow(u, n - 2);
+            t_interior += std::exp(-1. / u) * std::pow(u, n - 2);
         }
-        return h * (t_end + t_interior);
+        double scale = std::pow(x, n - 1);
+        return h * (t_end + t_interior) * scale;
     }
 }
 
-int main() {
+static int calc_coeff_table(int nsamps) {
     using std::vector;
     const double pi = 3.14159265359;
     const double cli = 299792458.0; // m/s (not used)
@@ -55,8 +58,6 @@ int main() {
     vector<vector<double>> Ann(n_levels + 2, vector<double>(n_levels + 2, 0.0));
     vector<vector<double>> Bnn(n_levels + 2, vector<double>(n_levels + 2, 0.0));
     vector<vector<double>> G_T(n_levels + 2, vector<double>(n_levels + 2, 0.0));
-
-    int nsamps = 100000;
 
     double ymin = 0.54 / 13.6 * 2.18e-18 / kboltz / 100000.0;
     double ymax = 108.0;
@@ -184,4 +185,13 @@ int main() {
     std::cout << "Wrote colexp.dat (" << (nsamps + 1) << " rows)\n";
 
     return 0;
+}
+
+int main() {
+    std::cout << "e1(1.0)   = " << gen_exp_int(1.0, 1) << std::endl;
+    std::cout << "e1(0.001) = " << gen_exp_int(0.001, 1) << std::endl;
+    std::cout << "e1(500.0) = " << gen_exp_int(500.0, 1) << std::endl;
+
+    // int nsamps = 1;
+    // return calc_coeff_table(nsamps);
 }
