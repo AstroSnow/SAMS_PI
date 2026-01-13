@@ -9,8 +9,6 @@
 static double gen_exp_int(double x, int n) {
 // Generalized exponential integral E_n(x) = \int_1^\infty exp(-x omega) / omega^n d omega
 
-    const int nsteps = 1000.0;
-
     if (n == 0) {
         return std::exp(-x) / x; // Special case for n=0.
     } else {
@@ -19,6 +17,7 @@ static double gen_exp_int(double x, int n) {
         // to 1. The new function to integate change from exp(-x omega) / omega^n to
         // exp(-x / u) * u^(n-2). Note latter function goes to zero as u -> 0 for n>=1, so no 
         // singularity.
+        const int nsteps = 1000.0;
         double h = 1.0 / nsteps;
         double fa = 0.0; // integrand at lower limit
         double fb = std::exp(-x) ; // integrand at upper limit
