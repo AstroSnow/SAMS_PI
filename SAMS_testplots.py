@@ -15,7 +15,8 @@ import h5py
 ################################################################################
 #filename = "/home/ben/Documents/SAMS/SAMS_PI/finalState.h5"
 #filename = "/home/ben/Documents/SAMS/bug_fixes/SAMS_PI/finalState.h5"
-filename='/home/ben/Documents/SAMS/MPI/diagnostics_step_93.h5'
+#filename='/home/ben/Documents/SAMS/MPI/diagnostics_step_93.h5'
+filename='diagnostics_step_93.h5'
 #filename='/home/ben/Documents/SAMS/MPI/collisionless_100.h5'
 
 f=h5py.File(filename, "r")
@@ -64,6 +65,32 @@ pr_pip=(5.0/3.0-1.0)*(np.squeeze(np.asarray(f2['en_p'])) \
   +np.squeeze(np.asarray(f2['mz_p']))**2)/np.squeeze(np.asarray(f2['ro_p'])))
 ################################################################################
 
+################################################################################
+# Get PIP data as comparison
+filename='Lare2D_sod_shock.h5'
+#filename='/home/ben/Documents/SAMS/MPI/collisionless_100.h5'
+
+f3=h5py.File(filename, "r")
+# Print all root level object names (aka keys) 
+# these can be group or dataset names 
+print("Keys: %s" % f3.keys())
+# get first object name/key; may or may NOT be a group
+a3_group_key = list(f3.keys())[0]
+
+# get the object type for a_group_key: usually group or dataset
+print(type(f3[a3_group_key])) 
+
+# If a_group_key is a dataset name, 
+# this gets the dataset values and returns as a list
+data_lare = list(f3[a3_group_key])
+
+x_lare=np.asarray(f3['x'])
+x_face_lare=np.asarray(f3['x_face'])
+rho_lare=np.squeeze(np.asarray(f3['rho']))
+vx_lare=np.squeeze(np.asarray(f3['vx']))
+pr_lare=np.squeeze(np.asarray(f3['P']))
+################################################################################
+
 
 fig, axs = plt.subplots(2, 2)
 
@@ -105,6 +132,11 @@ axs[0,1].plot(x_pip,pr_pip,color='k',linestyle='--')
 axs[1,1].plot(x_pip,5.0/3.0*pr_pip/rho_pip,color='k',linestyle='--')
 #print(rho[:,0,0])
 #print(rho_n[:,0,0])
+
+axs[0,0].plot(x_lare,rho_lare,color='g',linestyle='--')
+axs[1,0].plot(x_face_lare,vx_lare,color='g',linestyle='--')
+axs[0,1].plot(x_lare,pr_lare,color='g',linestyle='--')
+axs[1,1].plot(x_lare,5.0/3.0*pr_lare/rho_lare,color='g',linestyle='--')
 
 #c=plt.pcolormesh(rho[0,:,:])
 #cb=plt.colorbar()
