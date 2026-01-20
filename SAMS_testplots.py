@@ -16,7 +16,7 @@ import h5py
 #filename = "/home/ben/Documents/SAMS/SAMS_PI/finalState.h5"
 #filename = "/home/ben/Documents/SAMS/bug_fixes/SAMS_PI/finalState.h5"
 #filename='/home/ben/Documents/SAMS/MPI/diagnostics_step_93.h5'
-filename='diagnostics_step_93.h5'
+filename='diagnostics_step_66.h5'
 #filename='/home/ben/Documents/SAMS/MPI/collisionless_100.h5'
 
 f=h5py.File(filename, "r")
@@ -101,13 +101,16 @@ x=mesh.get('x')[:]
 rho=np.asarray(f['rho'])
 vx=np.asarray(f['vx'])
 en_ion=np.asarray(f['energy_ion'])
+#en_electron=np.asarray(f['energy_electron'])
+en_electron=0.0
 pr=en_ion*(5.0/3.0-1.0)*rho
+pr_e=en_electron*(5.0/3.0-1.0)*rho
 T=5.0/3.0*pr/rho
-axs[0,0].plot(x,rho[:,0,0],color='b')
+axs[0,0].plot(x,rho[:,0,0],color='b',label='SAMS')
 axs[0, 0].set_title('density')
 axs[1,0].plot(x,vx[:,0,0],color='b')
 axs[1, 0].set_title('vx')
-axs[0,1].plot(x,pr[:,0,0],color='b')
+axs[0,1].plot(x,pr[:,0,0]+pr_e[:,0,0],color='b')
 axs[0, 1].set_title('pressure')
 axs[1,1].plot(x,T[:,0,0],color='b')
 axs[1, 1].set_title('temperature')
@@ -126,18 +129,20 @@ except:
     pass
 
 
-axs[0,0].plot(x_pip,rho_pip,color='k',linestyle='--')
+axs[0,0].plot(x_pip,rho_pip,color='k',linestyle='--',label='PIP')
 axs[1,0].plot(x_pip,vx_pip,color='k',linestyle='--')
 axs[0,1].plot(x_pip,pr_pip,color='k',linestyle='--')
 axs[1,1].plot(x_pip,5.0/3.0*pr_pip/rho_pip,color='k',linestyle='--')
 #print(rho[:,0,0])
 #print(rho_n[:,0,0])
 
-axs[0,0].plot(x_lare,rho_lare,color='g',linestyle='--')
+axs[0,0].plot(x_lare,rho_lare,color='g',linestyle='--',label='LaRe')
 axs[1,0].plot(x_face_lare,vx_lare,color='g',linestyle='--')
 axs[0,1].plot(x_lare,pr_lare,color='g',linestyle='--')
 axs[1,1].plot(x_lare,5.0/3.0*pr_lare/rho_lare,color='g',linestyle='--')
 
+
+axs[0,0].legend()
 #c=plt.pcolormesh(rho[0,:,:])
 #cb=plt.colorbar()
 #plt.plot(rho[:,0,0],color='b')
