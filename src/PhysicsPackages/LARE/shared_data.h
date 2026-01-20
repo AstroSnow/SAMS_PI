@@ -97,11 +97,14 @@ struct simulationData{
     //Two-fluid constants
     T_dataType alpha0; //Reference collisional timescale
     T_dataType two_fluid_timestep; //Reference collisional timescale
+    T_dataType two_fluid_n_levels; //Number of levels of hydrogen (only is ion_rec_nlevel=true)
     
     //Ionisation and recombination arrays
     volumeArray Gm_ion; // ionisation rate
     volumeArray Gm_rec; // recombination rate
-
+    volumeArray hydrogen_levels; //Hydrogen levels
+    T_dataType T_reference; //reference temperature
+    
     //Shock viscosity coefficients
     T_dataType visc1; // Linear shock viscosity coefficient
     T_dataType visc2; // Quadratic shock viscosity coefficient

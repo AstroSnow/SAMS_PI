@@ -59,7 +59,7 @@ void simulation::controlvariables(simulationData &data) {
   data.gas_gamma = 1.66;
 
   // Average mass of an ion in proton masses
-  data.mf = 1.2;
+  data.mf = 1.66;
 
   // Resistive MHD options
   data.resistiveMHD = false;
@@ -71,12 +71,13 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=true;
+  data.two_fluid=false;
   data.collisions=true;
   data.ion_rec=false;
   data.ion_rec_empirical=false;
   data.ion_rec_nlevel=false;
   data.alpha0=100.0;
+  data.T_reference=10000.0;
 
   // Output frequency and directory
   data.dt_snapshots = 0.02;

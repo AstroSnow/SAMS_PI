@@ -326,6 +326,12 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
                                                         )
                                                    +(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz)); //Is this electron or ion energy (or mean energy)? is the half needed?
         
+        //Work out how much energy is spent/gained by IR processes
+        if(data.ion_rec_empirical){ 
+            T_dataType ion_energy=(data.Gm_rec(ix,iy,iz)-
+                                  data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))*
+                                  13.6/kb_si/data.T_reference;        
+        }
         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 

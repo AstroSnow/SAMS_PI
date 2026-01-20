@@ -20,7 +20,7 @@
  * Register variables with the portable array manager.
  */
 
- void simulation::registerVars(bool two_fluid,bool ion_rec_empirical){
+ void simulation::registerVars(bool two_fluid,bool ion_rec){
 
     auto& varRegistry = SAMS::getvariableRegistry();
     auto& typeRegistry = SAMS::gettypeRegistry();
@@ -69,9 +69,10 @@
 
     varRegistry.registerVariable("vz1_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y",ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z",ghosts, SAMS::staggerType::HALF_CELL));
     varRegistry.registerVariable("dm_n", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts, SAMS::staggerType::CENTRED), SAMS::dimension("Y",ghosts, SAMS::staggerType::CENTRED), SAMS::dimension("Z",ghosts, SAMS::staggerType::CENTRED));
-        if (ion_rec_empirical){
+        if (ion_rec){
             varRegistry.registerVariable("Gm_rec", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
             varRegistry.registerVariable("Gm_ion", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
+            varRegistry.registerVariable("hydrogen_levels", type, SAMS::memorySpace::DEVICE, SAMS::dimension("nlevels",ghosts), SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts)); //The nlevels axis probably doesn't need ghosts....
         }
     }
  }
@@ -223,26 +224,16 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
     }
     
     //Map the ionisation/recombination arrays
-    if (data.ion_rec_empirical){
+    if (data.ion_rec_empirical || data.ion_rec_nlevel){
         varRegistry.fillPPArray("Gm_rec", data.Gm_rec);
         portableWrapper::assign(data.Gm_rec, 0.0);
         varRegistry.fillPPArray("Gm_ion", data.Gm_ion);
         portableWrapper::assign(data.Gm_ion, 0.0);
-/*        {
-            const auto& vardef = varRegistry.getVariable("Gm_rec");
-            const auto& dims = vardef.getDimensions();
-            manager.wrap(data.Gm_rec, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
-                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
-                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
-        }
-        {
-            const auto& vardef = varRegistry.getVariable("Gm_ion");
-            const auto& dims = vardef.getDimensions();
-            manager.wrap(data.Gm_ion, static_cast<T_dataType*>(vardef.getDataPtr()), Range(1-dims[0].lowerGhosts, nx + dims[0].upperGhosts), 
-                                                    Range(1-dims[1].lowerGhosts, ny + dims[1].upperGhosts), 
-                                                    Range(1-dims[2].lowerGhosts, nz + dims[2].upperGhosts));
-        }
-    */
+    }
+    // Register array for n_level hydrogen
+    if (data.ion_rec_nlevel){
+        varRegistry.fillPPArray("hydrogen_levels", data.hydrogen_levels);
+        portableWrapper::assign(data.hydrogen_levels, 0.0);
     }
     
     //Set the two_fluid arrays
