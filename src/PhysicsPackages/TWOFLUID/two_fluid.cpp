@@ -179,7 +179,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
             
             //Energy source terms - the 3/2 here needs fixing
             data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
-            //data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_electron_energy(ix,iy,iz);
+            data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_electron_energy(ix,iy,iz);
             dataNeutral.energy_neutral(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_energy(ix,iy,iz);                 
         }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
     }
@@ -328,9 +328,10 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
         
         //Work out how much energy is spent/gained by IR processes
         if(data.ion_rec_empirical){ 
-            T_dataType ion_energy=(data.Gm_rec(ix,iy,iz)-
+            T_dataType ionisation_energy=(data.Gm_rec(ix,iy,iz)-
                                   data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))*
-                                  13.6/kb_si/data.T_reference;        
+                                  13.6/kb_si/data.T_reference;     
+            plasma_ir_source.source_electron_energy(ix,iy,iz)+=ionisation_energy; 
         }
         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
