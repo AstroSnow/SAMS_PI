@@ -51,6 +51,7 @@ int main(int argc, char *argv[]){
     axRegistry.registerAxis("X", SAMS::MPIAxis(0));
     axRegistry.registerAxis("Y", SAMS::MPIAxis(1));
     axRegistry.registerAxis("Z", SAMS::MPIAxis(2));
+    axRegistry.registerAxis("nlevels");
     //Tell LARE to register its variables
     S.registerVars(data.two_fluid,data.ion_rec_empirical);
     
