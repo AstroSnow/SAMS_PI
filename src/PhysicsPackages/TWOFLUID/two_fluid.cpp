@@ -215,7 +215,7 @@ void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_so
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 
     //Much of this should go elsewhere
-    T_dataType T0=1.0e4; //Reference temperature
+    T_dataType T0=data.T_reference; //Reference temperature
     T_dataType n0=1.0e14; //Reference electron number density
     T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
 
@@ -253,7 +253,7 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 void ion_rec_rates_jeffries(simulationData &data, simulationData &dataNeutral){
 
     //Much of this should go elsewhere
-    T_dataType T0=1.0e4; //Reference temperature
+    T_dataType T0=data.T_reference; //Reference temperature
     T_dataType n0=1.0e14; //Reference electron number density
     T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
 
