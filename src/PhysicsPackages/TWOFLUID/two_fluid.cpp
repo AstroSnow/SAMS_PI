@@ -531,13 +531,14 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
     T_dataType ir_timestep= data.dt_multiplier * 
     portableWrapper::applyReduction(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {        
         T_dataType t1=std::abs(1.0/(data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz)));
+        printf("%f \n",data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz));
         return t1;
     }, LAMBDA(T_dataType &a, const T_dataType &b) {
         a=portableWrapper::min(a, b);
     }, data.largest_number,
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
     
-    //printf("gm_rec, gm_ion=%f %f \n",std::max(data.Gm_rec),std::max(data.Gm_ion));
+    //printf("gm_rec, gm_ion=%f %f \n",std::max_element(data.Gm_rec),std::max_element(data.Gm_ion));
     printf("dt (plasma, neutral, two-fluid)=%f %f %f %f \n",data.dt,dataNeutral.dt,data.two_fluid_timestep,ir_timestep);
     //if (ir_timestep < data.two_fluid_timestep) data.two_fluid_timestep=ir_timestep;
 
