@@ -24,7 +24,7 @@ void simulation::controlvariables(simulationData &data) {
   data.dt=0.0;
 
   // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = 100;
+  data.nsteps = 2;
   data.t_end = 0.2; // One day in seconds
 
   // Geometry options: cartesian, cylindrical, spherical
