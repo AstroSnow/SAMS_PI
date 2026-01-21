@@ -235,7 +235,7 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
         T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
-        T_dataType numberDensity_electron=data.rho(ix,iy,iz); // This isn't actually the numebr density. Neet to fix
+        T_dataType numberDensity_electron=data.rho(ix,iy,iz)*n0; 
 
         //Get ionisation and recomination rates
     	data.Gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
