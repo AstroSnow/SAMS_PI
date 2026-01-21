@@ -71,13 +71,14 @@ void simulation::controlvariables(simulationData &data) {
   data.rke = true;
   
   // Two-fluid flag
-  data.two_fluid=false;
+  data.two_fluid=true;
   data.collisions=true;
-  data.ion_rec=false;
-  data.ion_rec_empirical=false;
+  data.ion_rec=true;
+  data.ion_rec_empirical=true;
   data.ion_rec_nlevel=false;
   data.alpha0=100.0;
-  data.T_reference=10000.0;
+  data.T_reference=10000.0; //Reference electron temperature
+  data.ne_reference=1.0e14; //Reference electron number density
 
   // Output frequency and directory
   data.dt_snapshots = 0.02;

@@ -104,6 +104,7 @@ struct simulationData{
     volumeArray Gm_rec; // recombination rate
     volumeArray hydrogen_levels; //Hydrogen levels
     T_dataType T_reference; //reference temperature
+    T_dataType ne_reference; //reference electron number density
     
     //Shock viscosity coefficients
     T_dataType visc1; // Linear shock viscosity coefficient
