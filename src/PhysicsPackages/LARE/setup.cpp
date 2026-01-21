@@ -72,7 +72,7 @@
         if (ion_rec){
             varRegistry.registerVariable("Gm_rec", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
             varRegistry.registerVariable("Gm_ion", type, SAMS::memorySpace::DEVICE, SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts));
-            varRegistry.registerVariable("hydrogen_levels", type, SAMS::memorySpace::DEVICE, SAMS::dimension("nlevels",ghosts), SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts)); //The nlevels axis probably doesn't need ghosts....
+            //varRegistry.registerVariable("hydrogen_levels", type, SAMS::memorySpace::DEVICE, SAMS::dimension("nlevels",ghosts), SAMS::dimension("X",ghosts), SAMS::dimension("Y",ghosts), SAMS::dimension("Z",ghosts)); //The nlevels axis probably doesn't need ghosts....
         }
     }
  }
@@ -232,8 +232,8 @@ void simulation::allocate(simulationData &data,simulationData &dataNeutral)
     }
     // Register array for n_level hydrogen
     if (data.ion_rec_nlevel){
-        varRegistry.fillPPArray("hydrogen_levels", data.hydrogen_levels);
-        portableWrapper::assign(data.hydrogen_levels, 0.0);
+        //varRegistry.fillPPArray("hydrogen_levels", data.hydrogen_levels);
+        //portableWrapper::assign(data.hydrogen_levels, 0.0);
     }
     
     //Set the two_fluid arrays

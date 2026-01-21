@@ -51,9 +51,9 @@ int main(int argc, char *argv[]){
     axRegistry.registerAxis("X", SAMS::MPIAxis(0));
     axRegistry.registerAxis("Y", SAMS::MPIAxis(1));
     axRegistry.registerAxis("Z", SAMS::MPIAxis(2));
-    axRegistry.registerAxis("nlevels");
+    //if (data.ion_rec_nlevel) axRegistry.registerAxis("nlevels",SAMS::MPIAxis(3));
     //Tell LARE to register its variables
-    S.registerVars(data.two_fluid,data.ion_rec_empirical);
+    S.registerVars(data.two_fluid,data.ion_rec);
     
     //Other simulations would register their variables here too
 
@@ -61,6 +61,7 @@ int main(int argc, char *argv[]){
     axRegistry.setDomain("X", data.nx, data.x_min, data.x_max);
     axRegistry.setDomain("Y", data.ny, data.y_min, data.y_max);
     axRegistry.setDomain("Z", data.nz, data.z_min, data.z_max);
+    //if (data.ion_rec_nlevel) axRegistry.setDomain("nlevels", 5, 1, 5);
 
     mpi.decomposeAllAxes();
 
