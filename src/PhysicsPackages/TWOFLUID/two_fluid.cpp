@@ -13,7 +13,7 @@
    limitations under the License.
 */
 #include "shared_data.h"
-
+#include <algorithm>    // needed for std::min sometimes
 
 struct data_two_fluid_source_ir
 {
