@@ -1,10 +1,112 @@
 #include <cmath>
 #include <fstream>
-#include <cmath>
-#include <fstream>
-#include <iomanip>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 #include <vector>
+
+#include <netcdf.h>
+
+static void nc_check(int status, const char *context) {
+    if (status != NC_NOERR) {
+        throw std::runtime_error(std::string(context) + ": " + nc_strerror(status));
+    }
+}
+
+static void write_coeff_table_netcdf(const std::string &path,
+                                     const std::vector<double> &logT,
+                                     const std::vector<std::vector<double>> &coeffs,
+                                     double minT, double maxT) {
+    int ncid = -1;
+    nc_check(nc_create(path.c_str(), NC_CLOBBER, &ncid), "nc_create");
+
+    int dim_samples = -1;
+    int dim_coeffs = -1;
+    const size_t nsamps = logT.size();
+    const size_t ncoeffs = coeffs.empty() ? 0 : coeffs.front().size();
+
+    nc_check(nc_def_dim(ncid, "sample", nsamps, &dim_samples), "nc_def_dim sample");
+    nc_check(nc_def_dim(ncid, "coeff", ncoeffs, &dim_coeffs), "nc_def_dim coeff");
+
+    int var_logT = -1;
+    int var_coeffs = -1;
+    int dims_logT[1] = {dim_samples};
+    int dims_coeffs[2] = {dim_samples, dim_coeffs};
+
+    nc_check(nc_def_var(ncid, "logT", NC_DOUBLE, 1, dims_logT, &var_logT), "nc_def_var logT");
+    nc_check(nc_def_var(ncid, "coeffs", NC_DOUBLE, 2, dims_coeffs, &var_coeffs), "nc_def_var coeffs");
+
+    nc_check(nc_put_att_double(ncid, NC_GLOBAL, "min_logT", NC_DOUBLE, 1, &minT), "nc_put_att min_logT");
+    nc_check(nc_put_att_double(ncid, NC_GLOBAL, "max_logT", NC_DOUBLE, 1, &maxT), "nc_put_att max_logT");
+
+    nc_check(nc_enddef(ncid), "nc_enddef");
+
+    nc_check(nc_put_var_double(ncid, var_logT, logT.data()), "nc_put_var logT");
+
+    std::vector<double> flat;
+    flat.reserve(nsamps * ncoeffs);
+    for (const auto &row : coeffs) {
+        flat.insert(flat.end(), row.begin(), row.end());
+    }
+    if (!flat.empty()) {
+        nc_check(nc_put_var_double(ncid, var_coeffs, flat.data()), "nc_put_var coeffs");
+    }
+
+    nc_check(nc_close(ncid), "nc_close");
+}
+
+static bool read_coeff_table_netcdf(const std::string &path,
+                                    std::vector<double> &logT,
+                                    std::vector<std::vector<double>> &coeffs) {
+    int ncid = -1;
+    if (nc_open(path.c_str(), NC_NOWRITE, &ncid) != NC_NOERR) {
+        return false;
+    }
+
+    int dim_samples = -1;
+    int dim_coeffs = -1;
+    size_t nsamps = 0;
+    size_t ncoeffs = 0;
+
+    if (nc_inq_dimid(ncid, "sample", &dim_samples) != NC_NOERR ||
+        nc_inq_dimid(ncid, "coeff", &dim_coeffs) != NC_NOERR) {
+        nc_close(ncid);
+        return false;
+    }
+
+    if (nc_inq_dimlen(ncid, dim_samples, &nsamps) != NC_NOERR ||
+        nc_inq_dimlen(ncid, dim_coeffs, &ncoeffs) != NC_NOERR) {
+        nc_close(ncid);
+        return false;
+    }
+
+    int var_logT = -1;
+    int var_coeffs = -1;
+    if (nc_inq_varid(ncid, "logT", &var_logT) != NC_NOERR ||
+        nc_inq_varid(ncid, "coeffs", &var_coeffs) != NC_NOERR) {
+        nc_close(ncid);
+        return false;
+    }
+
+    logT.assign(nsamps, 0.0);
+    std::vector<double> flat(nsamps * ncoeffs, 0.0);
+
+    if (nc_get_var_double(ncid, var_logT, logT.data()) != NC_NOERR ||
+        (!flat.empty() && nc_get_var_double(ncid, var_coeffs, flat.data()) != NC_NOERR)) {
+        nc_close(ncid);
+        return false;
+    }
+
+    coeffs.assign(nsamps, std::vector<double>(ncoeffs, 0.0));
+    for (size_t i = 0; i < nsamps; ++i) {
+        for (size_t j = 0; j < ncoeffs; ++j) {
+            coeffs[i][j] = flat[i * ncoeffs + j];
+        }
+    }
+
+    nc_close(ncid);
+    return true;
+}
 
 static double gen_exp_int(double x, int n) {
 // Generalized exponential integral E_n(x) = \int_1^\infty exp(-x omega) / omega^n d omega
@@ -35,7 +137,7 @@ static double gen_exp_int(double x, int n) {
     }
 }
 
-static int calc_coeff_table(int nsamps) {
+static int gen_coeff_table(int nsamps) {
     using std::vector;
     const double pi = 3.14159265359;
     const double cli = 299792458.0; // m/s (not used)
@@ -106,8 +208,8 @@ static int calc_coeff_table(int nsamps) {
         }
     }
 
-    std::ofstream out("colexp.dat");
-    out << (nsamps + 1) << " " << minT << " " << maxT << '\n';
+    std::vector<double> logT_vals(nsamps + 1, 0.0);
+    std::vector<std::vector<double>> coeffs(nsamps + 1, std::vector<double>(15, 0.0));
 
     for (int ti = 0; ti <= nsamps; ++ti) {
         std::cout << " Temperature sample " << ti << " of " << nsamps << std::endl;
@@ -174,16 +276,27 @@ static int calc_coeff_table(int nsamps) {
         }
 
         // write output in same order as Fortran: logT then G_T(1,2)..G_T(5,6)
-        out << std::setprecision(8) << logT;
-        out << " " << G_T[1][2] << " " << G_T[1][3] << " " << G_T[1][4] << " " << G_T[1][5] << " " << G_T[1][6];
-        out << " " << G_T[2][3] << " " << G_T[2][4] << " " << G_T[2][5] << " " << G_T[2][6];
-        out << " " << G_T[3][4] << " " << G_T[3][5] << " " << G_T[3][6];
-        out << " " << G_T[4][5] << " " << G_T[4][6];
-        out << " " << G_T[5][6] << '\n';
+        logT_vals[ti] = logT;
+        int idx = 0;
+        coeffs[ti][idx++] = G_T[1][2];
+        coeffs[ti][idx++] = G_T[1][3];
+        coeffs[ti][idx++] = G_T[1][4];
+        coeffs[ti][idx++] = G_T[1][5];
+        coeffs[ti][idx++] = G_T[1][6];
+        coeffs[ti][idx++] = G_T[2][3];
+        coeffs[ti][idx++] = G_T[2][4];
+        coeffs[ti][idx++] = G_T[2][5];
+        coeffs[ti][idx++] = G_T[2][6];
+        coeffs[ti][idx++] = G_T[3][4];
+        coeffs[ti][idx++] = G_T[3][5];
+        coeffs[ti][idx++] = G_T[3][6];
+        coeffs[ti][idx++] = G_T[4][5];
+        coeffs[ti][idx++] = G_T[4][6];
+        coeffs[ti][idx++] = G_T[5][6];
     }
 
-    out.close();
-    std::cout << "Wrote colexp.dat (" << (nsamps + 1) << " rows)\n";
+    write_coeff_table_netcdf("colexp.nc", logT_vals, coeffs, minT, maxT);
+    std::cout << "Wrote colexp.nc (" << (nsamps + 1) << " rows)\n";
 
     return 0;
 }
@@ -192,6 +305,29 @@ int main() {
     // std::cout << "e1(1.0)   = " << gen_exp_int(1.0, 1) << std::endl;
     // std::cout << "e1(0.001) = " << gen_exp_int(0.001, 1) << std::endl;
     // std::cout << "e1(500.0) = " << gen_exp_int(500.0, 1) << std::endl;
-    int nsamps = 1;
-    return calc_coeff_table(nsamps);
+    int nsamps = 100;
+    int rc = gen_coeff_table(nsamps);
+
+    std::vector<double> logT_read;
+    std::vector<std::vector<double>> coeffs_read;
+    if (!read_coeff_table_netcdf("colexp.nc", logT_read, coeffs_read)) {
+        std::cerr << "Failed to read colexp.nc\n";
+        return 1;
+    }
+
+    std::ofstream txt("colexp_from_netcdf.txt");
+    if (!txt) {
+        std::cerr << "Failed to open colexp_from_netcdf.txt for writing\n";
+        return 1;
+    }
+
+    for (size_t i = 0; i < logT_read.size(); ++i) {
+        txt << logT_read[i];
+        for (size_t j = 0; j < coeffs_read[i].size(); ++j) {
+            txt << " " << coeffs_read[i][j];
+        }
+        txt << '\n';
+    }
+
+    return rc;
 }
