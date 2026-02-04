@@ -217,7 +217,7 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
     //Much of this should go elsewhere
     T_dataType T0=data.T_reference; //Reference temperature
     T_dataType n0=data.ne_reference; //Reference electron number density
-    T_dataType t_ir=1.0e0; //Reference recombination timescale (relative to collisional timescale)
+    T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
 
 	T_dataType Te_0=T0/1.1604e4; //Calculate electron temperature in eV
 	T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
