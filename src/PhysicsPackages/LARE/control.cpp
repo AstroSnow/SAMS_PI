@@ -16,7 +16,7 @@
 
 void simulation::controlvariables(simulationData &data) {
 
-  data.nx=128; // Number of cells in the x-direction
+  data.nx=32; // Number of cells in the x-direction
   data.ny=2; // Number of cells in the y-direction
   data.nz=2; // Number of cells in the z-direction
 
@@ -77,8 +77,8 @@ void simulation::controlvariables(simulationData &data) {
   data.ion_rec_empirical=true;
   data.ion_rec_nlevel=false;
   data.alpha0=100.0;
-  data.T_reference=10000.0; //Reference electron temperature
-  data.ne_reference=1.0e14; //Reference electron number density
+  data.T_reference=10000.0; //Reference electron temperature (Kelvin)
+  data.ne_reference=1.0e14; //Reference electron number density (cm^-3)
 
   // Output frequency and directory
   data.dt_snapshots = 0.02;
@@ -100,6 +100,7 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   portableWrapper::assign(data.bx,0.0);
   portableWrapper::assign(data.by,0.0);
   portableWrapper::assign(data.bz,0.0);
+ 
   
   //declare some arrays. Rewritten from the shock tube declaration
   T_dataType rho_L = 1.0;
@@ -129,6 +130,11 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       rho_R = 0.125;
       P_R = 0.1;
       vx_R = 0.0;
+      
+      if (data.ion_rec_empirical){
+        P_L=P_L/data.gas_gamma; //Normalise to sound speed of 1
+        P_R=P_R/data.gas_gamma;
+      }
   }
   if (std::strcmp(shock_tube_problem,"briowu")==0){
       // Brio & Wu Shock tube
@@ -146,7 +152,7 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       by_R = -1.0;
   }
   
-  T_dataType en_L =P_L/2.0/rho_L/(data.gas_gamma-1.0);
+  T_dataType en_L =P_L/2.0/rho_L/(data.gas_gamma-1.0); //The half comes from electron and proton pressures
   T_dataType en_R =P_R/2.0/rho_R/(data.gas_gamma-1.0);
   
   //Assign perminent values for BCs
@@ -184,6 +190,34 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
       dataNeutral.by_R=0.0;
       dataNeutral.bz_R=0.0;
       dataNeutral.en_R=en_R*2.0;
+      
+      if (data.ion_rec_empirical){
+
+        //Much of this should go elsewhere
+        T_dataType T0=data.T_reference; //Reference temperature
+        T_dataType n0=data.ne_reference; //Reference electron number density
+        T_dataType t_ir=1.0e0; //Reference recombination timescale (relative to collisional timescale)
+
+	    T_dataType Te_0=T0/1.1604e4; //Calculate electron temperature in eV
+	    T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
+
+	    //initial equilibrium fractions
+	    T_dataType ioneq=(2.6e-19/std::sqrt(Te_0))/(2.91e-14/(0.232+13.6/Te_0)*std::pow(13.6/Te_0,0.39)*std::exp(-13.6/Te_0));
+	    T_dataType f_n=ioneq/(ioneq+1.0);
+	    T_dataType f_p=1.0-f_n;
+	    T_dataType f_p_p=f_p/(f_n+2.0*f_p); //note the missing factor of 2 from the PIP code since electron and proton have different energies
+	    T_dataType f_p_n=f_n/(f_n+2.0*f_p); 
+        data.rho_L=data.rho_L*f_p;
+        data.rho_R=data.rho_R*f_p; //This is not in balance!
+        dataNeutral.rho_L=dataNeutral.rho_L*f_n;
+        dataNeutral.rho_R=dataNeutral.rho_R*f_n; //This is not in balance!
+        
+        data.en_L=data.en_L*f_p_p/f_p;
+        data.en_R=data.en_R*f_p_p/f_p; //This is not in balance!
+        dataNeutral.en_L=dataNeutral.en_L*f_p_n/f_n;
+        dataNeutral.en_R=dataNeutral.en_R*f_p_n/f_n; //This is not in balance!
+      
+      }
   }
   
   T_dataType w_lay=0.01;
@@ -246,6 +280,7 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   printf("unknown initial condition");
   }
 
+  printf("%f %f \n",data.rho(1,1,1),data.energy_electron(1,1,1)*(data.gas_gamma-1.0)*data.rho(1,1,1));
 
   if (data.rke) portableWrapper::assign(data.delta_ke, 0.0);
 

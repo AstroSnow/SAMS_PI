@@ -217,7 +217,7 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
     //Much of this should go elsewhere
     T_dataType T0=data.T_reference; //Reference temperature
     T_dataType n0=data.ne_reference; //Reference electron number density
-    T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
+    T_dataType t_ir=1.0e0; //Reference recombination timescale (relative to collisional timescale)
 
 	T_dataType Te_0=T0/1.1604e4; //Calculate electron temperature in eV
 	T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
@@ -228,19 +228,21 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 	T_dataType f_p=1.0-f_n;
 	T_dataType f_p_p=2.0*f_p/(f_n+2.0*f_p);
 	
-    T_dataType tfac=0.5*f_p_p/f_p; //Normalisation assumes sound speed normalisation
+    T_dataType tfac=0.5*f_p_p/f_p; //Normalisation assumes bulk sound speed normalisation
 	
 
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
-        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
-        T_dataType numberDensity_electron=data.rho(ix,iy,iz)*n0; 
+        T_dataType temperature_electron = 2.0*data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType numberDensity_electron=data.rho(ix,iy,iz); 
 
         //Get ionisation and recomination rates
     	data.Gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
     	data.Gm_ion(ix,iy,iz)=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
-    	data.Gm_ion(ix,iy,iz)=data.Gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;        
+    	data.Gm_ion(ix,iy,iz)=data.Gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;    
+    	
+    	printf("%f %f %f %f %f \n",f_p,data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz), temperature_electron,data.Gm_rec(ix,iy,iz),data.Gm_ion(ix,iy,iz));    
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
 
 
@@ -531,7 +533,8 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
     T_dataType ir_timestep= data.dt_multiplier * 
     portableWrapper::applyReduction(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {        
         T_dataType t1=std::abs(1.0/(data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz)));
-        printf("%f \n",data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz));
+        //printf("%f \n",data.rho(ix,iy,iz)*data.Gm_rec(ix,iy,iz)-dataNeutral.rho(ix,iy,iz)*data.Gm_ion(ix,iy,iz));
+        //printf("%f %f \n",data.Gm_rec(ix,iy,iz),data.Gm_ion(ix,iy,iz));
         return t1;
     }, LAMBDA(T_dataType &a, const T_dataType &b) {
         a=portableWrapper::min(a, b);
