@@ -202,6 +202,17 @@ struct simulationData{
     T_dataType en_R;
 };
 
+/**
+ * This is a struct that hold all physics data, eg. ionisation rates, etc.
+ */
+struct physicsData{
+
+    std::string ion_path = "./data/colexp.nc";
+    std::vector<double> ion_logT;
+    std::vector<std::vector<double>> ion_coeffs;
+
+};
+
 class simulation{
 private:
 
@@ -357,7 +368,7 @@ public:
     /**
     * Routine to read the rates for ionisation/recombination/excitation/de-excitation
     */
-    void two_fluid_read_rates(simulationData &data);
+    void two_fluid_read_rates(physicsData &data);
 };
 
 #endif // SHARED_DATA_H

@@ -665,17 +665,14 @@ void interpolate_rates(T_dataType temperature,T_indexType lower_level,T_indexTyp
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for the reading the rates
-void simulation::two_fluid_read_rates(simulationData &data){
+void simulation::two_fluid_read_rates(physicsData &data){
 
-    const std::string path = "./data/colexp.nc";
-    std::vector<double> logT;
-    std::vector<std::vector<double>> coeffs;
 
     int ncid = -1;
-    int nc_status = nc_open(path.c_str(), NC_NOWRITE, &ncid);
+    int nc_status = nc_open(data.ion_path.c_str(), NC_NOWRITE, &ncid);
     if (nc_status != NC_NOERR) {
     fprintf(stderr, "two_fluid_read_rates: nc_open failed for '%s': %s\n",
-        path.c_str(), nc_strerror(nc_status));
+        data.ion_path.c_str(), nc_strerror(nc_status));
     return;
     }
 
@@ -731,10 +728,10 @@ void simulation::two_fluid_read_rates(simulationData &data){
         return;
     }
 
-    logT.assign(nsamps, 0.0);
+    data.ion_logT.assign(nsamps, 0.0);
     std::vector<double> flat(nsamps * ncoeffs, 0.0);
 
-    nc_status = nc_get_var_double(ncid, var_logT, logT.data());
+    nc_status = nc_get_var_double(ncid, var_logT, data.ion_logT.data());
     if (nc_status != NC_NOERR) {
         fprintf(stderr, "two_fluid_read_rates: read 'logT' failed: %s\n",
                 nc_strerror(nc_status));
@@ -751,10 +748,10 @@ void simulation::two_fluid_read_rates(simulationData &data){
         }
     }
 
-    coeffs.assign(nsamps, std::vector<double>(ncoeffs, 0.0));
+    data.ion_coeffs.assign(nsamps, std::vector<double>(ncoeffs, 0.0));
     for (size_t i = 0; i < nsamps; ++i) {
         for (size_t j = 0; j < ncoeffs; ++j) {
-            coeffs[i][j] = flat[i * ncoeffs + j];
+            data.ion_coeffs[i][j] = flat[i * ncoeffs + j];
         }
     }
 

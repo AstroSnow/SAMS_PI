@@ -33,6 +33,7 @@ int main(int argc, char *argv[]){
     //simulation S2;
     simulationData data;
     simulationData dataNeutral;
+    physicsData physData;
 
     //Setup control variables
     S.controlvariables(data);
@@ -45,7 +46,7 @@ int main(int argc, char *argv[]){
 	  dataNeutral.is_neutral=true;
 		printf("Finished initialising two-fluid arrays \n");
     printf("Getting rates \n");
-    S.two_fluid_read_rates(data);
+    S.two_fluid_read_rates(physData);
 	}
 
     //Register axes and attach them to MPI dimensions
@@ -82,7 +83,7 @@ int main(int argc, char *argv[]){
         S.two_fluid_grid(data,dataNeutral);
         if (data.ion_rec_nlevel){
             printf("Getting rates \n");
-            S.two_fluid_read_rates(data);
+            S.two_fluid_read_rates(physData);
         }
     }
 
