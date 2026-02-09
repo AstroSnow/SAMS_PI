@@ -344,13 +344,70 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
         neutral_ir_source.source_v_y(ix,iy,iz) += Gm_rec_vertex*rho_plasma_vertex*v_D_y/rho_neutral_vertex;
         neutral_ir_source.source_v_z(ix,iy,iz) += Gm_rec_vertex*rho_plasma_vertex*v_D_z/rho_neutral_vertex;
         
+        
+        //Get velocity at cell centres
+        T_dataType v_x_plasma_centre=  (data.vx(ix  , iy  , iz  ) + 
+                                        data.vx(ix-1, iy  , iz  ) + 
+                                        data.vx(ix  , iy-1, iz  ) + 
+                                        data.vx(ix-1, iy-1, iz  ) + 
+                                        data.vx(ix  , iy  , iz-1) + 
+                                        data.vx(ix-1, iy  , iz-1) + 
+                                        data.vx(ix  , iy-1, iz-1) + 
+                                        data.vx(ix-1, iy-1, iz-1))* 
+                                        0.125;
+        T_dataType v_y_plasma_centre=  (data.vy(ix  , iy  , iz  ) + 
+                                        data.vy(ix-1, iy  , iz  ) + 
+                                        data.vy(ix  , iy-1, iz  ) + 
+                                        data.vy(ix-1, iy-1, iz  ) + 
+                                        data.vy(ix  , iy  , iz-1) + 
+                                        data.vy(ix-1, iy  , iz-1) + 
+                                        data.vy(ix  , iy-1, iz-1) + 
+                                        data.vy(ix-1, iy-1, iz-1))* 
+                                        0.125;
+        T_dataType v_z_plasma_centre=  (data.vz(ix  , iy  , iz  ) + 
+                                        data.vz(ix-1, iy  , iz  ) + 
+                                        data.vz(ix  , iy-1, iz  ) + 
+                                        data.vz(ix-1, iy-1, iz  ) + 
+                                        data.vz(ix  , iy  , iz-1) + 
+                                        data.vz(ix-1, iy  , iz-1) + 
+                                        data.vz(ix  , iy-1, iz-1) + 
+                                        data.vz(ix-1, iy-1, iz-1))* 
+                                        0.125;
+        T_dataType v_x_neutral_centre= (dataNeutral.vx(ix  , iy  , iz  ) + 
+                                        dataNeutral.vx(ix-1, iy  , iz  ) + 
+                                        dataNeutral.vx(ix  , iy-1, iz  ) + 
+                                        dataNeutral.vx(ix-1, iy-1, iz  ) + 
+                                        dataNeutral.vx(ix  , iy  , iz-1) + 
+                                        dataNeutral.vx(ix-1, iy  , iz-1) + 
+                                        dataNeutral.vx(ix  , iy-1, iz-1) + 
+                                        dataNeutral.vx(ix-1, iy-1, iz-1))* 
+                                        0.125;
+        T_dataType v_y_neutral_centre= (dataNeutral.vy(ix  , iy  , iz  ) + 
+                                        dataNeutral.vy(ix-1, iy  , iz  ) + 
+                                        dataNeutral.vy(ix  , iy-1, iz  ) + 
+                                        dataNeutral.vy(ix-1, iy-1, iz  ) + 
+                                        dataNeutral.vy(ix  , iy  , iz-1) + 
+                                        dataNeutral.vy(ix-1, iy  , iz-1) + 
+                                        dataNeutral.vy(ix  , iy-1, iz-1) + 
+                                        dataNeutral.vy(ix-1, iy-1, iz-1))* 
+                                        0.125;
+        T_dataType v_z_neutral_centre= (dataNeutral.vz(ix  , iy  , iz  ) + 
+                                        dataNeutral.vz(ix-1, iy  , iz  ) + 
+                                        dataNeutral.vz(ix  , iy-1, iz  ) + 
+                                        dataNeutral.vz(ix-1, iy-1, iz  ) + 
+                                        dataNeutral.vz(ix  , iy  , iz-1) + 
+                                        dataNeutral.vz(ix-1, iy  , iz-1) + 
+                                        dataNeutral.vz(ix  , iy-1, iz-1) + 
+                                        dataNeutral.vz(ix-1, iy-1, iz-1))* 
+                                        0.125;
+        
         //Energy source terms
-        plasma_ir_source.source_energy(ix,iy,iz) += -0.5*(data.Gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
-                                                                                data.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
-                                                                                data.vz(ix,iy,iz)*data.vz(ix,iy,iz))
-                                                        -data.Gm_ion(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
-                                                                                dataNeutral.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
-                                                                                dataNeutral.vz(ix,iy,iz)*data.vz(ix,iy,iz))
+        plasma_ir_source.source_energy(ix,iy,iz) += -0.5*(data.Gm_rec(ix,iy,iz)*(pow(v_x_plasma_centre,2)+
+                                                                                 pow(v_y_plasma_centre,2)+
+                                                                                 pow(v_z_plasma_centre,2))
+                                                        -data.Gm_ion(ix,iy,iz)*(pow(v_x_neutral_centre,2)+
+                                                                                pow(v_y_neutral_centre,2)+
+                                                                                pow(v_z_neutral_centre,2))
                                                                               *dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)                                                                                
                                                         )
                                                    -(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
@@ -370,7 +427,7 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
             T_dataType ionisation_energy=(data.Gm_rec(ix,iy,iz)-
                                   data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/(data.gas_gamma-1.0)/data.rho(ix,iy,iz))*
                                   13.6/kb_si/data.T_reference;     
-            plasma_ir_source.source_electron_energy(ix,iy,iz)+=ionisation_energy; 
+            //plasma_ir_source.source_electron_energy(ix,iy,iz)+=ionisation_energy; 
         }
         
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
