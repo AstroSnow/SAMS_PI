@@ -185,7 +185,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
             data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_energy(ix,iy,iz);
             data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_ir_source.source_electron_energy(ix,iy,iz);
             dataNeutral.energy_neutral(ix,iy,iz)+=0.5*data.dt*neutral_ir_source.source_energy(ix,iy,iz);                 
-        }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+        }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
     }
     
 }
@@ -440,7 +440,7 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
             //plasma_ir_source.source_electron_energy(ix,iy,iz)+=ionisation_energy; 
         }
         
-    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
 
 
 }
@@ -581,7 +581,7 @@ void get_collisional_source_terms(simulationData &data, simulationData &dataNeut
                         + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
                                    
         
-    }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+    }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
 
 
 }
