@@ -75,7 +75,7 @@ int main(int argc, char *argv[]){
 
 
     //Tell LARE to grab the shared allocated variables
-	S.allocate(data,dataNeutral);
+	  S.allocate(data,dataNeutral);
     //Tell LARE to set up its grid
     S.grid(data);
     if (data.two_fluid) {
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]){
 		portableWrapper::fence();
     S.initial_conditions(data,dataNeutral);
 
-	portableWrapper::fence();
+	  portableWrapper::fence();
     S.boundary_conditions(data);
     portableWrapper::fence();
     S.boundary_conditions(dataNeutral);

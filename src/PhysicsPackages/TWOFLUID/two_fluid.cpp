@@ -658,10 +658,25 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for interpolating the rates
-void interpolate_rates(T_dataType temperature,T_indexType lower_level,T_indexType upper_level,T_dataType rate_coefficient) {
+double interpolate_rates(physicsData &data, double logT, int i){
 
-//printf("%f %i %i %f \n"temperature, lower_level,upper_level,rate_coefficient);
-
+    // Find the two samples in data.ion_logT that bracket logT
+    // This assumes data.ion_logT is sorted in ascending order
+    // If logT is outside the range of data.ion_logT, we choose to clamp to the nearest value.
+    if (logT <= data.ion_logT.front()) {
+        return data.ion_coeffs.front()[i]; 
+    } else if (logT >= data.ion_logT.back()) {
+        return data.ion_coeffs.back()[i];
+    } else {
+        size_t n_t = 0;
+        for (size_t k = 0; k < data.ion_logT.size() - 1; ++k) {
+            if (data.ion_logT[k] <= logT && logT < data.ion_logT[k + 1]) {
+                n_t = k;
+                break;
+            }
+        }
+        return data.ion_coeffs[n_t][i] + (data.ion_coeffs[n_t + 1][i] - data.ion_coeffs[n_t][i]) * (logT - data.ion_logT[n_t]) / (data.ion_logT[n_t + 1] - data.ion_logT[n_t]);
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for the reading the rates
