@@ -15,7 +15,7 @@
 #include "shared_data.h"
 #include <algorithm>    // needed for std::min sometimes
 
-// #include <netcdf.h>
+#include <netcdf.h>
 
 struct data_two_fluid_source_ir
 {
@@ -667,53 +667,98 @@ void interpolate_rates(T_dataType temperature,T_indexType lower_level,T_indexTyp
 //Routine for the reading the rates
 void simulation::two_fluid_read_rates(simulationData &data){
 
-    //     int ncid = -1;
-    // if (nc_open(path.c_str(), NC_NOWRITE, &ncid) != NC_NOERR) {
-    //     return false;
-    // }
+    const std::string path = "colexp.nc";
+    std::vector<double> logT;
+    std::vector<std::vector<double>> coeffs;
 
-    // int dim_samples = -1;
-    // int dim_coeffs = -1;
-    // size_t nsamps = 0;
-    // size_t ncoeffs = 0;
+    int ncid = -1;
+    int nc_status = nc_open(path.c_str(), NC_NOWRITE, &ncid);
+    if (nc_status != NC_NOERR) {
+    fprintf(stderr, "two_fluid_read_rates: nc_open failed for '%s': %s\n",
+        path.c_str(), nc_strerror(nc_status));
+    return;
+    }
 
-    // if (nc_inq_dimid(ncid, "sample", &dim_samples) != NC_NOERR ||
-    //     nc_inq_dimid(ncid, "coeff", &dim_coeffs) != NC_NOERR) {
-    //     nc_close(ncid);
-    //     return false;
-    // }
+    int dim_samples = -1;
+    int dim_coeffs = -1;
+    size_t nsamps = 0;
+    size_t ncoeffs = 0;
 
-    // if (nc_inq_dimlen(ncid, dim_samples, &nsamps) != NC_NOERR ||
-    //     nc_inq_dimlen(ncid, dim_coeffs, &ncoeffs) != NC_NOERR) {
-    //     nc_close(ncid);
-    //     return false;
-    // }
+    nc_status = nc_inq_dimid(ncid, "sample", &dim_samples);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing dim 'sample': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimid(ncid, "coeff", &dim_coeffs);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing dim 'coeff': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
 
-    // int var_logT = -1;
-    // int var_coeffs = -1;
-    // if (nc_inq_varid(ncid, "logT", &var_logT) != NC_NOERR ||
-    //     nc_inq_varid(ncid, "coeffs", &var_coeffs) != NC_NOERR) {
-    //     nc_close(ncid);
-    //     return false;
-    // }
+    nc_status = nc_inq_dimlen(ncid, dim_samples, &nsamps);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: dimlen 'sample' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimlen(ncid, dim_coeffs, &ncoeffs);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: dimlen 'coeff' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
 
-    // logT.assign(nsamps, 0.0);
-    // std::vector<double> flat(nsamps * ncoeffs, 0.0);
+    int var_logT = -1;
+    int var_coeffs = -1;
+    nc_status = nc_inq_varid(ncid, "logT", &var_logT);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing var 'logT': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_varid(ncid, "coeffs", &var_coeffs);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing var 'coeffs': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
 
-    // if (nc_get_var_double(ncid, var_logT, logT.data()) != NC_NOERR ||
-    //     (!flat.empty() && nc_get_var_double(ncid, var_coeffs, flat.data()) != NC_NOERR)) {
-    //     nc_close(ncid);
-    //     return false;
-    // }
+    logT.assign(nsamps, 0.0);
+    std::vector<double> flat(nsamps * ncoeffs, 0.0);
 
-    // coeffs.assign(nsamps, std::vector<double>(ncoeffs, 0.0));
-    // for (size_t i = 0; i < nsamps; ++i) {
-    //     for (size_t j = 0; j < ncoeffs; ++j) {
-    //         coeffs[i][j] = flat[i * ncoeffs + j];
-    //     }
-    // }
+    nc_status = nc_get_var_double(ncid, var_logT, logT.data());
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: read 'logT' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    if (!flat.empty()) {
+        nc_status = nc_get_var_double(ncid, var_coeffs, flat.data());
+        if (nc_status != NC_NOERR) {
+            fprintf(stderr, "two_fluid_read_rates: read 'coeffs' failed: %s\n",
+                    nc_strerror(nc_status));
+            nc_close(ncid);
+            return;
+        }
+    }
 
-    // nc_close(ncid);
+    coeffs.assign(nsamps, std::vector<double>(ncoeffs, 0.0));
+    for (size_t i = 0; i < nsamps; ++i) {
+        for (size_t j = 0; j < ncoeffs; ++j) {
+            coeffs[i][j] = flat[i * ncoeffs + j];
+        }
+    }
 
-    printf("Rates read successfully \n");
+    nc_close(ncid);
+
+    printf("Rates read successfully \n Number of samples: %zu \n Number of coefficients: %zu \n", nsamps, ncoeffs);
 }

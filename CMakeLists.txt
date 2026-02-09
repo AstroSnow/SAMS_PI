@@ -38,6 +38,25 @@ find_package(OpenMP REQUIRED)
 # Search for HDF5 AFTER Threads is found
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 
+# --- NetCDF SETUP ---
+# Pull in NetCDF C library for TWOFLUID utilities
+find_package(NetCDF REQUIRED COMPONENTS C)
+
+# Prefer imported NetCDF targets when available
+if(TARGET NetCDF::NetCDF_C)
+  set(NETCDF_LINK_TARGET NetCDF::NetCDF_C)
+elseif(TARGET NetCDF::NetCDF)
+  set(NETCDF_LINK_TARGET NetCDF::NetCDF)
+endif()
+
+# Fallback find for library/include if variables are empty
+if(NOT NetCDF_INCLUDE_DIRS)
+  find_path(NetCDF_INCLUDE_DIRS netcdf.h)
+endif()
+if(NOT NetCDF_LIBRARIES)
+  find_library(NetCDF_LIBRARIES netcdf)
+endif()
+
 
 # Debug level setup
 set(DEBUG_LEVEL "0" CACHE STRING "Debug level: 0 (none), 1, 2, 3")
@@ -112,6 +131,7 @@ add_executable(sams ${SAMS_SOURCES})
 # Include Directories
 target_include_directories(sams PRIVATE 
     ${HDF5_INCLUDE_DIRS}
+    ${NetCDF_INCLUDE_DIRS}
     "${CMAKE_SOURCE_DIR}/src/PhysicsPackages/LARE"
     "${CMAKE_SOURCE_DIR}/src/PhysicsPackages/TWOFLUID"
     "${CMAKE_SOURCE_DIR}/src/PhysicsPackages/LARE/include"
@@ -126,6 +146,12 @@ target_link_libraries(sams PRIVATE
     Threads::Threads
     OpenMP::OpenMP_CXX
 )
+
+if(NETCDF_LINK_TARGET)
+  target_link_libraries(sams PRIVATE ${NETCDF_LINK_TARGET})
+else()
+  target_link_libraries(sams PRIVATE ${NetCDF_LIBRARIES})
+endif()
 
 if (KOKKOS_CUDA OR KOKKOS_HIP OR KOKKOS_SYCL OR KOKKOS_OPENMP)
   add_compile_definitions(USE_KOKKOS)
