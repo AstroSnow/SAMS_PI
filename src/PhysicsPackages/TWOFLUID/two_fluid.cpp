@@ -353,7 +353,7 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
                                                                                 dataNeutral.vz(ix,iy,iz)*data.vz(ix,iy,iz))
                                                                               *dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)                                                                                
                                                         )
-                                                   -(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)); //Is this electron or ion energy (or mean energy)? is the half needed?
+                                                   -(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
         
         neutral_ir_source.source_energy(ix,iy,iz) += 0.5*(data.Gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
                                                                                 data.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
@@ -363,12 +363,12 @@ void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral,
                                                                                 dataNeutral.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
                                                                                 dataNeutral.vz(ix,iy,iz)*data.vz(ix,iy,iz))
                                                         )
-                                                   +(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz)); //Is this electron or ion energy (or mean energy)? is the half needed?
+                                                   +(data.Gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)-data.Gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
         
         //Work out how much energy is spent/gained by IR processes
         if(data.ion_rec_empirical){ 
             T_dataType ionisation_energy=(data.Gm_rec(ix,iy,iz)-
-                                  data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))*
+                                  data.Gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/(data.gas_gamma-1.0)/data.rho(ix,iy,iz))*
                                   13.6/kb_si/data.T_reference;     
             plasma_ir_source.source_electron_energy(ix,iy,iz)+=ionisation_energy; 
         }
