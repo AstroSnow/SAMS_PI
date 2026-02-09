@@ -40,10 +40,12 @@ int main(int argc, char *argv[]){
     data.is_neutral=false;
     
 	if (data.two_fluid) {
-	    printf("Initialising two-fluid arrays \n");
-	    S.controlvariables(dataNeutral);
-	    dataNeutral.is_neutral=true;
+	  printf("Initialising two-fluid arrays \n");
+	  S.controlvariables(dataNeutral);
+	  dataNeutral.is_neutral=true;
 		printf("Finished initialising two-fluid arrays \n");
+    printf("Getting rates \n");
+    S.two_fluid_read_rates(data);
 	}
 
     //Register axes and attach them to MPI dimensions
