@@ -30,9 +30,10 @@ void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_so
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source);
 void get_collisional_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
+void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral);
 void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
-void interpolate_rates(simulationData &data,simulationData &dataNeutral);
+void interpolate_rates(T_dataType temperature,T_indexType lower_level,T_indexType upper_level,T_dataType rate_coefficient);
 //void get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -127,6 +128,9 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
     //Get the ionisation rates
     if (data.ion_rec_empirical){        
         ion_rec_rates_empirical(data,dataNeutral);
+    }
+    if (data.ion_rec_nlevel){        
+        ion_rec_rates_nlevel(data,dataNeutral);
     }
     
     //Calculate the source terms for the two-fluid interactions
@@ -252,7 +256,7 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 //Formulation from Snow+2023 paper using Jeffries1968
 //Controlled using the data.ion_rec_jeffries in control.cpp
 //Not used yet
-void ion_rec_rates_jeffries(simulationData &data, simulationData &dataNeutral){
+void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral){
 
     //Much of this should go elsewhere
     T_dataType T0=data.T_reference; //Reference temperature
@@ -276,6 +280,12 @@ void ion_rec_rates_jeffries(simulationData &data, simulationData &dataNeutral){
         //Get Temperatures
         T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
         T_dataType numberDensity_electron=data.rho(ix,iy,iz); // This isn't actually the numebr density. Neet to fix
+        
+        //Interpolate rates
+        T_indexType lower_level=1;
+        T_indexType upper_level=2;
+        T_dataType rate_coefficient_1_2=0; 
+        interpolate_rates(temperature_electron, lower_level,upper_level,rate_coefficient_1_2);
 
         //Get ionisation and recomination rates
     	//data.Gm_rec(ix,iy,iz)=
@@ -643,7 +653,9 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for interpolating the rates
-void interpolate_rates(simulationData &data,simulationData &dataNeutral) {
+void interpolate_rates(T_dataType temperature,T_indexType lower_level,T_indexType upper_level,T_dataType rate_coefficient) {
+
+//printf("%f %i %i %f \n"temperature, lower_level,upper_level,rate_coefficient);
 
 }
 ////////////////////////////////////////////////////////////////////////////////////////
