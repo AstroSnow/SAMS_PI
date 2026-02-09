@@ -667,7 +667,7 @@ void interpolate_rates(T_dataType temperature,T_indexType lower_level,T_indexTyp
 //Routine for the reading the rates
 void simulation::two_fluid_read_rates(simulationData &data){
 
-    const std::string path = "colexp.nc";
+    const std::string path = "./data/colexp.nc";
     std::vector<double> logT;
     std::vector<std::vector<double>> coeffs;
 
