@@ -83,6 +83,9 @@ void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral
      dataNeutral.isyUB=data.isyUB;
      dataNeutral.iszLB=data.iszLB;
      dataNeutral.iszUB=data.iszUB;
+     dataNeutral.xcLocalRange=data.xcLocalRange;
+     dataNeutral.ycLocalRange=data.ycLocalRange;
+     dataNeutral.zcLocalRange=data.zcLocalRange;
      
 }
 
