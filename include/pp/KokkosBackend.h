@@ -42,8 +42,11 @@ namespace portableWrapper{
                 if constexpr (sizeof...(ranges) == 1)
                     return Kokkos::RangePolicy<KOKKOS_EXECUTION_SPACE,iType>(starts[0], ends[0]);
                 else
-                    //This avoids having to reverse the order of the ranges for Kokkos
+                    #if defined(KOKKOS_CUDA) || defined(KOKKOS_HIP)
                     return Kokkos::MDRangePolicy<Kokkos::Rank<sizeof...(T_ranges),Kokkos::Iterate::Right, Kokkos::Iterate::Right>,KOKKOS_EXECUTION_SPACE,iType>(starts, ends);
+                    #else
+                    return Kokkos::MDRangePolicy<Kokkos::Rank<sizeof...(T_ranges),Kokkos::Iterate::Right, Kokkos::Iterate::Right>,KOKKOS_EXECUTION_SPACE,iType>(starts, ends);
+                    #endif
             }();
             Kokkos::parallel_for(
                 name,
@@ -86,7 +89,7 @@ namespace portableWrapper{
             KOKKOS_INLINE_FUNCTION
             result_view_type view() const
             {
-                return result_view_type(&value_, 1);
+                return result_view_type(&value_);
             }
 
             KOKKOS_INLINE_FUNCTION
@@ -239,16 +242,73 @@ namespace portableWrapper{
             Kokkos::fence();
         }
 
+        /**Helper class to build an N level deep pointer */
+        template<typename T, int levels>
+        struct deepPointer {
+            using type = typename deepPointer<T, levels - 1>::type*;
+        };
+        template<typename T>
+        struct deepPointer<T, 0> {
+            using type = T;
+        };
+
+        template<int level=0,typename T, int rank, arrayTags tag>
+         auto autobuildLayoutStrideTuple(const portableArray<T, rank, tag> &array) {
+            if constexpr (level<rank-1){
+                return std::tuple_cat(
+                    std::make_tuple(array.getSize(level), array.getStride(level)),
+                    autobuildLayoutStrideTuple<level+1,T,rank,tag>(array)
+                );
+            } else {
+                return std::make_tuple(array.getSize(level), array.getStride(level));
+            }
+         }
+
+        /**
+         * Function to convert a portableArray to a Kokkos View
+         */
+        template<typename T, int rank, arrayTags tag>
+        UNREPEATED auto toView(portableArray<T, rank, tag>& portableArray) {
+            //Create a layout stride tuple
+            auto layoutStrideTuple = autobuildLayoutStrideTuple(portableArray);
+            Kokkos::LayoutStride stride = std::apply([](auto&&... args){
+                return Kokkos::LayoutStride(args...);
+            }, layoutStrideTuple);
+            using kokkosSpace = std::conditional_t<tag == arrayTags::host, Kokkos::HostSpace, KOKKOS_EXECUTION_SPACE::memory_space>;
+            using viewType = Kokkos::View<typename deepPointer<T, rank>::type, Kokkos::LayoutStride, kokkosSpace>;
+            return viewType(portableArray.data(), stride);
+        }
+
+        /**
+         * Function to convert a portableArray to a Kokkos View(const version)
+         */
+        template<typename T, int rank, arrayTags tag>
+        UNREPEATED auto toView(const portableArray<T, rank, tag>& portableArray) {
+            //Create a layout stride tuple
+            auto layoutStrideTuple = autobuildLayoutStrideTuple(portableArray);
+            Kokkos::LayoutStride stride = std::apply([](auto&&... args){
+                return Kokkos::LayoutStride(args...);
+            }, layoutStrideTuple);
+            using kokkosSpace = std::conditional_t<tag == arrayTags::host, Kokkos::HostSpace, KOKKOS_EXECUTION_SPACE::memory_space>;
+            using viewType = Kokkos::View<typename deepPointer<T, rank>::type, Kokkos::LayoutStride, kokkosSpace>;
+            return viewType(portableArray.data(), stride);
+        }
+
+
         template<typename T_data, int rankS, int rankD, arrayTags tagS, arrayTags tagD>
         UNREPEATED void copyData(portableArray<T_data, rankD, tagD> &destination, const portableArray<T_data, rankS, tagS> &source) {
 
-            using kokkosSource = std::conditional_t<tagS == arrayTags::host, Kokkos::HostSpace, KOKKOS_EXECUTION_SPACE::memory_space>;
-            using kokkosDestination = std::conditional_t<tagD == arrayTags::host, Kokkos::HostSpace, KOKKOS_EXECUTION_SPACE::memory_space>;
-            
-            Kokkos::View<const T_data*, kokkosSource> sourceView(source.data(), source.getElements());
-            Kokkos::View<T_data*, kokkosDestination> destinationView(destination.data(), destination.getElements());
-            Kokkos::deep_copy(destinationView, sourceView);
-            
+            //If the tags are the same then deepcopy will work
+            if constexpr (tagS == tagD){
+                auto sourceView = kokkos::toView(source);
+                auto destinationView = kokkos::toView(destination);
+                Kokkos::deep_copy(destinationView, sourceView);
+            } else {
+                auto sourceView = kokkos::toView(source);
+                auto hostSrc = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sourceView);
+                auto destinationView = kokkos::toView(destination);
+                Kokkos::deep_copy(destinationView, hostSrc);
+            }
         }
 
         /**
@@ -257,11 +317,13 @@ namespace portableWrapper{
          */
         UNREPEATED void printInfo(){
             SAMS::cout << "Kokkos" << std::endl;
+            SAMS::cout << "version: " << KOKKOS_VERSION_MAJOR << "." << KOKKOS_VERSION_MINOR << "." << KOKKOS_VERSION_PATCH << std::endl;
             // Get the Kokkos execution space
             auto exec_space = KOKKOS_EXECUTION_SPACE();
             SAMS::cout << "Kokkos execution space: " << exec_space.name() << std::endl;
             SAMS::cout << "Kokkos concurrency: " << exec_space.concurrency() << std::endl;
         }
+
 
         template<typename T>
         UNREPEATED auto compare_and_swap(T *ptr, T expected, T desired)
@@ -300,7 +362,7 @@ namespace portableWrapper{
             template<typename T>            
             DEVICEPREFIX void Dec(T& target)
             {
-                Kokkos::atomic_decrement(&target);
+                Kokkos::atomic_dec(&target);
             }
 
             /**
@@ -310,7 +372,7 @@ namespace portableWrapper{
             template<typename T>            
             DEVICEPREFIX void Inc(T& target)
             {
-                Kokkos::atomic_increment(&target);
+                Kokkos::atomic_inc(&target);
             }
 
             /**

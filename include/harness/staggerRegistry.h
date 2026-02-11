@@ -53,6 +53,11 @@ namespace SAMS{
          */
         std::array<SIGNED_INDEX_TYPE, 2> upperAdjust{0,0};
 
+        /**
+         * How should the index of the closest ghost cell to the domain be adjusted for each staggering type
+         */
+        std::array<SIGNED_INDEX_TYPE, 2> ghostAdjust{0, 1};
+
         staggerRegistry() = default;
         public:
 
@@ -66,6 +71,10 @@ namespace SAMS{
 
         SIGNED_INDEX_TYPE getUpperAdjust(staggerType s) const {
             return upperAdjust[static_cast<int>(s)];
+        }
+
+        SIGNED_INDEX_TYPE getGhostAdjust(staggerType s) const {
+            return ghostAdjust[static_cast<int>(s)];
         }
 
     };

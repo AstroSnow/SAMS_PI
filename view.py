@@ -65,9 +65,12 @@ def main():
 
                 # Import matplotlib only when plotting is requested
                 try:
+                    import matplotlib
                     import matplotlib.pyplot as plt
                 except Exception:
                     sys.exit("Missing dependency for plotting: install with 'pip install matplotlib'")
+
+                matplotlib.use('TkAgg')
 
                 # Read data into memory
                 try:
@@ -113,15 +116,16 @@ def main():
                             s_ax2 = data[:, :, c2]
                             if not (s_ax0.ndim == 2 and s_ax1.ndim == 2 and s_ax2.ndim == 2):
                                 sys.exit(f"Unexpected slice ndim for 3D dataset: {[s_ax0.ndim, s_ax1.ndim, s_ax2.ndim]}")
-                            print(f"Dataset has 3 dimensions; plotting central slices (axis0 index {c0}, axis1 index {c1}, axis2 index {c2}).")
-                            plt.figure(figsize=(12, 4))
+                            print(f"Dataset has 3 dimensions; plotting central slices (axis0 index {c0}, axis1 index {c1}, axis2 index {c2}) and a line along X at y={c1}, z={c2}.")
+                            plt.figure(figsize=(16, 4))
+                            # Prepare 3 2D slices + 1D line along X at (y/2, z/2)
                             slices = [
                                 (s_ax0, f"{args.dataset} [axis0={c0}]"),
                                 (s_ax1, f"{args.dataset} [axis1={c1}]"),
                                 (s_ax2, f"{args.dataset} [axis2={c2}]"),
                             ]
                             for i, (slc, title) in enumerate(slices, start=1):
-                                ax = plt.subplot(1, 3, i)
+                                ax = plt.subplot(1, 4, i)
                                 pcm = ax.pcolormesh(slc, cmap="viridis", shading="auto")
                                 plt.colorbar(pcm, ax=ax)
                                 ax.set_title(title)
@@ -134,6 +138,14 @@ def main():
                                 else:
                                     ax.set_ylabel("X Index")
                                     ax.set_xlabel("Y Index")
+                            # Fourth plot: 1D line along X at y=c1, z=c2
+                            ax4 = plt.subplot(1, 4, 4)
+                            line = data[:, c1, c2]
+                            ax4.plot(line)
+                            ax4.set_title(f"{args.dataset} [X at y={c1}, z={c2}]")
+                            ax4.set_xlabel("X Index")
+                            ax4.set_ylabel(str(obj.dtype))
+                            ax4.grid(True)
                         else:
                             if slice2d.ndim == 2:
                                 print(f"Dataset has {data.ndim} dimensions; plotting central slice (index {center_idx}) as 2D.")

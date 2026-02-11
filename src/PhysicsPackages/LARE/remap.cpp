@@ -51,11 +51,7 @@ void simulation::eulerian_remap(simulationData &data) {
         data.bz(ix, iy, iz) *= data.dzab(ix, iy, iz);
     }, Range(-1, data.nx + 2), Range(-1, data.ny + 2), Range(-2, data.nz + 2));
 
-
-    case_test = data.step % 6;
-
-    // Strang ordering
-    switch (case_test)
+    void LARE3D::eulerian_remap(simulationData &data, remapData &remap_data)
     {
     case 0:
         remap_x(data, remap_data);

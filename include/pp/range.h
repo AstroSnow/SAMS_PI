@@ -62,6 +62,15 @@ namespace portableWrapper
     }
 }
 
+/**
+ * Overload the output stream operator for Range
+ */
+UNREPEATED std::ostream& operator<<(std::ostream& os, const portableWrapper::Range& range)
+{
+    os << "[" << range.lower_bound << ", " << range.upper_bound << "]";
+    return os;
+}
+
 //Implement tuple_size and tuple_element for Range
 //This allows structured bindings to be used with Range
 namespace std {

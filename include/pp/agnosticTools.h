@@ -30,5 +30,15 @@ namespace portableWrapper
             return APPLY(func, tuple);
         }
 
+        /**
+        Call a kernel function with the specified tuple of arguments.
+        Host version
+        */
+        template <typename T_func, typename T_tuple>
+        HOSTINLINE DEVICEPREFIX auto applyToDataHost(const T_func &func, T_tuple &tuple)
+        {
+            return APPLY(func, tuple);
+        }
+
 }
 #endif

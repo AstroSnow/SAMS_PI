@@ -4,30 +4,38 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include "harness.h"
 #include "shared_data.h"
-#include "include/timer.h"
+#include "timer.h"
 #include "axisRegistry.h"
 #include "variableRegistry.h"
 #include "mpiManager.h"
 #include "welcome.h"
 
-int main(int argc, char *argv[]){ 
 
+//Example initial conditions
+#include "SodShockTube.h"
+#include "BrioAndWu.h"
+#include "MHDRotor.h"
+#include "OrszagTang.h"
+#include "OrszagTang3D.h"
+#include "EmeryWindTunnel.h"
+#include "KarmanVortex.h"
+
+#include "builtInBoundaryConditions.h"
+
+#include "runner.h"
+#include "lareic.h"
+
+int main(int argc, char *argv[]){
 
     //Initialize MPI
     SAMS::MPI::initialize(argc, argv);
-
-    //Get the MPI manager for the default communicator
-    SAMS::MPIManager<SAMS::MPI_DECOMPOSITION_RANK>& mpi = SAMS::getMPIManager<SAMS::MPI_DECOMPOSITION_RANK>();
-
-    SAMS::printWelcomeMessage();
-    //MPI auto decomposition
-    //mpi.autoDecomposition({false,false,false});    
-    mpi.autoDecomposition({true,true,true});
     //Initialize portable wrapper
     portableWrapper::initialize(argc, argv);
     SAMS::finishWelcomeMessage();
 
+/*
     //Create the simulation (LARE) and data objects
     simulation S;
     //simulation S2;
@@ -127,15 +135,30 @@ int main(int argc, char *argv[]){
       if (data.two_fluid) {
           S.two_fluid_source(data,dataNeutral,false); // Second step of Strang-split two-fluid sources
       }
+*/
+    //Print welcome message
+    SAMS::printWelcomeMessage();
+
+    //Create and initialize the runner
+    SAMS::runner<LARE::LARE3D, LARE::LARE3DInitialConditions, examples::SodShockTube, examples::BrioAndWu, examples::MHDRotor, examples::OrszagTang, examples::OrszagTang3D, examples::EmeryWindTunnel, 
+        examples::KarmanVortex> runner;
+    runner.initialize(argc, argv);
+    //Finish welcome message
+    SAMS::finishWelcomeMessage();
+    
+    //Use the parameters passed to set up and run the simulations
+    for (int i=1;i<argc;i++){
+        std::string argStr = argv[i];
+        runner.activatePackage(argStr);
     }
-    t.end();
+    //Initialize the packages
+    runner.initializePackages();
+    //Run the packages until a package requests to stop
+    runner.runPackages();
+    //Finish the packages
+    runner.finalizePackages();
+    //Finalize the runner
+    runner.finalize();
 
-		S.output(data,dataNeutral);
-
-		S.manager.clear();
-    axisRegistry.finalize();
-    varRegistry.finalize();
     portableWrapper::finalize();
-    SAMS::MPI::finalize();
-
 }

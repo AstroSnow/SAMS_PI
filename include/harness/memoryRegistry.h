@@ -31,32 +31,19 @@
 
 namespace SAMS{
 
-    /**
-     * Enumeration of memory spaces
-     * NONE: No memory allocated
-     * DEFAULT: Default memory space (usually HOST)
-     * HOST: Host memory (CPU)
-     * DEVICE: Device memory (GPU) (or CPU memory if no GPU is available)
-     */
-    enum class memorySpace {
-        NONE,
-        HOST,
-#if defined(USE_CUDA) || defined(USE_HIP) || defined(USE_KOKKOS)
-        DEVICE,
-        DEFAULT=DEVICE
-#else
-        DEVICE=HOST,
-        DEFAULT=HOST
-#endif
-
-    };
-
     class memoryRegistry{
-        friend memoryRegistry& getmemoryRegistry();
         //Array manager from portableWrapper to handle allocations
         portableWrapper::portableArrayManager arrayManager; 
-        memoryRegistry() = default;
         public:
+
+        memoryRegistry() = default;
+
+        /**
+         * Returns the portable array manager used by the memory registry
+         */
+        portableWrapper::portableArrayManager& getArrayManager(){
+            return arrayManager;
+        }
 
         /**
          * Returns the portable array manager used by the memory registry
@@ -68,18 +55,15 @@ namespace SAMS{
         /**
          * Allocates a block of memory in a given memory space with a given byte size
          */
-        void* allocate(size_t size, memorySpace memSpace){
+        void* allocate(size_t size, portableWrapper::arrayTags tag) {
             //Just provide a wrapper around the portableArrayManager
             void* data;
-            if (memSpace == memorySpace::NONE) {
-                throw std::runtime_error("Cannot allocate memory in NONE memory space.");
-            }
-            if (memSpace == memorySpace::HOST) {
-                auto array = arrayManager.allocate<char, portableWrapper::arrayTags::host>(size);
+            if (tag == portableWrapper::arrayTags::host) {
+                auto array = arrayManager.allocate<double, portableWrapper::arrayTags::host>(size/sizeof(double));
                 data = array.data();
             }
-            else if (memSpace == memorySpace::DEVICE) {
-                auto array = arrayManager.allocate<char, portableWrapper::arrayTags::accelerated>(size);
+            else if (tag == portableWrapper::arrayTags::accelerated) {
+                auto array = arrayManager.allocate<double, portableWrapper::arrayTags::accelerated>(size/sizeof(double));
                 data = array.data();
             }
             else {
@@ -99,16 +83,14 @@ namespace SAMS{
             arrayManager.deallocate(ptr);
         }
 
+        /**
+         * Finalize the memory registry, deallocating all managed memory
+         */
+        void finalize(){
+            arrayManager.finalize();
+        }
+
     };
-
-
-    /**
-     * Returns the singleton instance of the memoryRegistry
-     */
-    inline memoryRegistry& getmemoryRegistry(){
-        static memoryRegistry instance;
-        return instance;
-    }
 
 };
 

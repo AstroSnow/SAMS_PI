@@ -48,5 +48,6 @@
 
 #include "manager.h"
 #include "portableWrapperFrontend.h"
+#include "algorithm.h"
 
 #endif

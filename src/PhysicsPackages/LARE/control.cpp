@@ -1,85 +1,61 @@
+#include "lareic.h"
+#include "lareBoundaryClass.h"
+
+namespace LARE{
+
+    void LARE3D::defaultValues([[maybe_unused]] simulationData &data){
+
+        data.dt_multiplier = 0.8; // Default multiplier for time step
+        
+        // Geometry options: cartesian, cylindrical, spherical
+        data.geometry = geometryType::Cartesian;
+
+        // Shock viscosity coefficients
+        data.visc1 = 0.1;
+        data.visc2 = 1.0;
+
+        // Ratio of specific heat capacities
+        data.gas_gamma = 1.4;
+
+        // Average mass of an ion in proton masses
+        data.mf = 1.2;
+
+        data.rke = false; // Remap kinetic energy correction off by default
+
+        // Physical constants
+        data.mu0 = mu0_si;
+
+        // Initialize time=0
+        data.time = 0.0;
+        
+          // Two-fluid flag
+      data.two_fluid=true;
+      data.collisions=true;
+      data.ion_rec=true;
+      data.ion_rec_empirical=true;
+      data.ion_rec_nlevel=false;
+      data.alpha0=100.0;
+      data.T_reference=10000.0; //Reference electron temperature (Kelvin)
+      data.ne_reference=1.0e14; //Reference electron number density (cm^-3)
+    }
+
+ void LARE3D::defaultVariables([[maybe_unused]] simulationData &data)
+  {
+
+    // Set default variable values
+    pw::assign(data.vx, 0.0);
+    pw::assign(data.vy, 0.0);
+    pw::assign(data.vz, 0.0);
+
+    pw::assign(data.rho, 0.0);
+    pw::assign(data.energy_electron, 0.0);
+    pw::assign(data.energy_ion, 0.0);
+
+    pw::assign(data.bx, 0.0);
+    pw::assign(data.by, 0.0);
+    pw::assign(data.bz, 0.0);
+ 
 /*
- *    Copyright 2025 SAMS Team
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-#include "shared_data.h"
-
-void simulation::controlvariables(simulationData &data) {
-
-  data.nx=32; // Number of cells in the x-direction
-  data.ny=2; // Number of cells in the y-direction
-  data.nz=2; // Number of cells in the z-direction
-
-  data.dt_multiplier = 0.8; // Default multiplier for time step
-  data.dt=0.0;
-
-  // Maximum number of iterations; if nsteps < 0, run until t_end
-  data.nsteps = 2;
-  data.t_end = 0.2; // One day in seconds
-
-  // Geometry options: cartesian, cylindrical, spherical
-  data.geometry = geometryType::Cartesian;
-
-  // Domain limits
-  data.x_min = -0.5;
-  data.x_max = 0.5;
-  data.y_min = -1.0;
-  data.y_max = 1.0;
-  data.z_min = -1.0;
-  data.z_max = 1.0;
-
-  // Boundary conditions
-  data.xbc_min = BCType::BC_OTHER;
-  data.xbc_max = BCType::BC_OTHER;
-  data.ybc_min = BCType::BC_PERIODIC;
-  data.ybc_max = BCType::BC_PERIODIC;
-  data.zbc_min = BCType::BC_OTHER;
-  data.zbc_max = BCType::BC_OTHER;
-
-  // Grid stretching
-  data.x_stretch = false;
-  data.y_stretch = false;
-  data.z_stretch = false;
-
-  // Shock viscosity coefficients
-  data.visc1 = 0.1;
-  data.visc2 = 1.0;
-
-  // Ratio of specific heat capacities
-  data.gas_gamma = 1.66;
-
-  // Average mass of an ion in proton masses
-  data.mf = 1.66;
-
-  // Resistive MHD options
-  data.resistiveMHD = false;
-  data.eta_background = 1.e-10;
-  data.j_max = 1.0;
-  data.eta0 = 2.e-10;
-
-  // Remap kinetic energy correction
-  data.rke = true;
-  
-  // Two-fluid flag
-  data.two_fluid=true;
-  data.collisions=true;
-  data.ion_rec=true;
-  data.ion_rec_empirical=true;
-  data.ion_rec_nlevel=false;
-  data.alpha0=100.0;
-  data.T_reference=10000.0; //Reference electron temperature (Kelvin)
-  data.ne_reference=1.0e14; //Reference electron number density (cm^-3)
-
   // Output frequency and directory
   data.dt_snapshots = 0.02;
 }
@@ -233,19 +209,6 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   portableWrapper::assign(data.energy_ion,P_R/2.0/rho_R/(data.gas_gamma-1.0));
   portableWrapper::assign(data.energy_electron,P_R/2.0/rho_R/(data.gas_gamma-1.0));
 
-  //Some Neutral conditions
-  /*if (data.two_fluid) {
-    portableWrapper::assign(dataNeutral.vx,vx_R);
-    portableWrapper::assign(dataNeutral.vy,vy_R);
-    portableWrapper::assign(dataNeutral.vz,vz_R);
-    portableWrapper::assign(dataNeutral.bx,0.0);
-    portableWrapper::assign(dataNeutral.by,0.0);
-    portableWrapper::assign(dataNeutral.bz,0.0);
-    portableWrapper::assign(dataNeutral.rho,rho_R);
-    portableWrapper::assign(dataNeutral.energy_neutral,P_R/rho_R/(data.gas_gamma-1.0));    
-    }
-  */
-
   if ((std::strcmp(shock_tube_problem,"briowu")==0) || (std::strcmp(shock_tube_problem,"sod")==0)){
       portableWrapper::applyKernel(
         LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
@@ -285,3 +248,15 @@ void simulation::initial_conditions(simulationData &data,simulationData &dataNeu
   if (data.rke) portableWrapper::assign(data.delta_ke, 0.0);
 
 }
+*/
+    if (data.rke)
+    {
+        pw::assign(data.delta_ke, 0.0);
+        if(data.two_fluid){
+            pw::assign(dataNeutral.delta_ke, 0.0);
+        }
+    }
+
+  }
+
+}//namespace LARE

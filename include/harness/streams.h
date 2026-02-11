@@ -24,7 +24,7 @@ namespace SAMS{
 
     public:
 
-        /**
+        /*
          * Default constructor - uses std::cout
          */
         streamWrapper() {stream = &std::cout;}
@@ -124,24 +124,24 @@ namespace SAMS{
     class nullStream {
     public:
         template <typename T>
-        nullStream &operator<<(T &&) {
+        nullStream &operator<<[[maybe_unused]](T &&) {
             return *this;;
         }
 
         // std::ostream manipulators (e.g. std::endl)
-        nullStream &operator<<(std::ostream &(*manip)(std::ostream &))
+        nullStream &operator<<([[maybe_unused]] std::ostream &(*manip)(std::ostream &))
         {
             return *this;
         }
 
         // std::ios_base manipulators (e.g. std::hex, std::dec)
-        nullStream &operator<<(std::ios_base &(*manip)(std::ios_base &))
+        nullStream &operator<<([[maybe_unused]] std::ios_base &(*manip)(std::ios_base &))
         {
             return *this;
         }
 
 
-        void setRank(int) {
+        void setRank([[maybe_unused]] int) {
             // Do nothing
         }
     };

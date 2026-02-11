@@ -17,8 +17,8 @@
 
 #include "harnessDef.h"
 
-#define SIGNED_INDEX_TYPE int64_t
-#define UNSIGNED_INDEX_TYPE size_t
+#define SIGNED_INDEX_TYPE SAMS::T_indexType
+#define UNSIGNED_INDEX_TYPE SAMS::T_sizeType
 #define SIZE_TYPE size_t
 
 #define COUNT_TYPE size_t
@@ -26,10 +26,18 @@
 //We're using a custom tuple implementation
 //That could easily be a bad idea, so this should make
 //it easy to switch to std::tuple or thrust::tuple if needed
-#define APPLY portableTuple::apply
-#define MAKETUPLE portableTuple::make_tuple
-#define GET portableTuple::get
-#define TUPLE portableTuple::tuple
+#define APPLY portableWrapper::portableTuple::apply
+#define MAKETUPLE portableWrapper::portableTuple::make_tuple
+#define GET portableWrapper::portableTuple::get
+#define TUPLE portableWrapper::portableTuple::tuple
+#define TUPLEELEMENT portableWrapper::portableTuple::tuple_element_t
+#define TUPLESIZE portableWrapper::portableTuple::tuple_size_v
+
+
+#define HOSTINLINE inline __attribute__((always_inline))
+#define HOSTFLATTEN inline __attribute__((always_inline, flatten))
+#define HOSTUNREPEATED inline
+#define HOSTDEVICEPREFIX
 
 #ifdef USE_KOKKOS
 #include <Kokkos_Core.hpp>
@@ -121,6 +129,9 @@
 
 namespace portableWrapper
 {
+
+    using T_indexType = SAMS::T_indexType;
+    using T_sizeType = SAMS::T_sizeType;
     enum arrayTags
     {
         host = 1,
@@ -130,6 +141,17 @@ namespace portableWrapper
         accelerated = host, // If no acceleration is available, treat it as a host array
 #endif
     };
+
+    enum class executionSpace
+    {
+        host = 1,
+#if defined(USE_CUDA) || defined (USE_KOKKOS) || defined (USE_HIP)
+        accelerated = 2,
+#else
+        accelerated = host, // If no acceleration is available, treat it as host space
+#endif
+    };
+
     template <typename T, int i_rank, arrayTags tag = arrayTags::accelerated>
     class portableArray;
 }

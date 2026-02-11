@@ -25,6 +25,9 @@
 #ifndef CALLABLE_TRAITS_H
 #define CALLABLE_TRAITS_H
 
+#include <cstddef>
+#include <tuple>
+
 namespace far {
 
 /**
@@ -123,6 +126,12 @@ struct callableTraits<R(Args...)> {
     static constexpr size_t arity = sizeof...(Args); ///< The number of parameters the callable takes.
     static constexpr bool value = true; ///< Indicates that the type is a callable.
 };
+
+//In C++20 and newer create a concept for callables
+#ifdef __cpp_concepts
+template<typename T>
+concept callable = callableTraits<T>::value;
+#endif
 
 } // namespace far
 #endif

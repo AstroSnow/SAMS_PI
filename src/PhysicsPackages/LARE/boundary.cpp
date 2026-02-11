@@ -15,15 +15,11 @@
 #include "shared_data.h"
 #include "variableRegistry.h"
 
-void simulation::boundary_conditions(simulationData &data)
-{
-  bfield_bcs(data);
-  energy_bcs(data);
-  density_bcs(data);
-  velocity_bcs(data);
-  portableWrapper::fence(); // Ensure all operations are complete before returning
-}
 
+namespace LARE
+{
+
+/*<<<<<<< HEAD
 void simulation::bfield_bcs(simulationData &data)
 {
     if (!data.is_neutral){
@@ -65,31 +61,7 @@ void simulation::bfield_bcs(simulationData &data)
         portableWrapper::assign(
             data.bz(portableWrapper::Range(0, 0), portableWrapper::Range(), portableWrapper::Range()), 
             data.bz_L
-        );/*
-        portableWrapper::assign(
-            data.bx(-2, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bx( 2, portableWrapper::Range(), portableWrapper::Range())
         );
-        portableWrapper::assign(
-            data.bx(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bx( 1, portableWrapper::Range(), portableWrapper::Range())
-        );
-        portableWrapper::assign(
-            data.by(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.by( 2, portableWrapper::Range(), portableWrapper::Range())
-        );
-        portableWrapper::assign(
-            data.by(0, portableWrapper::Range(), portableWrapper::Range()), 
-            data.by(1, portableWrapper::Range(), portableWrapper::Range())
-        );
-        portableWrapper::assign(
-            data.bz(-1, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bz( 2, portableWrapper::Range(), portableWrapper::Range())
-        );
-        portableWrapper::assign(
-            data.bz( 0, portableWrapper::Range(), portableWrapper::Range()), 
-            data.bz( 1, portableWrapper::Range(), portableWrapper::Range())
-        );*/
     }
 
     if (data.xbc_max == BCType::BC_OTHER && data.isxUB){
@@ -919,4 +891,81 @@ void simulation::dm_z_bcs(simulationData &data, remapData &remap_data)
         );
     }
     portableWrapper::fence();
+}
+*/
+    //Lare style boundary conditions are now provided
+    //via the LARE3DInitialConditions class in the
+    //InitialConditions/LARE package.
+    namespace pw = portableWrapper;
+
+    void LARE3D::boundary_conditions()
+    {
+        bfield_bcs();
+        energy_bcs();
+        density_bcs();
+        velocity_bcs();
+    }
+
+    void LARE3D::bfield_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("bx");
+        varRegistry.applyBoundaryConditions("by");
+        varRegistry.applyBoundaryConditions("bz");
+        pw::fence();
+    }
+
+    void LARE3D::energy_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("energy_electron");
+        varRegistry.applyBoundaryConditions("energy_ion");
+        pw::fence();
+    }
+
+    void LARE3D::density_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("rho");
+        pw::fence();
+    }
+
+    void LARE3D::velocity_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("vx");
+        varRegistry.applyBoundaryConditions("vy");
+        varRegistry.applyBoundaryConditions("vz");
+        pw::fence();
+    }
+
+    void LARE3D::remap_v_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("LARE/vx1");
+        varRegistry.applyBoundaryConditions("LARE/vy1");
+        varRegistry.applyBoundaryConditions("LARE/vz1");
+        pw::fence();
+    }
+
+    void LARE3D::dm_x_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("LARE/dm", 0); //Apply on X dimension
+        pw::fence();
+    }
+
+    void LARE3D::dm_y_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("LARE/dm", 1); //Apply on Y dimension
+        pw::fence();
+    }
+
+    void LARE3D::dm_z_bcs()
+    {
+        auto &varRegistry = harness.variableRegistry;
+        varRegistry.applyBoundaryConditions("LARE/dm", 2); //Apply on Z dimension
+        pw::fence();
+    }
 }

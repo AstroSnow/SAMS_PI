@@ -25,6 +25,13 @@
 namespace portableWrapper
 {
 
+  /**
+   * Helper struct to trigger static_assert false in templated code
+   * when a particular template instantiation is not supported.
+   */
+  template<typename... T>
+  struct alwaysFalse : std::false_type {};
+
 namespace{
    /**
     * Count the number of Range obects in a parameter pack
@@ -100,6 +107,30 @@ namespace{
         }
 
       /**
+       * Rvalue overload - returns T&& for tuple<Ts...>&&
+       */
+      template <std::size_t N, typename Head, typename... Tail>
+        inline FUNCTORMETHODPREFIX auto&& get(tuple<Head, Tail...>&& t) {
+          if constexpr (N == 0) {
+            return static_cast<Head&&>(t.value);
+          } else {
+            return get<N - 1>(static_cast<tuple<Tail...>&&>(t));
+          }
+        }
+
+      /**
+       * Const rvalue overload - returns const T&& for tuple<Ts...> const&&
+       */
+      template <std::size_t N, typename Head, typename... Tail>
+        inline FUNCTORMETHODPREFIX const auto&& get(const tuple<Head, Tail...>&& t) {
+          if constexpr (N == 0) {
+            return static_cast<const Head&&>(t.value);
+          } else {
+            return get<N - 1>(static_cast<const tuple<Tail...>&&>(t));
+          }
+        }
+
+      /**
        * Reimplementation of std::tuple_element
        */
       template <std::size_t N, typename Tuple>
@@ -149,13 +180,13 @@ namespace{
        * that can be used in CUDA kernels.
        */
       template <typename F, typename Tuple, std::size_t... I>
-        inline FUNCTORMETHODPREFIX auto apply_impl(F &&f, Tuple &&t, std::index_sequence<I...>)
+        inline FUNCTORMETHODPREFIX decltype(auto) apply_impl(F &&f, Tuple &&t, std::index_sequence<I...>)
         {
           return f(get<I>(t)...);
         }
 
       template <typename F, typename Tuple>
-        inline FUNCTORMETHODPREFIX auto apply(F &&f, Tuple &&t)
+        inline FUNCTORMETHODPREFIX decltype(auto) apply(F &&f, Tuple &&t)
         {
           constexpr std::size_t N = tuple_size<std::remove_reference_t<Tuple>>::value;
           return apply_impl(
@@ -248,6 +279,11 @@ namespace{
       return  v1>v2?v1:v2;
     }
 
+    template<typename T1, typename T2, typename... T>
+    FUNCTORMETHODPREFIX constexpr auto max(const T1&v1, const T2&v2, const T&... values){
+      return max(max(v1, v2), values...);
+    }
+
     /**
      * Portable version of std::max that takes an initializer list
      * @brief Returns the maximum of a list of values.
@@ -274,6 +310,11 @@ namespace{
     template<typename T1, typename T2>
     FUNCTORMETHODPREFIX constexpr auto min(const T1&v1, const T2&v2){
       return  v1<v2?v1:v2;
+    }
+
+    template<typename T1, typename T2, typename... T>
+    FUNCTORMETHODPREFIX constexpr auto min(const T1&v1, const T2&v2, const T&... values){
+      return min(min(v1, v2), values...);
     }
 
     /**
@@ -367,7 +408,71 @@ namespace{
      * with a given number of elements of a specific type.
      */
     template <typename T, int N>
-      using std_N_ary_tuple_type_t = typename std_N_ary_tuple_type<T, N>::type;      
+      using std_N_ary_tuple_type_t = typename std_N_ary_tuple_type<T, N>::type;
+      
+
+    //For a tuple all of the same type, one can get the N_th element at runtime
+    template<int level=0, typename... T>
+      FUNCTORMETHODPREFIX portableTuple::tuple_element_t<0, portableTuple::tuple<T...>>& getTupleElement(portableTuple::tuple<T...>& t, UNSIGNED_INDEX_TYPE n){
+        if constexpr(level < sizeof...(T)){
+          if(n==level){
+            return portableTuple::get<level>(t);
+          } else {
+            return getTupleElement<level+1, T...>(t, n);
+          }
+        } else {
+          //If in device code, just return first element to avoid compiler error
+          #if defined (__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+          return portableTuple::get<0>(t);
+          #else
+          throw std::runtime_error("Error: tuple index out of range in getTupleElement\n");
+          #endif
+        }
+      }
+
+      template<int level=0, typename... T>
+      FUNCTORMETHODPREFIX const portableTuple::tuple_element_t<0, portableTuple::tuple<T...>>& getTupleElement(const portableTuple::tuple<T...>& t, UNSIGNED_INDEX_TYPE n){
+        if constexpr(level < sizeof...(T)){
+          if(n==level){
+            return portableTuple::get<level>(t);
+          } else {
+            return getTupleElement<level+1, T...>(t, n);
+          }
+        } else {
+          #if defined (__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+          return portableTuple::get<0>(t);
+          #else
+          throw std::runtime_error("Error: tuple index out of range in getTupleElement\n");
+          #endif
+        }
+      }
+
+      template<int level=0, typename... T>
+      std::tuple_element_t<0, std::tuple<T...>>& getTupleElement(std::tuple<T...>& t, UNSIGNED_INDEX_TYPE n){
+        if constexpr(level < sizeof...(T)){ 
+          if(n==level){
+            return std::get<level>(t);
+          } else {
+            return getTupleElement<level+1, T...>(t, n);
+          }
+        } else {
+          throw std::runtime_error("Error: tuple index out of range in getTupleElement\n");
+        }
+      }
+
+      template<int level=0, typename... T>
+      const std::tuple_element_t<0, std::tuple<T...>>& getTupleElement(const std::tuple<T...>& t, UNSIGNED_INDEX_TYPE n){
+        if constexpr(level < sizeof...(T)){
+          if(n==level){
+            return std::get<level>(t);
+          } else {
+            return getTupleElement<level+1, T...>(t, n);
+          }
+        } else {
+          throw std::runtime_error("Error: tuple index out of range in getTupleElement\n");
+        }
+      }
+    
 
     // Dummy stubs for OpenMP functions when not using OpenMP
     UNSIGNED_INDEX_TYPE INLINE getOMPMaxThreads()
@@ -394,7 +499,80 @@ namespace{
       return 0;
 #endif
     }
-  };
-};
+  }
+
+  /**
+   * Get the lower and upper bounds of a range object.
+   * If the object is a Range, return its bounds.
+   * If it is a single integer, return (1, value).
+   * @param range The range object to get the bounds from.
+   */
+  template<typename T>
+  INLINE DEVICEPREFIX auto getRange(const T& range) {
+      if constexpr(std::is_same_v<T, Range>) {
+          return range;
+      } else {
+          return Range(1, range);
+      }
+  }
+
+  /**
+   * Convert an array tag to an execution space.
+   * Currently simply maps host tag to host execution space and
+   * accelerated tag to accelerated execution space.
+   */
+  constexpr inline executionSpace getDefaultExecutionSpace(arrayTags tag) {
+      if (tag == arrayTags::host) {
+          return executionSpace::host;
+      } else {
+          return executionSpace::accelerated;
+      }
+  }
+
+  /**
+   * Get the default execution space without an array tag.
+   * Currently defaults to accelerated execution space if available,
+   */
+  constexpr inline executionSpace getDefaultExecutionSpace() {
+      return executionSpace::accelerated;
+  }
+
+} // namespace portableWrapper
+
+//Implement tuple_size and tuple_element for portbleWrapper::portableTuple
+//This allows structured bindings to be used with portableWrapper::portableTuple::tuple
+namespace std {
+  template<typename... Args>
+    struct tuple_size<portableWrapper::portableTuple::tuple<Args...>> : std::integral_constant<std::size_t, sizeof...(Args)> {};
+  template<typename... Args>
+    struct tuple_size<const portableWrapper::portableTuple::tuple<Args...>> : std::integral_constant<std::size_t, sizeof...(Args)> {};
+
+  template<typename... Args>
+    struct tuple_size<volatile portableWrapper::portableTuple::tuple<Args...>> : std::integral_constant<std::size_t, sizeof...(Args)> {};
+
+  template<typename... Args>
+    struct tuple_size<const volatile portableWrapper::portableTuple::tuple<Args...>> : std::integral_constant<std::size_t, sizeof...(Args)> {};
+
+  template<std::size_t N, typename... Args>
+    struct tuple_element<N, portableWrapper::portableTuple::tuple<Args...>> {
+      using type = typename portableWrapper::portableTuple::tuple_element<N, portableWrapper::portableTuple::tuple<Args...>>::type;
+    };
+
+  template<std::size_t N, typename... Args>
+    struct tuple_element<N, const portableWrapper::portableTuple::tuple<Args...>> {
+      using type = const typename portableWrapper::portableTuple::tuple_element<N, portableWrapper::portableTuple::tuple<Args...>>::type;
+    };
+
+    template<std::size_t N, typename... Args>
+    struct tuple_element<N, volatile portableWrapper::portableTuple::tuple<Args...>> {
+      using type = volatile typename portableWrapper::portableTuple::tuple_element<N, portableWrapper::portableTuple::tuple<Args...>>::type;
+    };
+
+    template<std::size_t N, typename... Args>
+    struct tuple_element<N, const volatile portableWrapper::portableTuple::tuple<Args...>> {
+      using type = const volatile typename portableWrapper::portableTuple::tuple_element<N, portableWrapper::portableTuple::tuple<Args...>>::type;
+    };
+
+}
 
 #endif
