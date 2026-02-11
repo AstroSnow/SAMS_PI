@@ -639,6 +639,7 @@ namespace portableWrapper
 			return stride[dimension];
 		}
 
+
 		/**
 		 * Get the array of lower bounds for each dimension.
 		 */

@@ -565,7 +565,7 @@ namespace LARE
         * Routine to read the rates for ionisation/recombination/excitation/de-excitation
         */
         void two_fluid_read_rates(simulationData &data);
-}
+};
 
 
 #endif // SHARED_DATA_H

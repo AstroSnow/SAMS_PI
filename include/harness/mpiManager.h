@@ -98,7 +98,6 @@ namespace SAMS
         }
 
         inline void finalize(){
-
             #ifdef USE_MPI
             MPI_Finalize();
             #endif
@@ -293,7 +292,6 @@ namespace SAMS
         };
 
         /**
-
          * Cache of created MPI_Datatype objects for subarrays
          */
         std::map<std::string, MPITypeHolder> mpiSubarrayTypeCache;

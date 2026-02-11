@@ -26,12 +26,6 @@
 
 #include "mpiDefaultTypes.h"
 
-#ifdef USE_MPI
-#include <mpi.h>
-#endif
-
-#include "mpiDefaultTypes.h"
-
 namespace SAMS {
 
     /**
@@ -95,47 +89,6 @@ namespace SAMS {
             }
         }
 
-        /**
-         * Get the MPI_Datatype corresponding to a typeID
-         */
-        MPI_Datatype getMPIType(typeID t) {
-            #ifdef USE_MPI
-            return mpiTypes[static_cast<int>(t)];
-            #else
-            return MPI_DATATYPE_NULL;
-            #endif
-        }
-
-        /**
-         * Get the name of a typeID
-         */
-        std::string getTypeName(typeID t) {
-            return typeNames[static_cast<int>(t)];
-        }
-
-        /**
-         * Get a type name from an MPI_Datatype
-         */
-        std::string getTypeName(MPI_Datatype mpiType) {
-            if (mpiType == MPI_DATATYPE_NULL){
-                return "Null MPI_Datatype";
-            }
-            #ifdef USE_MPI
-            for (size_t i = 0; i < mpiTypes.size(); i++) {
-                if (mpiTypes[i] == mpiType) {
-                    return typeNames[i];
-                }
-            }
-            #endif
-            throw std::runtime_error("MPI_Datatype not registered in typeRegistry.");
-        }
-
-        /**
-         * Get the harness data type corresponding to a C++ type
-         * @throws std::runtime_error if the type is not registered
-         * @tparam T The C++ type to look up
-         * @return The corresponding harness typeID
-         */
         template<typename T>
         std::string getDemangledName() {
             #if defined (HAS_DEMANGLE) && !defined(STRICT_STANDARDS)

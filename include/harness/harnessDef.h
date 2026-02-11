@@ -46,11 +46,6 @@ namespace SAMS
      * Maximum rank of a variable
      */
     constexpr int MAX_RANK = 7;
-    
-    /**
-     * Rank of the MPI decomposition
-     */
-    constexpr int MPI_DECOMPOSITION_RANK = 3;
 
     /**
      * Rank of the MPI decomposition

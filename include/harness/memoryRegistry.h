@@ -46,13 +46,6 @@ namespace SAMS{
         }
 
         /**
-         * Returns the portable array manager used by the memory registry
-         */
-        portableWrapper::portableArrayManager& getArrayManager(){
-            return arrayManager;
-        }
-
-        /**
          * Allocates a block of memory in a given memory space with a given byte size
          */
         void* allocate(size_t size, portableWrapper::arrayTags tag) {
