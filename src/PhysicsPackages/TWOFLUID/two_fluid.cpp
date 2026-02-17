@@ -32,10 +32,10 @@ void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_so
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source);
 void get_collisional_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
-void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, const physicsData &rates);
+void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, const atomicRatesData &rates);
 void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
-double interpolate_rates(const physicsData &rates, T_dataType temperature,
+double interpolate_rates(const atomicRatesData &rates, T_dataType temperature,
                          T_indexType lower_level, T_indexType upper_level);
 //void get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
@@ -94,7 +94,7 @@ void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral
 
 ////////////////////////////////////////////////////////////////////////////////////////
 void simulation::two_fluid_source(simulationData &data, simulationData &dataNeutral,
-                                  physicsData &rates, bool first_step){
+                                  atomicRatesData &rates, bool first_step){
 
     //data.two_fluid_timestep=1.0;
     
@@ -263,7 +263,7 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 //Formulation from Snow+2023 paper using Jeffries1968
 //Controlled using the data.ion_rec_jeffries in control.cpp
 //Not used yet
-void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, const physicsData &rates){
+void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, const atomicRatesData &rates){
 
     //Much of this should go elsewhere
     T_dataType T0=data.T_reference; //Reference temperature
@@ -660,20 +660,16 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for interpolating the rates
-double interpolate_rates(const physicsData &rates, T_dataType temperature,
+double interpolate_rates(const atomicRatesData &rates, T_dataType temperature,
                          T_indexType lower_level, T_indexType upper_level){
-
-    if (temperature <= 0.0) {
-        return 0.0;
-    }
 
     if (lower_level < 0 || upper_level < 0 || lower_level >= upper_level) {
         return 0.0;
     }
 
-    const T_indexType nsamps = rates.logT_electron.getSize(0);
-    const T_indexType nstarts = rates.coeffs.getSize(1);
-    const T_indexType nfinals = rates.coeffs.getSize(2);
+    const T_indexType nsamps = rates.grid_logT.getSize(0);
+    const T_indexType nstarts = rates.hydrogen_excitation_rate.getSize(1);
+    const T_indexType nfinals = rates.hydrogen_excitation_rate.getSize(2);
 
     if (nsamps <= 0 || nstarts <= 0 || nfinals <= 0) {
         return 0.0;
@@ -683,45 +679,45 @@ double interpolate_rates(const physicsData &rates, T_dataType temperature,
         return 0.0;
     }
 
-    const T_indexType lb = rates.logT_electron.getLowerBound(0);
-    const T_indexType ub = rates.logT_electron.getUpperBound(0);
+    const T_indexType lb = rates.grid_logT.getLowerBound(0);
+    const T_indexType ub = rates.grid_logT.getUpperBound(0);
     if (ub <= lb) {
-        return rates.coeffs(lb, lower_level, upper_level);
+        return rates.hydrogen_excitation_rate(lb, lower_level, upper_level);
     }
 
     const T_dataType logT = std::log10(temperature);
     
-    const T_dataType logT_min = rates.logT_electron(lb);
-    const T_dataType logT_max = rates.logT_electron(ub);
+    const T_dataType logT_min = rates.grid_logT(lb);
+    const T_dataType logT_max = rates.grid_logT(ub);
     if (logT <= logT_min) {
-        return rates.coeffs(lb, lower_level, upper_level);
+        return rates.hydrogen_excitation_rate(lb, lower_level, upper_level);
     }
     if (logT >= logT_max) {
-        return rates.coeffs(ub, lower_level, upper_level);
+        return rates.hydrogen_excitation_rate(ub, lower_level, upper_level);
     }
 
     T_indexType i0 = lb;
     for (T_indexType i = lb; i < ub; ++i) {
-        if (rates.logT_electron(i) <= logT && logT < rates.logT_electron(i + 1)) {
+        if (rates.grid_logT(i) <= logT && logT < rates.grid_logT(i + 1)) {
             i0 = i;
             break;
         }
     }
 
-    const T_dataType logT0 = rates.logT_electron(i0);
-    const T_dataType logT1 = rates.logT_electron(i0 + 1);
+    const T_dataType logT0 = rates.grid_logT(i0);
+    const T_dataType logT1 = rates.grid_logT(i0 + 1);
     if (logT1 <= logT0) {
-        return rates.coeffs(i0, lower_level, upper_level);
+        return rates.hydrogen_excitation_rate(i0, lower_level, upper_level);
     }
 
     const T_dataType t = (logT - logT0) / (logT1 - logT0);
-    const T_dataType v0 = rates.coeffs(i0, lower_level, upper_level);
-    const T_dataType v1 = rates.coeffs(i0 + 1, lower_level, upper_level);
+    const T_dataType v0 = rates.hydrogen_excitation_rate(i0, lower_level, upper_level);
+    const T_dataType v1 = rates.hydrogen_excitation_rate(i0 + 1, lower_level, upper_level);
     return v0 + (v1 - v0) * t;
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for the reading the rates
-void simulation::two_fluid_read_rates(physicsData &data){
+void simulation::two_fluid_read_rates(atomicRatesData &rates){
 
     int ncid = -1;
     int dim_samples = -1;
@@ -730,13 +726,13 @@ void simulation::two_fluid_read_rates(physicsData &data){
     size_t nsamps = 0;
     size_t nstarts = 0;
     size_t nfinals = 0;
-    int nc_status = nc_open(data.data_path.c_str(), NC_NOWRITE, &ncid);
+    int nc_status = nc_open(rates.data_path.c_str(), NC_NOWRITE, &ncid);
     if (nc_status != NC_NOERR) {
         fprintf(stderr, "two_fluid_read_rates: nc_open failed for '%s': %s\n",
-                data.data_path.c_str(), nc_strerror(nc_status));
+                rates.data_path.c_str(), nc_strerror(nc_status));
         return;
     }
-    fprintf(stdout, "two_fluid_read_rates: using file '%s'\n", data.data_path.c_str());
+    fprintf(stdout, "two_fluid_read_rates: using file '%s'\n", rates.data_path.c_str());
 
     nc_status = nc_inq_dimid(ncid, "sample", &dim_samples);
     if (nc_status != NC_NOERR) {
@@ -799,19 +795,19 @@ void simulation::two_fluid_read_rates(physicsData &data){
         nc_close(ncid);
         return;
     }
-    nc_status = nc_inq_varid(ncid, "coeffs", &var_coeffs);
+    nc_status = nc_inq_varid(ncid, "hydrogen_excitation_rate", &var_coeffs);
     if (nc_status != NC_NOERR) {
-        fprintf(stderr, "two_fluid_read_rates: missing var 'coeffs': %s\n",
+        fprintf(stderr, "two_fluid_read_rates: missing var 'hydrogen_excitation_rate': %s\n",
                 nc_strerror(nc_status));
         nc_close(ncid);
         return;
     }
 
-    manager.allocate(data.logT_electron,
+    manager.allocate(rates.grid_logT,
                      portableWrapper::Range(0, static_cast<T_indexType>(nsamps - 1)));
     std::vector<double> flat(nsamps * nstarts * nfinals, -1.0);
 
-    nc_status = nc_get_var_double(ncid, var_logT, data.logT_electron.data());
+    nc_status = nc_get_var_double(ncid, var_logT, rates.grid_logT.data());
     if (nc_status != NC_NOERR) {
         fprintf(stderr, "two_fluid_read_rates: read 'logT' failed: %s\n",
                 nc_strerror(nc_status));
@@ -822,14 +818,14 @@ void simulation::two_fluid_read_rates(physicsData &data){
     if (!flat.empty()) {
         nc_status = nc_get_var_double(ncid, var_coeffs, flat.data());
         if (nc_status != NC_NOERR) {
-            fprintf(stderr, "two_fluid_read_rates: read 'coeffs' failed: %s\n",
+            fprintf(stderr, "two_fluid_read_rates: read 'hydrogen_excitation_rate' failed: %s\n",
                     nc_strerror(nc_status));
             nc_close(ncid);
             return;
         }
     }
 
-    manager.allocate(data.coeffs,
+    manager.allocate(rates.hydrogen_excitation_rate,
                      portableWrapper::Range(0, static_cast<T_indexType>(nsamps - 1)),
                      portableWrapper::Range(0, static_cast<T_indexType>(nstarts - 1)),
                      portableWrapper::Range(0, static_cast<T_indexType>(nfinals - 1)));
@@ -837,7 +833,7 @@ void simulation::two_fluid_read_rates(physicsData &data){
         for (size_t start = 0; start < nstarts; ++start) {
             for (size_t final = 0; final < nfinals; ++final) {
                 const size_t idx = (sample * nstarts + start) * nfinals + final;
-                data.coeffs(static_cast<T_indexType>(sample),
+                rates.hydrogen_excitation_rate(static_cast<T_indexType>(sample),
                             static_cast<T_indexType>(start),
                             static_cast<T_indexType>(final)) = flat[idx];
             }

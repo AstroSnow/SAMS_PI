@@ -37,7 +37,7 @@ static void write_coeff_table_netcdf(const std::string &path,
     int dims_coeffs[3] = {dim_samples, dim_start, dim_final};
 
     nc_check(nc_def_var(ncid, "logT", NC_DOUBLE, 1, dims_logT, &var_logT), "nc_def_var logT");
-    nc_check(nc_def_var(ncid, "coeffs", NC_DOUBLE, 3, dims_coeffs, &var_coeffs), "nc_def_var coeffs");
+    nc_check(nc_def_var(ncid, "hydrogen_excitation_rate", NC_DOUBLE, 3, dims_coeffs, &var_coeffs), "nc_def_var hydrogen_excitation_rate");
 
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "min_logT", NC_DOUBLE, 1, &minT), "nc_put_att min_logT");
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "max_logT", NC_DOUBLE, 1, &maxT), "nc_put_att max_logT");
@@ -57,7 +57,7 @@ static void write_coeff_table_netcdf(const std::string &path,
         }
     }
     if (!flat.empty()) {
-        nc_check(nc_put_var_double(ncid, var_coeffs, flat.data()), "nc_put_var coeffs");
+        nc_check(nc_put_var_double(ncid, var_coeffs, flat.data()), "nc_put_var hydrogen_excitation_rate");
     }
 
     nc_check(nc_close(ncid), "nc_close");
@@ -95,7 +95,7 @@ static bool read_coeff_table_netcdf(const std::string &path,
     int var_logT = -1;
     int var_coeffs = -1;
     if (nc_inq_varid(ncid, "logT", &var_logT) != NC_NOERR ||
-        nc_inq_varid(ncid, "coeffs", &var_coeffs) != NC_NOERR) {
+        nc_inq_varid(ncid, "hydrogen_excitation_rate", &var_coeffs) != NC_NOERR) {
         nc_close(ncid);
         return false;
     }
@@ -300,8 +300,8 @@ static int gen_coeff_table(int nsamps) {
         }
     }
 
-    write_coeff_table_netcdf("colexp.nc", logT_vals, coeffs, minT, maxT);
-    std::cout << "Wrote colexp.nc (" << (nsamps + 1) << " rows)\n";
+    write_coeff_table_netcdf("atomic_rates.nc", logT_vals, coeffs, minT, maxT);
+    std::cout << "Wrote atomic_rates.nc (" << (nsamps + 1) << " rows)\n";
 
     return 0;
 }
@@ -315,14 +315,14 @@ int main() {
 
     std::vector<double> logT_read;
     std::vector<std::vector<std::vector<double>>> coeffs_read;
-    if (!read_coeff_table_netcdf("colexp.nc", logT_read, coeffs_read)) {
-        std::cerr << "Failed to read colexp.nc\n";
+    if (!read_coeff_table_netcdf("atomic_rates.nc", logT_read, coeffs_read)) {
+        std::cerr << "Failed to read atomic_rates.nc\n";
         return 1;
     }
 
-    std::ofstream txt("colexp_from_netcdf.txt");
+    std::ofstream txt("atomic_rates_from_netcdf.txt");
     if (!txt) {
-        std::cerr << "Failed to open colexp_from_netcdf.txt for writing\n";
+        std::cerr << "Failed to open atomic_rates_from_netcdf.txt for writing\n";
         return 1;
     }
 

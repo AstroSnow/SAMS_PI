@@ -203,13 +203,12 @@ struct simulationData{
 };
 
 /**
- * This is a struct that hold all physics data, eg. ionisation rates, etc.
+ * This is a struct that hold all atomic rates data, etc.
  */
-struct physicsData{
-
-    std::string data_path = "./data/colexp.nc";
-    hostLineArray logT_electron; // Logarithm of electron temperature
-    hostVolumeArray coeffs;
+struct atomicRatesData{
+    std::string data_path = "./data/atomic_rates.nc";
+    hostLineArray grid_logT;
+    hostVolumeArray hydrogen_excitation_rate;
 };
 
 class simulation{
@@ -363,12 +362,12 @@ public:
     *
     */
     void two_fluid_source(simulationData &data, simulationData &dataNeutral,
-                          physicsData &rates, bool first_step);
+                          atomicRatesData &rates, bool first_step);
     
     /**
     * Routine to read the rates for ionisation/recombination/excitation/de-excitation
     */
-    void two_fluid_read_rates(physicsData &data);
+    void two_fluid_read_rates(atomicRatesData &rates);
 };
 
 #endif // SHARED_DATA_H

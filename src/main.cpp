@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
     //simulation S2;
     simulationData data;
     simulationData dataNeutral;
-    physicsData physData;
+    atomicRatesData atomicRates;
 
     //Setup control variables
     S.controlvariables(data);
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]){
 	  dataNeutral.is_neutral=true;
 		printf("Finished initialising two-fluid arrays \n");
     printf("Getting rates \n");
-    S.two_fluid_read_rates(physData);
+    S.two_fluid_read_rates(atomicRates);
 	}
 
     //Register axes and attach them to MPI dimensions
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]){
         S.two_fluid_grid(data,dataNeutral);
         if (data.ion_rec_nlevel){
             printf("Getting rates \n");
-            S.two_fluid_read_rates(physData);
+            S.two_fluid_read_rates(atomicRates);
         }
     }
 
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]){
       S.set_dt(data); // timestep of fluid
       if (data.two_fluid) {
         S.set_dt(dataNeutral); //Get fluid timestep of neutrals
-        S.two_fluid_source(data, dataNeutral, physData, true); // First step of Strang-split two-fluid sources
+        S.two_fluid_source(data, dataNeutral, atomicRates, true); // First step of Strang-split two-fluid sources
       }
       S.lagrangian_step(data,dataNeutral);    // lagran.cpp
 
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]){
       }
       S.eta_calc(data);            // lagran.cpp
       if (data.two_fluid) {
-          S.two_fluid_source(data, dataNeutral, physData, false); // Second step of Strang-split two-fluid sources
+          S.two_fluid_source(data, dataNeutral, atomicRates, false); // Second step of Strang-split two-fluid sources
       }
     }
     t.end();
