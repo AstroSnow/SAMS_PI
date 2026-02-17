@@ -207,10 +207,9 @@ struct simulationData{
  */
 struct physicsData{
 
-    std::string ion_path = "./data/colexp.nc";
-    std::vector<double> ion_logT;
-    std::vector<std::vector<double>> ion_coeffs;
-
+    std::string data_path = "./data/colexp.nc";
+    hostLineArray logT_electron; // Logarithm of electron temperature
+    hostVolumeArray coeffs;
 };
 
 class simulation{
@@ -363,7 +362,8 @@ public:
     /**
     *
     */
-    void two_fluid_source(simulationData &data,simulationData &dataNeutral,bool first_step);
+    void two_fluid_source(simulationData &data, simulationData &dataNeutral,
+                          physicsData &rates, bool first_step);
     
     /**
     * Routine to read the rates for ionisation/recombination/excitation/de-excitation

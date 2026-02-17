@@ -15,26 +15,29 @@ static void nc_check(int status, const char *context) {
 
 static void write_coeff_table_netcdf(const std::string &path,
                                      const std::vector<double> &logT,
-                                     const std::vector<std::vector<double>> &coeffs,
+                                     const std::vector<std::vector<std::vector<double>>> &coeffs,
                                      double minT, double maxT) {
     int ncid = -1;
     nc_check(nc_create(path.c_str(), NC_CLOBBER, &ncid), "nc_create");
 
     int dim_samples = -1;
-    int dim_coeffs = -1;
     const size_t nsamps = logT.size();
-    const size_t ncoeffs = coeffs.empty() ? 0 : coeffs.front().size();
+    const size_t nstarts = coeffs.empty() ? 0 : coeffs.front().size();
+    const size_t nfinals = (nstarts == 0 || coeffs.front().empty()) ? 0 : coeffs.front().front().size();
+    int dim_start = -1;
+    int dim_final = -1;
 
     nc_check(nc_def_dim(ncid, "sample", nsamps, &dim_samples), "nc_def_dim sample");
-    nc_check(nc_def_dim(ncid, "coeff", ncoeffs, &dim_coeffs), "nc_def_dim coeff");
+    nc_check(nc_def_dim(ncid, "start_level", nstarts, &dim_start), "nc_def_dim start_level");
+    nc_check(nc_def_dim(ncid, "final_level", nfinals, &dim_final), "nc_def_dim final_level");
 
     int var_logT = -1;
     int var_coeffs = -1;
     int dims_logT[1] = {dim_samples};
-    int dims_coeffs[2] = {dim_samples, dim_coeffs};
+    int dims_coeffs[3] = {dim_samples, dim_start, dim_final};
 
     nc_check(nc_def_var(ncid, "logT", NC_DOUBLE, 1, dims_logT, &var_logT), "nc_def_var logT");
-    nc_check(nc_def_var(ncid, "coeffs", NC_DOUBLE, 2, dims_coeffs, &var_coeffs), "nc_def_var coeffs");
+    nc_check(nc_def_var(ncid, "coeffs", NC_DOUBLE, 3, dims_coeffs, &var_coeffs), "nc_def_var coeffs");
 
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "min_logT", NC_DOUBLE, 1, &minT), "nc_put_att min_logT");
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "max_logT", NC_DOUBLE, 1, &maxT), "nc_put_att max_logT");
@@ -44,9 +47,14 @@ static void write_coeff_table_netcdf(const std::string &path,
     nc_check(nc_put_var_double(ncid, var_logT, logT.data()), "nc_put_var logT");
 
     std::vector<double> flat;
-    flat.reserve(nsamps * ncoeffs);
-    for (const auto &row : coeffs) {
-        flat.insert(flat.end(), row.begin(), row.end());
+    flat.assign(nsamps * nstarts * nfinals, 0.0);
+    for (size_t sample = 0; sample < nsamps; ++sample) {
+        for (size_t start = 0; start < nstarts; ++start) {
+            for (size_t final = 0; final < nfinals; ++final) {
+                const size_t idx = (sample * nstarts + start) * nfinals + final;
+                flat[idx] = coeffs[sample][start][final];
+            }
+        }
     }
     if (!flat.empty()) {
         nc_check(nc_put_var_double(ncid, var_coeffs, flat.data()), "nc_put_var coeffs");
@@ -57,25 +65,29 @@ static void write_coeff_table_netcdf(const std::string &path,
 
 static bool read_coeff_table_netcdf(const std::string &path,
                                     std::vector<double> &logT,
-                                    std::vector<std::vector<double>> &coeffs) {
+                                    std::vector<std::vector<std::vector<double>>> &coeffs) {
     int ncid = -1;
     if (nc_open(path.c_str(), NC_NOWRITE, &ncid) != NC_NOERR) {
         return false;
     }
 
     int dim_samples = -1;
-    int dim_coeffs = -1;
     size_t nsamps = 0;
-    size_t ncoeffs = 0;
+    size_t nstarts = 0;
+    size_t nfinals = 0;
+    int dim_start = -1;
+    int dim_final = -1;
 
     if (nc_inq_dimid(ncid, "sample", &dim_samples) != NC_NOERR ||
-        nc_inq_dimid(ncid, "coeff", &dim_coeffs) != NC_NOERR) {
+        nc_inq_dimid(ncid, "start_level", &dim_start) != NC_NOERR ||
+        nc_inq_dimid(ncid, "final_level", &dim_final) != NC_NOERR) {
         nc_close(ncid);
         return false;
     }
 
     if (nc_inq_dimlen(ncid, dim_samples, &nsamps) != NC_NOERR ||
-        nc_inq_dimlen(ncid, dim_coeffs, &ncoeffs) != NC_NOERR) {
+        nc_inq_dimlen(ncid, dim_start, &nstarts) != NC_NOERR ||
+        nc_inq_dimlen(ncid, dim_final, &nfinals) != NC_NOERR) {
         nc_close(ncid);
         return false;
     }
@@ -89,7 +101,7 @@ static bool read_coeff_table_netcdf(const std::string &path,
     }
 
     logT.assign(nsamps, 0.0);
-    std::vector<double> flat(nsamps * ncoeffs, 0.0);
+    std::vector<double> flat(nsamps * nstarts * nfinals, 0.0);
 
     if (nc_get_var_double(ncid, var_logT, logT.data()) != NC_NOERR ||
         (!flat.empty() && nc_get_var_double(ncid, var_coeffs, flat.data()) != NC_NOERR)) {
@@ -97,10 +109,13 @@ static bool read_coeff_table_netcdf(const std::string &path,
         return false;
     }
 
-    coeffs.assign(nsamps, std::vector<double>(ncoeffs, 0.0));
-    for (size_t i = 0; i < nsamps; ++i) {
-        for (size_t j = 0; j < ncoeffs; ++j) {
-            coeffs[i][j] = flat[i * ncoeffs + j];
+    coeffs.assign(nsamps, std::vector<std::vector<double>>(nstarts, std::vector<double>(nfinals, 0.0)));
+    for (size_t sample = 0; sample < nsamps; ++sample) {
+        for (size_t start = 0; start < nstarts; ++start) {
+            for (size_t final = 0; final < nfinals; ++final) {
+                const size_t idx = (sample * nstarts + start) * nfinals + final;
+                coeffs[sample][start][final] = flat[idx];
+            }
         }
     }
 
@@ -209,7 +224,9 @@ static int gen_coeff_table(int nsamps) {
     }
 
     std::vector<double> logT_vals(nsamps + 1, 0.0);
-    std::vector<std::vector<double>> coeffs(nsamps + 1, std::vector<double>(15, 0.0));
+    std::vector<std::vector<std::vector<double>>> coeffs(
+        nsamps + 1,
+        std::vector<std::vector<double>>(n_levels + 1, std::vector<double>(n_levels + 2, 0.0)));
 
     for (int ti = 0; ti <= nsamps; ++ti) {
         std::cout << " Temperature sample " << ti << " of " << nsamps << std::endl;
@@ -275,24 +292,12 @@ static int gen_coeff_table(int nsamps) {
             G_T[ii][n_levels + 1] = prefac_ion * (ion_term1 + ion_term2);
         }
 
-        // write output in same order as Fortran: logT then G_T(1,2)..G_T(5,6)
         logT_vals[ti] = logT;
-        int idx = 0;
-        coeffs[ti][idx++] = G_T[1][2];
-        coeffs[ti][idx++] = G_T[1][3];
-        coeffs[ti][idx++] = G_T[1][4];
-        coeffs[ti][idx++] = G_T[1][5];
-        coeffs[ti][idx++] = G_T[1][6];
-        coeffs[ti][idx++] = G_T[2][3];
-        coeffs[ti][idx++] = G_T[2][4];
-        coeffs[ti][idx++] = G_T[2][5];
-        coeffs[ti][idx++] = G_T[2][6];
-        coeffs[ti][idx++] = G_T[3][4];
-        coeffs[ti][idx++] = G_T[3][5];
-        coeffs[ti][idx++] = G_T[3][6];
-        coeffs[ti][idx++] = G_T[4][5];
-        coeffs[ti][idx++] = G_T[4][6];
-        coeffs[ti][idx++] = G_T[5][6];
+        for (int ii = 1; ii <= n_levels; ++ii) {
+            for (int jj = ii + 1; jj <= n_levels + 1; ++jj) {
+                coeffs[ti][ii][jj] = G_T[ii][jj];
+            }
+        }
     }
 
     write_coeff_table_netcdf("colexp.nc", logT_vals, coeffs, minT, maxT);
@@ -309,7 +314,7 @@ int main() {
     int rc = gen_coeff_table(nsamps);
 
     std::vector<double> logT_read;
-    std::vector<std::vector<double>> coeffs_read;
+    std::vector<std::vector<std::vector<double>>> coeffs_read;
     if (!read_coeff_table_netcdf("colexp.nc", logT_read, coeffs_read)) {
         std::cerr << "Failed to read colexp.nc\n";
         return 1;
@@ -321,10 +326,14 @@ int main() {
         return 1;
     }
 
+    const int max_start = coeffs_read.empty() ? 0 : static_cast<int>(coeffs_read.front().size()) - 1;
+    const int max_final = (max_start <= 0) ? 0 : static_cast<int>(coeffs_read.front().front().size()) - 1;
     for (size_t i = 0; i < logT_read.size(); ++i) {
         txt << logT_read[i];
-        for (size_t j = 0; j < coeffs_read[i].size(); ++j) {
-            txt << " " << coeffs_read[i][j];
+        for (int start = 1; start <= max_start; ++start) {
+            for (int final = start + 1; final <= max_final; ++final) {
+                txt << " " << coeffs_read[i][start][final];
+            }
         }
         txt << '\n';
     }

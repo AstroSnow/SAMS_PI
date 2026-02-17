@@ -32,10 +32,11 @@ void get_ac(simulationData &data, simulationData &dataNeutral, data_two_fluid_so
 void set_dt_collisional(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source);
 void get_collisional_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral);
-void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral);
+void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, const physicsData &rates);
 void get_ion_rec_source_terms(simulationData &data, simulationData &dataNeutral, data_two_fluid_source_ir &plasma_ir_source, data_two_fluid_source_ir &neutral_ir_source);
 void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral);
-void interpolate_rates(T_dataType temperature,T_indexType lower_level,T_indexType upper_level,T_dataType rate_coefficient);
+double interpolate_rates(const physicsData &rates, T_dataType temperature,
+                         T_indexType lower_level, T_indexType upper_level);
 //void get_ac(T_dataType alpha0,T_dataType temperature_ion,T_dataType temperature_neutral);
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +93,8 @@ void simulation::two_fluid_grid(simulationData &data,simulationData &dataNeutral
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutral,bool first_step){
+void simulation::two_fluid_source(simulationData &data, simulationData &dataNeutral,
+                                  physicsData &rates, bool first_step){
 
     //data.two_fluid_timestep=1.0;
     
@@ -135,7 +137,7 @@ void simulation::two_fluid_source(simulationData &data,simulationData &dataNeutr
         ion_rec_rates_empirical(data,dataNeutral);
     }
     if (data.ion_rec_nlevel){        
-        ion_rec_rates_nlevel(data,dataNeutral);
+        ion_rec_rates_nlevel(data, dataNeutral, rates);
     }
     
     //Calculate the source terms for the two-fluid interactions
@@ -261,7 +263,7 @@ void ion_rec_rates_empirical(simulationData &data, simulationData &dataNeutral){
 //Formulation from Snow+2023 paper using Jeffries1968
 //Controlled using the data.ion_rec_jeffries in control.cpp
 //Not used yet
-void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral){
+void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, const physicsData &rates){
 
     //Much of this should go elsewhere
     T_dataType T0=data.T_reference; //Reference temperature
@@ -289,9 +291,8 @@ void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral){
         //Interpolate rates
         T_indexType lower_level=1;
         T_indexType upper_level=2;
-        T_dataType rate_coefficient_1_2=0; 
-        interpolate_rates(temperature_electron, lower_level,upper_level,rate_coefficient_1_2);
-
+        T_dataType rate_coefficient_1_2 = interpolate_rates(rates, temperature_electron, lower_level, upper_level);
+        
         //Get ionisation and recomination rates
     	//data.Gm_rec(ix,iy,iz)=
     	//data.Gm_ion(ix,iy,iz)=       
@@ -658,43 +659,94 @@ void set_dt_ion_rec(simulationData &data,simulationData &dataNeutral) {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for interpolating the rates
-double interpolate_rates(physicsData &data, double logT, int i){
+double interpolate_rates(const physicsData &rates, T_dataType temperature,
+                         T_indexType lower_level, T_indexType upper_level){
 
-    // Find the two samples in data.ion_logT that bracket logT
-    // This assumes data.ion_logT is sorted in ascending order
-    // If logT is outside the range of data.ion_logT, we choose to clamp to the nearest value.
-    if (logT <= data.ion_logT.front()) {
-        return data.ion_coeffs.front()[i]; 
-    } else if (logT >= data.ion_logT.back()) {
-        return data.ion_coeffs.back()[i];
-    } else {
-        size_t n_t = 0;
-        for (size_t k = 0; k < data.ion_logT.size() - 1; ++k) {
-            if (data.ion_logT[k] <= logT && logT < data.ion_logT[k + 1]) {
-                n_t = k;
-                break;
-            }
-        }
-        return data.ion_coeffs[n_t][i] + (data.ion_coeffs[n_t + 1][i] - data.ion_coeffs[n_t][i]) * (logT - data.ion_logT[n_t]) / (data.ion_logT[n_t + 1] - data.ion_logT[n_t]);
+    if (temperature <= 0.0) {
+        fprintf(stdout, "Rates coefficient is (1)");
+        return 0.0;
     }
+
+    if (lower_level < 0 || upper_level < 0 || lower_level >= upper_level) {
+        fprintf(stdout, "Rates coefficient is (2)");
+        return 0.0;
+    }
+
+    const T_indexType nsamps = rates.logT_electron.getSize(0);
+    const T_indexType nstarts = rates.coeffs.getSize(1);
+    const T_indexType nfinals = rates.coeffs.getSize(2);
+
+    if (nsamps <= 0 || nstarts <= 0 || nfinals <= 0) {
+        fprintf(stdout, "Rates coefficient is (3)");
+        return 0.0;
+    }
+
+    if (lower_level >= nstarts || upper_level >= nfinals) {
+        fprintf(stdout, "Rates coefficient is (4)");
+        return 0.0;
+    }
+
+    const T_indexType lb = rates.logT_electron.getLowerBound(0);
+    const T_indexType ub = rates.logT_electron.getUpperBound(0);
+    if (ub <= lb) {
+        fprintf(stdout, "Rates coefficient is (5)");
+        return rates.coeffs(lb, lower_level, upper_level);
+    }
+
+    // const T_dataType logT = std::log10(temperature);
+    const T_dataType logT = 4.0; //This is a hack to get the rates working for now, need to fix the normalisation of the rates and temperature
+
+    const T_dataType logT_min = rates.logT_electron(lb);
+    const T_dataType logT_max = rates.logT_electron(ub);
+    if (logT <= logT_min) {
+        fprintf(stdout, "Rates coefficient is (6)");
+        return rates.coeffs(lb, lower_level, upper_level);
+    }
+    if (logT >= logT_max) {
+        fprintf(stdout, "Rates coefficient is (7)");
+        return rates.coeffs(ub, lower_level, upper_level);
+    }
+
+    T_indexType i0 = lb;
+    for (T_indexType i = lb; i < ub; ++i) {
+        if (rates.logT_electron(i) <= logT && logT < rates.logT_electron(i + 1)) {
+            i0 = i;
+            fprintf(stdout, "Rates coefficient index (i0) %li \n", i0);
+            break;
+        }
+    }
+
+    const T_dataType logT0 = rates.logT_electron(i0);
+    const T_dataType logT1 = rates.logT_electron(i0 + 1);
+    if (logT1 <= logT0) {
+        fprintf(stdout, "Rates coefficient is (8)");
+        return rates.coeffs(i0, lower_level, upper_level);
+    }
+
+    const T_dataType t = (logT - logT0) / (logT1 - logT0);
+    const T_dataType v0 = rates.coeffs(i0, lower_level, upper_level);
+    const T_dataType v1 = rates.coeffs(i0 + 1, lower_level, upper_level);
+    fprintf(stdout, "Rates coefficient is %f \n", t);
+    return v0 + (v1 - v0) * t;
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for the reading the rates
 void simulation::two_fluid_read_rates(physicsData &data){
 
-
     int ncid = -1;
-    int nc_status = nc_open(data.ion_path.c_str(), NC_NOWRITE, &ncid);
-    if (nc_status != NC_NOERR) {
-    fprintf(stderr, "two_fluid_read_rates: nc_open failed for '%s': %s\n",
-        data.ion_path.c_str(), nc_strerror(nc_status));
-    return;
-    }
-
     int dim_samples = -1;
-    int dim_coeffs = -1;
+    int dim_start = -1;
+    int dim_final = -1;
     size_t nsamps = 0;
-    size_t ncoeffs = 0;
+    size_t nstarts = 0;
+    size_t nfinals = 0;
+    int nc_status = nc_open(data.data_path.c_str(), NC_NOWRITE, &ncid);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: nc_open failed for '%s': %s\n",
+                data.data_path.c_str(), nc_strerror(nc_status));
+        return;
+    }
+    fprintf(stdout, "two_fluid_read_rates: using file '%s'\n", data.data_path.c_str());
 
     nc_status = nc_inq_dimid(ncid, "sample", &dim_samples);
     if (nc_status != NC_NOERR) {
@@ -703,9 +755,16 @@ void simulation::two_fluid_read_rates(physicsData &data){
         nc_close(ncid);
         return;
     }
-    nc_status = nc_inq_dimid(ncid, "coeff", &dim_coeffs);
+    nc_status = nc_inq_dimid(ncid, "start_level", &dim_start);
     if (nc_status != NC_NOERR) {
-        fprintf(stderr, "two_fluid_read_rates: missing dim 'coeff': %s\n",
+        fprintf(stderr, "two_fluid_read_rates: missing dim 'start_level': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimid(ncid, "final_level", &dim_final);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing dim 'final_level': %s\n",
                 nc_strerror(nc_status));
         nc_close(ncid);
         return;
@@ -718,10 +777,25 @@ void simulation::two_fluid_read_rates(physicsData &data){
         nc_close(ncid);
         return;
     }
-    nc_status = nc_inq_dimlen(ncid, dim_coeffs, &ncoeffs);
+    nc_status = nc_inq_dimlen(ncid, dim_start, &nstarts);
     if (nc_status != NC_NOERR) {
-        fprintf(stderr, "two_fluid_read_rates: dimlen 'coeff' failed: %s\n",
+        fprintf(stderr, "two_fluid_read_rates: dimlen 'start_level' failed: %s\n",
                 nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimlen(ncid, dim_final, &nfinals);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: dimlen 'final_level' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+
+    if (nsamps == 0 || nstarts == 0 || nfinals == 0) {
+        fprintf(stderr,
+                "two_fluid_read_rates: invalid dimensions (samples=%zu, start=%zu, final=%zu)\n",
+                nsamps, nstarts, nfinals);
         nc_close(ncid);
         return;
     }
@@ -743,16 +817,18 @@ void simulation::two_fluid_read_rates(physicsData &data){
         return;
     }
 
-    data.ion_logT.assign(nsamps, 0.0);
-    std::vector<double> flat(nsamps * ncoeffs, 0.0);
+    manager.allocate(data.logT_electron,
+                     portableWrapper::Range(0, static_cast<T_indexType>(nsamps - 1)));
+    std::vector<double> flat(nsamps * nstarts * nfinals, -1.0);
 
-    nc_status = nc_get_var_double(ncid, var_logT, data.ion_logT.data());
+    nc_status = nc_get_var_double(ncid, var_logT, data.logT_electron.data());
     if (nc_status != NC_NOERR) {
         fprintf(stderr, "two_fluid_read_rates: read 'logT' failed: %s\n",
                 nc_strerror(nc_status));
         nc_close(ncid);
         return;
     }
+
     if (!flat.empty()) {
         nc_status = nc_get_var_double(ncid, var_coeffs, flat.data());
         if (nc_status != NC_NOERR) {
@@ -763,14 +839,23 @@ void simulation::two_fluid_read_rates(physicsData &data){
         }
     }
 
-    data.ion_coeffs.assign(nsamps, std::vector<double>(ncoeffs, 0.0));
-    for (size_t i = 0; i < nsamps; ++i) {
-        for (size_t j = 0; j < ncoeffs; ++j) {
-            data.ion_coeffs[i][j] = flat[i * ncoeffs + j];
+    manager.allocate(data.coeffs,
+                     portableWrapper::Range(0, static_cast<T_indexType>(nsamps - 1)),
+                     portableWrapper::Range(0, static_cast<T_indexType>(nstarts - 1)),
+                     portableWrapper::Range(0, static_cast<T_indexType>(nfinals - 1)));
+    for (size_t sample = 0; sample < nsamps; ++sample) {
+        for (size_t start = 0; start < nstarts; ++start) {
+            for (size_t final = 0; final < nfinals; ++final) {
+                const size_t idx = (sample * nstarts + start) * nfinals + final;
+                data.coeffs(static_cast<T_indexType>(sample),
+                            static_cast<T_indexType>(start),
+                            static_cast<T_indexType>(final)) = flat[idx];
+            }
         }
     }
 
     nc_close(ncid);
-
-    printf("Rates read successfully \n Number of samples: %zu \n Number of coefficients: %zu \n", nsamps, ncoeffs);
+    fprintf(stdout, "Rates read successfully \n Number of samples: %zu \n Number of coefficients: %zu \n",
+        nsamps, nstarts * nfinals);
+    return;
 }

@@ -114,7 +114,7 @@ int main(int argc, char *argv[]){
       S.set_dt(data); // timestep of fluid
       if (data.two_fluid) {
         S.set_dt(dataNeutral); //Get fluid timestep of neutrals
-        S.two_fluid_source(data,dataNeutral,true); // First step of Strang-split two-fluid sources
+        S.two_fluid_source(data, dataNeutral, physData, true); // First step of Strang-split two-fluid sources
       }
       S.lagrangian_step(data,dataNeutral);    // lagran.cpp
 
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]){
       }
       S.eta_calc(data);            // lagran.cpp
       if (data.two_fluid) {
-          S.two_fluid_source(data,dataNeutral,false); // Second step of Strang-split two-fluid sources
+          S.two_fluid_source(data, dataNeutral, physData, false); // Second step of Strang-split two-fluid sources
       }
     }
     t.end();
