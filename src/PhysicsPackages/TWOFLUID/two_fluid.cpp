@@ -292,8 +292,9 @@ void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, con
         T_indexType lower_level=1;
         T_indexType upper_level=2;
         T_dataType rate_coefficient_1_2 = interpolate_rates(rates, temperature_electron, lower_level, upper_level);
+        fprintf(stdout, "Interpolated rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, upper_level, temperature_electron, rate_coefficient_1_2);
         
-        //Get ionisation and recomination rates
+        //Get ionisation and recombination rates
     	//data.Gm_rec(ix,iy,iz)=
     	//data.Gm_ion(ix,iy,iz)=       
     }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
@@ -663,12 +664,10 @@ double interpolate_rates(const physicsData &rates, T_dataType temperature,
                          T_indexType lower_level, T_indexType upper_level){
 
     if (temperature <= 0.0) {
-        fprintf(stdout, "Rates coefficient is (1)");
         return 0.0;
     }
 
     if (lower_level < 0 || upper_level < 0 || lower_level >= upper_level) {
-        fprintf(stdout, "Rates coefficient is (2)");
         return 0.0;
     }
 
@@ -677,33 +676,27 @@ double interpolate_rates(const physicsData &rates, T_dataType temperature,
     const T_indexType nfinals = rates.coeffs.getSize(2);
 
     if (nsamps <= 0 || nstarts <= 0 || nfinals <= 0) {
-        fprintf(stdout, "Rates coefficient is (3)");
         return 0.0;
     }
 
     if (lower_level >= nstarts || upper_level >= nfinals) {
-        fprintf(stdout, "Rates coefficient is (4)");
         return 0.0;
     }
 
     const T_indexType lb = rates.logT_electron.getLowerBound(0);
     const T_indexType ub = rates.logT_electron.getUpperBound(0);
     if (ub <= lb) {
-        fprintf(stdout, "Rates coefficient is (5)");
         return rates.coeffs(lb, lower_level, upper_level);
     }
 
-    // const T_dataType logT = std::log10(temperature);
-    const T_dataType logT = 4.0; //This is a hack to get the rates working for now, need to fix the normalisation of the rates and temperature
-
+    const T_dataType logT = std::log10(temperature);
+    
     const T_dataType logT_min = rates.logT_electron(lb);
     const T_dataType logT_max = rates.logT_electron(ub);
     if (logT <= logT_min) {
-        fprintf(stdout, "Rates coefficient is (6)");
         return rates.coeffs(lb, lower_level, upper_level);
     }
     if (logT >= logT_max) {
-        fprintf(stdout, "Rates coefficient is (7)");
         return rates.coeffs(ub, lower_level, upper_level);
     }
 
@@ -711,7 +704,6 @@ double interpolate_rates(const physicsData &rates, T_dataType temperature,
     for (T_indexType i = lb; i < ub; ++i) {
         if (rates.logT_electron(i) <= logT && logT < rates.logT_electron(i + 1)) {
             i0 = i;
-            fprintf(stdout, "Rates coefficient index (i0) %li \n", i0);
             break;
         }
     }
@@ -719,14 +711,12 @@ double interpolate_rates(const physicsData &rates, T_dataType temperature,
     const T_dataType logT0 = rates.logT_electron(i0);
     const T_dataType logT1 = rates.logT_electron(i0 + 1);
     if (logT1 <= logT0) {
-        fprintf(stdout, "Rates coefficient is (8)");
         return rates.coeffs(i0, lower_level, upper_level);
     }
 
     const T_dataType t = (logT - logT0) / (logT1 - logT0);
     const T_dataType v0 = rates.coeffs(i0, lower_level, upper_level);
     const T_dataType v1 = rates.coeffs(i0 + 1, lower_level, upper_level);
-    fprintf(stdout, "Rates coefficient is %f \n", t);
     return v0 + (v1 - v0) * t;
 }
 ////////////////////////////////////////////////////////////////////////////////////////
