@@ -285,7 +285,7 @@ void ion_rec_rates_nlevel(simulationData &data, simulationData &dataNeutral, con
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
         //Get Temperatures
-        T_dataType temperature_electron = data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
+        T_dataType temperature_electron = T0 * data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
         T_dataType numberDensity_electron=data.rho(ix,iy,iz); // This isn't actually the numebr density. Neet to fix
         
         //Interpolate rates
