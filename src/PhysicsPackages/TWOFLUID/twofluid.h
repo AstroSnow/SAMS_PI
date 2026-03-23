@@ -51,6 +51,10 @@ namespace TWOFLUID
         
         LARE::volumeArray ac; //coupling coeficient
         LARE::T_dataType two_fluid_timestep; //timestep 
+        
+        std::string data_path = "./data/atomic_rates.nc";
+        LARE::hostLineArray grid_logT;
+        LARE::hostVolumeArray hydrogen_excitation_rate;
     };
     
     class PIP
@@ -71,6 +75,7 @@ namespace TWOFLUID
              * Initialize the simulation. Called by the runner at the start of the simulation.
              */
             void initialize(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
+                two_fluid_read_rates(plasma_source);
                 //plasma_source_allocate(data,dataNeutral,plasma_source);
             };
             //}
@@ -197,6 +202,8 @@ namespace TWOFLUID
             void plasma_source_allocate(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
             
             void get_equilibrium_ion_fraction(LARE::T_dataType T0,LARE::T_dataType &xi_n);
+            
+            void two_fluid_read_rates(data_two_fluid_source &plasma_source);
             
             template<typename T_writer>
             void writeOutputMeshes(writer<T_writer> &writer, LARE::simulationData &data);

@@ -27,6 +27,8 @@
 #include "variableRegistry.h"
 #include "axisRegistry.h"
 
+#include <netcdf.h>
+
 namespace TWOFLUID
 {
     namespace pw = portableWrapper;
@@ -34,7 +36,7 @@ namespace TWOFLUID
     struct two_fluid_properties
     {
         bool collisions=true;
-        bool ion_rec_empirical=false;
+        bool ion_rec_empirical=true;
         bool ion_rec_nlevel=false;
     };
     
@@ -43,6 +45,7 @@ namespace TWOFLUID
     void ion_rec_rates_empirical(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
     void get_collisional_source_terms(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
     void get_ion_rec_source_terms(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
+    LARE::T_dataType interpolate_rates(data_two_fluid_source &plasma_source, LARE::T_dataType temperature,LARE::T_indexType lower_level, LARE::T_indexType upper_level);
             
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /*
@@ -246,7 +249,14 @@ namespace TWOFLUID
             
             LARE::T_dataType tfac=0.5*f_p_p/f_p; //Normalisation assumes bulk sound speed normalisation
             
-
+            /////////////////////////////
+            LARE::T_indexType lower_level=1;
+        LARE::T_indexType upper_level=2;
+        LARE::T_dataType temperature_electron=10000.0;
+        LARE::T_dataType rate_coefficient_1_2 = interpolate_rates(plasma_source, temperature_electron, lower_level, upper_level);
+        fprintf(stdout, "Interpolated rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, upper_level, temperature_electron, rate_coefficient_1_2);
+            /////////////////////////////
+            
             using Range = portableWrapper::Range;
             portableWrapper::applyKernel(LAMBDA(LARE::T_indexType ix, LARE::T_indexType iy, LARE::T_indexType iz) {
                 //Get Temperatures
@@ -626,5 +636,206 @@ void PIP::get_equilibrium_ion_fraction(LARE::T_dataType T0,LARE::T_dataType &xi_
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //};
+////////////////////////////////////////////////////////////////////////////////////////
+//Routine for the reading the rates
+void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
+
+    int ncid = -1;
+    int dim_samples = -1;
+    int dim_start = -1;
+    int dim_final = -1;
+    size_t nsamps = 0;
+    size_t nstarts = 0;
+    size_t nfinals = 0;
+    std::string data_path=plasma_source.data_path;
+    int nc_status = nc_open(data_path.c_str(), NC_NOWRITE, &ncid);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: nc_open failed for '%s': %s\n",
+                data_path.c_str(), nc_strerror(nc_status));
+        return;
+    }
+    fprintf(stdout, "two_fluid_read_rates: using file '%s'\n", data_path.c_str());
+
+    nc_status = nc_inq_dimid(ncid, "sample", &dim_samples);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing dim 'sample': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimid(ncid, "start_level", &dim_start);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing dim 'start_level': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimid(ncid, "final_level", &dim_final);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing dim 'final_level': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+
+    nc_status = nc_inq_dimlen(ncid, dim_samples, &nsamps);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: dimlen 'sample' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimlen(ncid, dim_start, &nstarts);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: dimlen 'start_level' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_dimlen(ncid, dim_final, &nfinals);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: dimlen 'final_level' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+
+    if (nsamps == 0 || nstarts == 0 || nfinals == 0) {
+        fprintf(stderr,
+                "two_fluid_read_rates: invalid dimensions (samples=%zu, start=%zu, final=%zu)\n",
+                nsamps, nstarts, nfinals);
+        nc_close(ncid);
+        return;
+    }
+
+    int var_logT = -1;
+    int var_coeffs = -1;
+    nc_status = nc_inq_varid(ncid, "logT", &var_logT);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing var 'logT': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    nc_status = nc_inq_varid(ncid, "hydrogen_excitation_rate", &var_coeffs);
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: missing var 'hydrogen_excitation_rate': %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+    
+    using Range = pw::Range;
+    pw::portableArrayManager svManager;
+    //pw::portableArray<LARE::T_dataType, 1> grid_logT;
+    Range T_range = pw::Range(0, nsamps-1);
+    svManager.allocate(plasma_source.grid_logT, T_range);
+
+    //manager.allocate(plasma_source.grid_logT,
+    //                portableWrapper::Range(0, static_cast<LARE::T_indexType>(nsamps - 1)));
+    std::vector<double> flat(nsamps * nstarts * nfinals, -1.0);
+
+    nc_status = nc_get_var_double(ncid, var_logT, plasma_source.grid_logT.data());
+    if (nc_status != NC_NOERR) {
+        fprintf(stderr, "two_fluid_read_rates: read 'logT' failed: %s\n",
+                nc_strerror(nc_status));
+        nc_close(ncid);
+        return;
+    }
+
+    if (!flat.empty()) {
+        nc_status = nc_get_var_double(ncid, var_coeffs, flat.data());
+        if (nc_status != NC_NOERR) {
+            fprintf(stderr, "two_fluid_read_rates: read 'hydrogen_excitation_rate' failed: %s\n",
+                    nc_strerror(nc_status));
+            nc_close(ncid);
+            return;
+        }
+    }
+
+
+    //Range T_range = pw::Range(0, nsamps-1);
+    Range n_start = pw::Range(0, static_cast<LARE::T_indexType>(nstarts - 1));
+    Range n_final = pw::Range(0, static_cast<LARE::T_indexType>(nfinals - 1));
+    svManager.allocate(plasma_source.hydrogen_excitation_rate, T_range, n_start, n_final);
+
+    //manager.allocate(plasma_source.hydrogen_excitation_rate,
+    //                 portableWrapper::Range(0, static_cast<LARE::T_indexType>(nsamps - 1)),
+    //                 portableWrapper::Range(0, static_cast<LARE::T_indexType>(nstarts - 1)),
+    //                 portableWrapper::Range(0, static_cast<LARE::T_indexType>(nfinals - 1)));
+    for (size_t sample = 0; sample < nsamps; ++sample) {
+        for (size_t start = 0; start < nstarts; ++start) {
+            for (size_t final = 0; final < nfinals; ++final) {
+                const size_t idx = (sample * nstarts + start) * nfinals + final;
+                plasma_source.hydrogen_excitation_rate(static_cast<LARE::T_indexType>(sample),
+                            static_cast<LARE::T_indexType>(start),
+                            static_cast<LARE::T_indexType>(final)) = flat[idx];
+            }
+        }
+    }
+
+    nc_close(ncid);
+    fprintf(stdout, "Rates read successfully \n Number of samples: %zu \n Number of coefficients: %zu \n",
+        nsamps, nstarts * nfinals);
+    return;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//Routine for interpolating the rates
+LARE::T_dataType interpolate_rates(data_two_fluid_source &plasma_source, LARE::T_dataType temperature,
+                         LARE::T_indexType lower_level, LARE::T_indexType upper_level){
+
+    if (lower_level < 0 || upper_level < 0 || lower_level >= upper_level) {
+        return 0.0;
+    }
+
+    const LARE::T_indexType nsamps = plasma_source.grid_logT.getSize(0);
+    const LARE::T_indexType nstarts = plasma_source.hydrogen_excitation_rate.getSize(1);
+    const LARE::T_indexType nfinals = plasma_source.hydrogen_excitation_rate.getSize(2);
+
+    if (nsamps <= 0 || nstarts <= 0 || nfinals <= 0) {
+        return 0.0;
+    }
+
+    if (lower_level >= nstarts || upper_level >= nfinals) {
+        return 0.0;
+    }
+
+    const LARE::T_indexType lb = plasma_source.grid_logT.getLowerBound(0);
+    const LARE::T_indexType ub = plasma_source.grid_logT.getUpperBound(0);
+    if (ub <= lb) {
+        return plasma_source.hydrogen_excitation_rate(lb, lower_level, upper_level);
+    }
+
+    const LARE::T_dataType logT = std::log10(temperature);
+    
+    const LARE::T_dataType logT_min = plasma_source.grid_logT(lb);
+    const LARE::T_dataType logT_max = plasma_source.grid_logT(ub);
+    if (logT <= logT_min) {
+        return plasma_source.hydrogen_excitation_rate(lb, lower_level, upper_level);
+    }
+    if (logT >= logT_max) {
+        return plasma_source.hydrogen_excitation_rate(ub, lower_level, upper_level);
+    }
+
+    LARE::T_indexType i0 = lb;
+    for (LARE::T_indexType i = lb; i < ub; ++i) {
+        if (plasma_source.grid_logT(i) <= logT && logT < plasma_source.grid_logT(i + 1)) {
+            i0 = i;
+            break;
+        }
+    }
+
+    const LARE::T_dataType logT0 = plasma_source.grid_logT(i0);
+    const LARE::T_dataType logT1 = plasma_source.grid_logT(i0 + 1);
+    if (logT1 <= logT0) {
+        return plasma_source.hydrogen_excitation_rate(i0, lower_level, upper_level);
+    }
+
+    const LARE::T_dataType t = (logT - logT0) / (logT1 - logT0);
+    const LARE::T_dataType v0 = plasma_source.hydrogen_excitation_rate(i0, lower_level, upper_level);
+    const LARE::T_dataType v1 = plasma_source.hydrogen_excitation_rate(i0 + 1, lower_level, upper_level);
+    return v0 + (v1 - v0) * t;
+}
+
 }
