@@ -147,6 +147,8 @@ namespace TWOFLUID
         
         varRegistry.fillPPArray("level_populations", plasma_source.level_populations);
         pw::assign(plasma_source.level_populations, 0.0);
+        varRegistry.fillPPArray("level_rates", plasma_source.level_rates);
+        pw::assign(plasma_source.level_rates, 0.0);
         
     }
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -314,13 +316,21 @@ namespace TWOFLUID
                                                             lower_level, upper_level);
 
                         // triangular work for this cell
-                        fprintf(stdout, "Interpolated rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, upper_level, temperature_electron, rate_coefficient);
+                        fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, upper_level, temperature_electron, rate_coefficient);
+                        //Excitation rate
+                        plasma_source.level_rates(ix,iy,iz,lower_level,upper_level)=numberDensity_electron*rate_coefficient;
+                        //De-Excitation rate
+                        plasma_source.level_rates(ix,iy,iz,upper_level,lower_level)=numberDensity_electron*rate_coefficient;
 
                     }
                     //Calculate ionisation and recombination
                     LARE::T_dataType rate_coefficient = interpolate_rates(plasma_source, temperature_electron, 
                                                             lower_level, nLevels);
-                    fprintf(stdout, "Interpolated rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, nLevels, temperature_electron, rate_coefficient);
+                    //Ionisation rate
+                    plasma_source.level_rates(ix,iy,iz,lower_level,nLevels)=rate_coefficient;
+                    //Recombination rate
+                    plasma_source.level_rates(ix,iy,iz,nLevels,lower_level)=rate_coefficient;
+                    fprintf(stdout, "Ionisation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, nLevels, temperature_electron, rate_coefficient);
                 }
 
                 //Get ionisation and recomination rates
