@@ -305,18 +305,21 @@ namespace TWOFLUID
             portableWrapper::applyKernel(LAMBDA(LARE::T_indexType ix, LARE::T_indexType iy, LARE::T_indexType iz) {
                 //Get Temperatures
                 //LARE::T_dataType temperature_electron = 2.0*data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
-                LARE::T_dataType temperature_electron = 0.5*data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*T0;
+                LARE::T_dataType temperature_electron = 100.0;//0.5*data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*T0;
                 LARE::T_dataType numberDensity_electron=data.rho(ix,iy,iz)*n0; 
                 
                 // --- Level population triangular loop---
                 for (LARE::T_indexType lower_level = 1; lower_level < nLevels; ++lower_level) {
                     //Loop over (de)excitation
                     for (LARE::T_indexType upper_level = lower_level + 1; upper_level < nLevels; ++upper_level) {
+                    
+                    //fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is vs %e \n", lower_level, upper_level, temperature_electron,plasma_source.hydrogen_excitation_rate(1,lower_level,upper_level));
+                    
                         LARE::T_dataType rate_coefficient = interpolate_rates(plasma_source, temperature_electron, 
                                                             lower_level, upper_level);
 
                         // triangular work for this cell
-                        fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, upper_level, temperature_electron, rate_coefficient);
+                        //fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is %e vs %e \n", lower_level, upper_level, temperature_electron, rate_coefficient,plasma_source.hydrogen_excitation_rate(1,lower_level,upper_level));
                         //Excitation rate
                         plasma_source.level_rates(ix,iy,iz,lower_level,upper_level)=numberDensity_electron*rate_coefficient;
                         //De-Excitation rate
@@ -330,7 +333,7 @@ namespace TWOFLUID
                     plasma_source.level_rates(ix,iy,iz,lower_level,nLevels)=rate_coefficient;
                     //Recombination rate
                     plasma_source.level_rates(ix,iy,iz,nLevels,lower_level)=rate_coefficient;
-                    fprintf(stdout, "Ionisation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, nLevels, temperature_electron, rate_coefficient);
+                    //fprintf(stdout, "Ionisation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, nLevels, temperature_electron, rate_coefficient);
                 }
 
                 //Get ionisation and recomination rates
@@ -838,6 +841,10 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
                 plasma_source.hydrogen_excitation_rate(static_cast<LARE::T_indexType>(sample),
                             static_cast<LARE::T_indexType>(start),
                             static_cast<LARE::T_indexType>(final)) = flat[idx];
+                //fprintf(stdout, "Rates read successfully \n start: %zu \n final: %zu \n sample: %zu \n %e \n",
+        //start, final,sample ,plasma_source.hydrogen_excitation_rate(static_cast<LARE::T_indexType>(sample),
+          //                  static_cast<LARE::T_indexType>(start),
+            //                static_cast<LARE::T_indexType>(final)));
             }
         }
     }
@@ -903,6 +910,8 @@ LARE::T_dataType interpolate_rates(const data_two_fluid_source &plasma_source, L
     const LARE::T_dataType t = (logT - logT0) / (logT1 - logT0);
     const LARE::T_dataType v0 = plasma_source.hydrogen_excitation_rate(i0, lower_level, upper_level);
     const LARE::T_dataType v1 = plasma_source.hydrogen_excitation_rate(i0 + 1, lower_level, upper_level);
+    fprintf(stdout, "%zu %zu %zu %zu %e %e %e \n",
+        i0,i0+1,lower_level,upper_level,v0,v1,t);
     return v0 + (v1 - v0) * t;
 }
 
