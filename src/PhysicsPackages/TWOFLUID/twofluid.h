@@ -52,6 +52,9 @@ namespace TWOFLUID
         LARE::volumeArray ac; //coupling coeficient
         LARE::T_dataType two_fluid_timestep; //timestep 
         
+        LARE::volumeArray4D level_populations; //4D array of level populations per cell
+        LARE::volumeArray5D level_rates; //5D array of all the rates per cell
+        
         std::string data_path = "./data/atomic_rates.nc";
         LARE::hostLineArray grid_logT;
         LARE::hostVolumeArray hydrogen_excitation_rate;
@@ -79,6 +82,12 @@ namespace TWOFLUID
                 //plasma_source_allocate(data,dataNeutral,plasma_source);
             };
             //}
+            
+            void registerAxes(SAMS::harness &harness)
+            {
+                auto &axisReg = harness.axisRegistry;
+                axisReg.registerLogicalAxis("species");
+            }
 
 
             void allocate(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source,SAMS::harness &harness);

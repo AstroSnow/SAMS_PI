@@ -30,5 +30,8 @@ namespace LARE
   using hostPlaneArray = portableWrapper::hostArray<T_dataType, 2>;
   using lineArray = portableWrapper::acceleratedArray<T_dataType, 1>;
   using hostLineArray = portableWrapper::hostArray<T_dataType, 1>;
+  
+  using volumeArray4D = portableWrapper::acceleratedArray<T_dataType, 4>;
+  using volumeArray5D = portableWrapper::acceleratedArray<T_dataType, 5>;
 }
 #endif

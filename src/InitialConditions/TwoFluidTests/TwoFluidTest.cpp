@@ -115,6 +115,8 @@ namespace examples
             axisReg.setDomain("X", data.nx, data.x_min, data.x_max);
             axisReg.setDomain("Y", data.ny, data.y_min, data.y_max);
             axisReg.setDomain("Z", data.nz, data.z_min, data.z_max);
+            
+            axisReg.setDomainValues("species", 6, [](COUNT_TYPE i){ return i; });
         }
 
         /**

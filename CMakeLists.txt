@@ -122,6 +122,9 @@ add_compile_definitions(USE_HDF5)
 #Recursively gather all .cpp source files in src/
 file(GLOB_RECURSE SAMS_SOURCES src/*.cpp)
 
+#Remove the atmoic rate calculation
+list(REMOVE_ITEM SAMS_SOURCES "${CMAKE_SOURCE_DIR}/src/PhysicsPackages/TWOFLUID/nlevel_T_calc.cpp")
+
 if(NATIVE_CUDA)
   message(STATUS "Configuring for native CUDA compilation")
   foreach(src_file IN LISTS SAMS_SOURCES)
