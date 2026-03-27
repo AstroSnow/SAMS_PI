@@ -80,6 +80,8 @@ namespace TWOFLUID
         writer.template registerData<LARE::T_dataType>("source_v_z", "MeshCC_source");
         writer.template registerData<LARE::T_dataType>("source_v_z_n", "MeshCC_source");
         writer.template registerData<LARE::T_dataType>("ac", "MeshCC_source");
+        writer.template registerData<LARE::T_dataType>("gm_ion", "MeshCC_source");
+        writer.template registerData<LARE::T_dataType>("gm_rec", "MeshCC_source");
     }
 
     template <typename T_writer>
@@ -90,6 +92,12 @@ namespace TWOFLUID
 
         getHostVersion(data, manager, data.ac, host);
         writer.writeData("ac", host.data());
+        
+        getHostVersion(data, manager, data.gm_ion, host);
+        writer.writeData("gm_ion", host.data());
+        
+        getHostVersion(data, manager, data.gm_rec, host);
+        writer.writeData("gm_rec", host.data());
     
         getHostVersion(data, manager, data.source_mass, host);
         writer.writeData("source_mass", host.data());
