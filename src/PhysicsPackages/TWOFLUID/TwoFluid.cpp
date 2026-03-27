@@ -36,8 +36,8 @@ namespace TWOFLUID
     struct two_fluid_properties
     {
         bool collisions=true;
-        bool ion_rec_empirical=false;
-        bool ion_rec_nlevel=true;
+        bool ion_rec_empirical=true;
+        bool ion_rec_nlevel=false;
     };
     
     //void get_ac(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
@@ -54,7 +54,7 @@ namespace TWOFLUID
     */
     void PIP::defaultValues(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral){
         SAMS::cout << "Setting default values" << std::endl;
-        data.alpha0=1000.0;
+        data.alpha0=10.0;
         dataNeutral.alpha0=data.alpha0;
         dataNeutral.is_neutral=true;
         SAMS::cout << "dataNeutral=" << dataNeutral.is_neutral << std::endl;
@@ -100,9 +100,9 @@ namespace TWOFLUID
         
         varRegistry.registerVariable<LARE::T_dataType>("gm_rec", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
-        varRegistry.registerVariable<LARE::T_dataType>("level_populations", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0));
+        //varRegistry.registerVariable<LARE::T_dataType>("level_populations", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0));
         
-        varRegistry.registerVariable<LARE::T_dataType>("level_rates", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0), SAMS::dimension("species",0));
+        //varRegistry.registerVariable<LARE::T_dataType>("level_rates", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0), SAMS::dimension("species",0));
     }
 /////////////////////////////////////////////////////////////////////////////////
     void PIP::allocate(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source,SAMS::harness &harness){
@@ -145,10 +145,10 @@ namespace TWOFLUID
         varRegistry.fillPPArray("gm_rec", plasma_source.gm_rec);
         pw::assign(plasma_source.gm_rec, 0.0);
         
-        varRegistry.fillPPArray("level_populations", plasma_source.level_populations);
-        pw::assign(plasma_source.level_populations, 0.0);
-        varRegistry.fillPPArray("level_rates", plasma_source.level_rates);
-        pw::assign(plasma_source.level_rates, 0.0);
+        //varRegistry.fillPPArray("level_populations", plasma_source.level_populations);
+        //pw::assign(plasma_source.level_populations, 0.0);
+        //varRegistry.fillPPArray("level_rates", plasma_source.level_rates);
+        //pw::assign(plasma_source.level_rates, 0.0);
         
     }
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +218,8 @@ namespace TWOFLUID
             }, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
         }
         
+        portableWrapper::fence();
+        
     };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +240,7 @@ namespace TWOFLUID
                 
             	}, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
             //return alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
-
+            portableWrapper::fence();
         }
         
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -248,12 +250,12 @@ namespace TWOFLUID
         void ion_rec_rates_empirical(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
 
             //Much of this should go elsewhere
-            LARE::T_dataType T0=6000.0;//data.T_reference; //Reference temperature
+            LARE::T_dataType T0=13000.0;//data.T_reference; //Reference temperature
             LARE::T_dataType n0=1.0e16;//data.ne_reference; //Reference electron number density
-            LARE::T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
+            LARE::T_dataType t_ir=1.0e-4; //Reference recombination timescale (relative to collisional timescale)
 
             LARE::T_dataType Te_0=T0/1.1604e4; //Calculate electron temperature in eV
-            LARE::T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
+            LARE::T_dataType rec_fac=2.6e-19*(n0)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
 
             //initial equilibrium fractions
             LARE::T_dataType ioneq=(2.6e-19/std::sqrt(Te_0))/(2.91e-14/(0.232+13.6/Te_0)*std::pow(13.6/Te_0,0.39)*std::exp(-13.6/Te_0));
@@ -261,7 +263,7 @@ namespace TWOFLUID
             LARE::T_dataType f_p=1.0-f_n;
             LARE::T_dataType f_p_p=2.0*f_p/(f_n+2.0*f_p);
             
-            LARE::T_dataType tfac=0.5*f_p_p/f_p; //Normalisation assumes bulk sound speed normalisation
+            LARE::T_dataType tfac=data.gas_gamma*0.5*f_p_p/f_p; //Normalisation assumes bulk sound speed normalisation
             
             using Range = portableWrapper::Range;
             portableWrapper::applyKernel(LAMBDA(LARE::T_indexType ix, LARE::T_indexType iy, LARE::T_indexType iz) {
@@ -271,12 +273,13 @@ namespace TWOFLUID
                 LARE::T_dataType numberDensity_electron=data.rho(ix,iy,iz); 
 
                 //Get ionisation and recomination rates
-            	plasma_source.gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
-            	plasma_source.gm_ion(ix,iy,iz)=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
-            	plasma_source.gm_ion(ix,iy,iz)=plasma_source.gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;    
+            	plasma_source.gm_rec(ix,iy,iz)=data.rho(ix,iy,iz)/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
+            	plasma_source.gm_ion(ix,iy,iz)=data.rho(ix,iy,iz)*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
+            	plasma_source.gm_ion(ix,iy,iz)=plasma_source.gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)*rec_fac/f_p *t_ir;    
             	
-            	//printf("%f %f %f %f %f \n",f_p,data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz), temperature_electron,plasma_source.gm_rec(ix,iy,iz),plasma_source.gm_ion(ix,iy,iz));    
+            	//printf("%f %f %f %f %f \n",f_p,data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz), temperature_electron,plasma_source.gm_rec(ix,iy,iz),plasma_source.gm_ion(ix,iy,iz));    
             }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+            portableWrapper::fence();
         };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //multi-level hydrogen rates
@@ -321,28 +324,29 @@ namespace TWOFLUID
                         // triangular work for this cell
                         //fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is %e vs %e \n", lower_level, upper_level, temperature_electron, rate_coefficient,plasma_source.hydrogen_excitation_rate(1,lower_level,upper_level));
                         //Excitation rate
-                        plasma_source.level_rates(ix,iy,iz,lower_level,upper_level)=numberDensity_electron*rate_coefficient;
+                        //plasma_source.level_rates(ix,iy,iz,lower_level,upper_level)=numberDensity_electron*rate_coefficient;
                         //De-Excitation rate
-                        plasma_source.level_rates(ix,iy,iz,upper_level,lower_level)=numberDensity_electron*rate_coefficient;
+                        //plasma_source.level_rates(ix,iy,iz,upper_level,lower_level)=numberDensity_electron*rate_coefficient;
 
                     }
                     //Calculate ionisation and recombination
                     LARE::T_dataType rate_coefficient = interpolate_rates(plasma_source, temperature_electron, 
                                                             lower_level, nLevels);
                     //Ionisation rate
-                    plasma_source.level_rates(ix,iy,iz,lower_level,nLevels)=rate_coefficient;
+                    //plasma_source.level_rates(ix,iy,iz,lower_level,nLevels)=rate_coefficient;
                     //Recombination rate
-                    plasma_source.level_rates(ix,iy,iz,nLevels,lower_level)=rate_coefficient;
+                    //plasma_source.level_rates(ix,iy,iz,nLevels,lower_level)=rate_coefficient;
                     //fprintf(stdout, "Ionisation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, nLevels, temperature_electron, rate_coefficient);
                 }
 
                 //Get ionisation and recomination rates
-            	plasma_source.gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
-            	plasma_source.gm_ion(ix,iy,iz)=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
-            	plasma_source.gm_ion(ix,iy,iz)=plasma_source.gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;    
+            	//plasma_source.gm_rec(ix,iy,iz)=numberDensity_electron/std::sqrt(temperature_electron)*t_ir/f_p*std::sqrt(tfac);
+            	//plasma_source.gm_ion(ix,iy,iz)=2.91e-14*(n0*1.0e6)*numberDensity_electron*std::exp(-13.6/Te_0/temperature_electron*tfac)*std::pow(13.6/Te_0/temperature_electron*tfac,0.39);
+            	//plasma_source.gm_ion(ix,iy,iz)=plasma_source.gm_ion(ix,iy,iz)/(0.232+13.6/Te_0/temperature_electron*tfac)/rec_fac/f_p *t_ir;    
             	
             	//printf("%f %f %f %f %f \n",f_p,data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz), temperature_electron,plasma_source.gm_rec(ix,iy,iz),plasma_source.gm_ion(ix,iy,iz));    
             }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+            portableWrapper::fence();
         };
 ////////////////////////////////////////////////////////////////////////////////////////
 //Get the source terms for the IR rates
@@ -491,6 +495,7 @@ void get_collisional_source_terms(LARE::simulationData &data, LARE_neutral::simu
                                    
         //printf("%i,%i,%i \n",ix,iy,iz);
     }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    portableWrapper::fence();
 
 //printf("FINISHED LOOP \n");
 }
@@ -499,6 +504,10 @@ void get_collisional_source_terms(LARE::simulationData &data, LARE_neutral::simu
 //Get the source terms for the IR rates
 void get_ion_rec_source_terms(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source){	
 
+    LARE::T_dataType T0=13000.0;//data.T_reference; //Reference temperature
+    LARE::T_dataType Te_0=T0/1.1604e4;
+    LARE::T_dataType kb_ev=8.617333e-5; //Kb in eV/K
+    
     using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(LARE::T_indexType ix, LARE::T_indexType iy, LARE::T_indexType iz) {
     
@@ -633,14 +642,15 @@ void get_ion_rec_source_terms(LARE::simulationData &data, LARE_neutral::simulati
                                                    +(plasma_source.gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)-plasma_source.gm_ion(ix,iy,iz)*dataNeutral.energy_neutral(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
         
         //Work out how much energy is spent/gained by IR processes
-        //if(data.ion_rec_empirical){ 
-        //    LARE::T_dataType ionisation_energy=(plasma_source.gm_rec(ix,iy,iz)-
-        //                          plasma_source.gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/(data.gas_gamma-1.0)/data.rho(ix,iy,iz))*
-        //                          13.6/kb_si/data.T_reference;     
-        //    //plasma_ir_source.source_electron_energy(ix,iy,iz)+=ionisation_energy; 
+        //if(two_fluid_flags.ion_rec_empirical){ 
+            LARE::T_dataType ionisation_energy=(-plasma_source.gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))*
+                                  13.6/kb_ev/T0/data.gas_gamma;
+            //printf("ionisation energy, rho = %f %f \n",ionisation_energy, dataNeutral.rho(ix,iy,iz));
+            plasma_source.source_energy(ix,iy,iz)+=ionisation_energy; 
         //}
         
     }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
+    portableWrapper::fence();
 
 
 }
@@ -693,6 +703,7 @@ void PIP::set_dt_collisional(LARE::simulationData &data,LARE_neutral::simulation
         a=portableWrapper::min(a, b);
     }, data.largest_number,
     Range(i0, data.nx), Range(0, data.ny), Range(0, data.nz));
+    portableWrapper::fence();
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
