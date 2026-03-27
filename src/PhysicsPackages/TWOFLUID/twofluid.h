@@ -89,6 +89,11 @@ namespace TWOFLUID
                 axisReg.registerLogicalAxis("species");
             }
 
+            void initialiseSource(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
+                printf("Getting IC for two_fluid rates \n");
+                get_ac(data,dataNeutral,plasma_source);
+                get_two_fluid_source(data,dataNeutral,plasma_source);
+            }
 
             void allocate(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source,SAMS::harness &harness);
             void registerVariables(SAMS::harness &harness);
@@ -190,6 +195,8 @@ namespace TWOFLUID
             
             void halfSplitSourceStart(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 //printf("applying source \n");
+                get_ac(data,dataNeutral,plasma_source);
+                get_two_fluid_source(data,dataNeutral,plasma_source);
                 apply_two_fluid_source(data,dataNeutral,plasma_source);
                 //data.dt = timeData.dt;
             };
