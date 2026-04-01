@@ -123,33 +123,47 @@ static bool read_coeff_table_netcdf(const std::string &path,
     return true;
 }
 
-static double gen_exp_int(double x, int n) {
-// Generalized exponential integral E_n(x) = \int_1^\infty exp(-x omega) / omega^n d omega
+#include <cmath>
+#include <algorithm>
 
-    if (n == 0) {
-        return std::exp(-x) / x; // Special case for n=0.
-    } else {
-        // Numerical integration using Simpson's rule for n>=1. We use a change of variable
-        // u = 1 / (x * omega), to convert the integral from 1 to infinity into an integral from 0 
-        // to 1 / x. The new function to integate changes from exp(-x omega) / omega^n to
-        // exp(-1/u) * u^(n-2) with a scale factor of x^(n - 1). Note latter function goes 
-        // to zero as u -> 0 for n>=1, so no singularity.
-        const int nsteps = 10000.0;
-        double a = 0.0; // lower limit after change of variable
-        double b = 1.0 / x; // upper limit after change of variable
-        double fa = 0.0; // integrand at lower limit
-        double fb = std::exp(-x) / std::pow(x, n - 2); // integrand at upper limit
-        double h = (b - a) / nsteps;
-        double t_end = fa + fb;
-        double t_interior = 0.0;
-        for (int i = 1; i < nsteps; ++i) {
-            double u = i * h;
-            double coeff = (i %2 == 0) ? 2.0 : 4.0; // Simpson's rule coefficients
-            t_interior += coeff * std::exp(-1. / u) * std::pow(u, n - 2);
-        }
-        double scale = std::pow(x, n - 1);
-        return (h / 3.0) * (t_end + t_interior) * scale;
+// Robust generalized exponential integral E_n(x)
+static double gen_exp_int(double x, int n) {
+    if (x == 0.0) {
+        // x = 0: E_n(0) = 1/(n-1) for n>1, diverges for n=1
+        return (n == 1) ? 20.0 : 1.0 / (n - 1); // 20 is arbitrary for E1(0)
     }
+
+    if (x < 1e-4) {
+        // Small x: use series expansion
+        if (n == 1) {
+            const double gamma = 0.5772156649; // Euler-Mascheroni
+            return -std::log(x) - gamma + x - x*x/4.0 + x*x*x/18.0;
+        } else {
+            // n >= 2: E_n(x) ~ 1/(n-1) - x/(n-2) + x^2/(2(n-3)) - ...
+            double val = 1.0 / (n - 1);
+            double term = x;
+            if (n > 2) val -= term / (n - 2);
+            term *= x;
+            if (n > 3) val += term / (2.0 * (n - 3));
+            term *= x;
+            if (n > 4) val -= term / (6.0 * (n - 4));
+            return val;
+        }
+    }
+
+    // Moderate/large x: use Simpson's rule
+    const int nsteps = 10000;
+    double h = 1.0 / nsteps;
+    double sum = 0.0;
+
+    for (int i = 0; i <= nsteps; ++i) {
+        double u = i * h;
+        double coeff = (i == 0 || i == nsteps) ? 1.0 : (i % 2 == 0) ? 2.0 : 4.0;
+        double integrand = std::pow(u, n - 1) * std::exp(-x * u);
+        sum += coeff * integrand;
+    }
+
+    return sum * h / 3.0;
 }
 
 static int gen_coeff_table(int nsamps) {
