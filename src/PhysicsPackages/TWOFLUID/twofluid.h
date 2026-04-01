@@ -55,7 +55,7 @@ namespace TWOFLUID
         LARE::volumeArray4D level_populations; //4D array of level populations per cell
         LARE::volumeArray5D level_rates; //5D array of all the rates per cell
         
-        std::string data_path = "./data/atomic_rates.nc";
+        std::string data_path = "./data/atomic_rates_2.nc";
         LARE::hostLineArray grid_logT;
         LARE::hostVolumeArray hydrogen_excitation_rate;
     };
@@ -69,6 +69,8 @@ namespace TWOFLUID
         public:
         
             static constexpr std::string_view name = "PIP";
+            
+            pw::portableArrayManager svManager; 
             
             using dataPack = SAMS::dataPacks::multiPack<LARE::simulationData, LARE::remapData, LARE_neutral::simulationData, LARE_neutral::remapData,data_two_fluid_source>;
             
