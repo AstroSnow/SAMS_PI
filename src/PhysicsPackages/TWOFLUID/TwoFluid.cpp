@@ -36,8 +36,8 @@ namespace TWOFLUID
     struct two_fluid_properties
     {
         bool collisions=true;
-        bool ion_rec_empirical=true;
-        bool ion_rec_nlevel=false;
+        bool ion_rec_empirical=false;
+        bool ion_rec_nlevel=true;
     };
     
     //void get_ac(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
@@ -46,7 +46,7 @@ namespace TWOFLUID
     void ion_rec_rates_nlevel(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
     void get_collisional_source_terms(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
     void get_ion_rec_source_terms(LARE::simulationData &data, LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
-    LARE::T_dataType interpolate_rates(const data_two_fluid_source &plasma_source, LARE::T_dataType temperature,LARE::T_indexType lower_level, LARE::T_indexType upper_level);
+    DEVICEPREFIX INLINE LARE::T_dataType interpolate_rates(const data_two_fluid_source &plasma_source, LARE::T_dataType temperature,LARE::T_indexType lower_level, LARE::T_indexType upper_level);
             
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /*
@@ -100,9 +100,9 @@ namespace TWOFLUID
         
         varRegistry.registerVariable<LARE::T_dataType>("gm_rec", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
-        //varRegistry.registerVariable<LARE::T_dataType>("level_populations", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0));
+        varRegistry.registerVariable<LARE::T_dataType>("level_populations", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0));
         
-        //varRegistry.registerVariable<LARE::T_dataType>("level_rates", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0), SAMS::dimension("species",0));
+        varRegistry.registerVariable<LARE::T_dataType>("level_rates", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0), SAMS::dimension("species",0));
     }
 /////////////////////////////////////////////////////////////////////////////////
     void PIP::allocate(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source,SAMS::harness &harness){
@@ -145,10 +145,10 @@ namespace TWOFLUID
         varRegistry.fillPPArray("gm_rec", plasma_source.gm_rec);
         pw::assign(plasma_source.gm_rec, 0.0);
         
-        //varRegistry.fillPPArray("level_populations", plasma_source.level_populations);
-        //pw::assign(plasma_source.level_populations, 0.0);
-        //varRegistry.fillPPArray("level_rates", plasma_source.level_rates);
-        //pw::assign(plasma_source.level_rates, 0.0);
+        varRegistry.fillPPArray("level_populations", plasma_source.level_populations);
+        pw::assign(plasma_source.level_populations, 0.0);
+        varRegistry.fillPPArray("level_rates", plasma_source.level_rates);
+        pw::assign(plasma_source.level_rates, 0.0);
         
     }
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -308,18 +308,20 @@ namespace TWOFLUID
             portableWrapper::applyKernel(LAMBDA(LARE::T_indexType ix, LARE::T_indexType iy, LARE::T_indexType iz) {
                 //Get Temperatures
                 //LARE::T_dataType temperature_electron = 2.0*data.gas_gamma*data.energy_electron(ix,iy,iz)*(data.gas_gamma-1.0);
-                LARE::T_dataType temperature_electron = 100.0;//0.5*data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*T0;
+                LARE::T_dataType temperature_electron = 0.5*data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*T0;
                 LARE::T_dataType numberDensity_electron=data.rho(ix,iy,iz)*n0; 
+
                 
                 // --- Level population triangular loop---
                 for (LARE::T_indexType lower_level = 1; lower_level < nLevels; ++lower_level) {
                     //Loop over (de)excitation
                     for (LARE::T_indexType upper_level = lower_level + 1; upper_level < nLevels; ++upper_level) {
                     
-                    //fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is vs %e \n", lower_level, upper_level, temperature_electron,plasma_source.hydrogen_excitation_rate(1,lower_level,upper_level));
-                    
                         LARE::T_dataType rate_coefficient = interpolate_rates(plasma_source, temperature_electron, 
                                                             lower_level, upper_level);
+                    
+                    fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is %e vs %e \n", lower_level, upper_level, temperature_electron,rate_coefficient,plasma_source.hydrogen_excitation_rate(1,lower_level,upper_level));
+                    
 
                         // triangular work for this cell
                         //fprintf(stdout, "Excitation rate coefficient for levels %li to %li at temperature %e is %e vs %e \n", lower_level, upper_level, temperature_electron, rate_coefficient,plasma_source.hydrogen_excitation_rate(1,lower_level,upper_level));
@@ -808,10 +810,13 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     }
     
     using Range = pw::Range;
-    pw::portableArrayManager svManager;
+    //pw::portableArrayManager svManager;
     //pw::portableArray<LARE::T_dataType, 1> grid_logT;
-    Range T_range = pw::Range(0, nsamps-1);
-    svManager.allocate(plasma_source.grid_logT, T_range);
+    Range T_range = pw::Range(0, static_cast<LARE::T_indexType>(nsamps - 1));   // 0 .. nsamps-1
+Range n_start = pw::Range(0, static_cast<LARE::T_indexType>(nstarts - 1));  // 0 .. nstarts-1
+Range n_final = pw::Range(0, static_cast<LARE::T_indexType>(nfinals - 1));  // 0 .. nfinals-1
+svManager.allocate(plasma_source.hydrogen_excitation_rate, T_range, n_start, n_final);
+svManager.allocate(plasma_source.grid_logT, T_range);
 
     //manager.allocate(plasma_source.grid_logT,
     //                portableWrapper::Range(0, static_cast<LARE::T_indexType>(nsamps - 1)));
@@ -837,9 +842,9 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
 
 
     //Range T_range = pw::Range(0, nsamps-1);
-    Range n_start = pw::Range(0, static_cast<LARE::T_indexType>(nstarts - 1));
-    Range n_final = pw::Range(0, static_cast<LARE::T_indexType>(nfinals - 1));
-    svManager.allocate(plasma_source.hydrogen_excitation_rate, T_range, n_start, n_final);
+    //Range n_start = pw::Range(0, static_cast<LARE::T_indexType>(nstarts ));
+    //Range n_final = pw::Range(0, static_cast<LARE::T_indexType>(nfinals ));
+    //svManager.allocate(plasma_source.hydrogen_excitation_rate, T_range, n_start, n_final);
 
     //manager.allocate(plasma_source.hydrogen_excitation_rate,
     //                 portableWrapper::Range(0, static_cast<LARE::T_indexType>(nsamps - 1)),
@@ -854,12 +859,12 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
                             static_cast<LARE::T_indexType>(final)) = flat[idx];
                 //fprintf(stdout, "Rates read successfully \n start: %zu \n final: %zu \n sample: %zu \n %e \n",
         //start, final,sample ,plasma_source.hydrogen_excitation_rate(static_cast<LARE::T_indexType>(sample),
-          //                  static_cast<LARE::T_indexType>(start),
-            //                static_cast<LARE::T_indexType>(final)));
+           //                 static_cast<LARE::T_indexType>(start),
+           //                 static_cast<LARE::T_indexType>(final)));
             }
         }
     }
-
+    
     nc_close(ncid);
     fprintf(stdout, "Rates read successfully \n Number of samples: %zu \n Number of coefficients: %zu \n",
         nsamps, nstarts * nfinals);
@@ -868,7 +873,7 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //Routine for interpolating the rates
-LARE::T_dataType interpolate_rates(const data_two_fluid_source &plasma_source, LARE::T_dataType temperature,
+DEVICEPREFIX INLINE LARE::T_dataType interpolate_rates(const data_two_fluid_source &plasma_source, LARE::T_dataType temperature,
                          LARE::T_indexType lower_level, LARE::T_indexType upper_level){
 
     if (lower_level < 0 || upper_level < 0 || lower_level >= upper_level) {
@@ -919,11 +924,19 @@ LARE::T_dataType interpolate_rates(const data_two_fluid_source &plasma_source, L
     }
 
     const LARE::T_dataType t = (logT - logT0) / (logT1 - logT0);
-    const LARE::T_dataType v0 = plasma_source.hydrogen_excitation_rate(i0, lower_level, upper_level);
-    const LARE::T_dataType v1 = plasma_source.hydrogen_excitation_rate(i0 + 1, lower_level, upper_level);
-    fprintf(stdout, "%zu %zu %zu %zu %e %e %e \n",
-        i0,i0+1,lower_level,upper_level,v0,v1,t);
-    return v0 + (v1 - v0) * t;
+const LARE::T_dataType v0 = plasma_source.hydrogen_excitation_rate(i0, lower_level, upper_level);
+const LARE::T_dataType v1 = plasma_source.hydrogen_excitation_rate(i0 + 1, lower_level, upper_level);
+
+// Handle zeros safely
+if (v0 <= 0.0 && v1 <= 0.0) return 0.0;
+if (v0 <= 0.0) return v1;
+if (v1 <= 0.0) return v0;
+
+const LARE::T_dataType logv0 = std::log10(v0);
+const LARE::T_dataType logv1 = std::log10(v1);
+const LARE::T_dataType logv  = logv0 + (logv1 - logv0) * t;
+
+return std::pow(10.0, logv);
 }
 
 }
