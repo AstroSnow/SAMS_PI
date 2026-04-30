@@ -31,7 +31,7 @@ namespace examples
         void TwoFluidTest::controlVariables(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral)
         {
 
-            data.t_end = 10.0;
+            data.t_end = 5.0;
             //data.t_end = 1.0;
             data.dt_snapshots = data.t_end / 10;
             dataNeutral.t_end = data.t_end;
