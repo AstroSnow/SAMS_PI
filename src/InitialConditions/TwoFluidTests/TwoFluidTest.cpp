@@ -37,9 +37,9 @@ namespace examples
             dataNeutral.t_end = data.t_end;
             dataNeutral.dt_snapshots = data.dt_snapshots;
 
-            data.nx = 1024;
-            data.ny = 2;
-            data.nz = 2;
+            data.nx = 8192;
+            data.ny = 16;
+            data.nz = 16;
             dataNeutral.nx = data.nx;
             dataNeutral.ny = data.ny;
             dataNeutral.nz = data.nz;
@@ -385,10 +385,7 @@ namespace examples
          * It returns true if data should be output.
          */
         void TwoFluidTest::queryOutput(bool &shouldOutput, LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, SAMS::timeState &tData){
-            static double nextOutputTime = data.dt_snapshots;
-            if (tData.time >= (nextOutputTime) || (tData.time == 0.0)){
-                shouldOutput |= true;
-                nextOutputTime += data.dt_snapshots;
-            }
+            // Suppress all output to disk for benchmarking
+            shouldOutput = false;
         }
 }

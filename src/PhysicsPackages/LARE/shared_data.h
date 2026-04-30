@@ -406,7 +406,10 @@ namespace LARE
          * @param data LARE3D simulation data
          */
         void startOfTimestep(simulationData &data, SAMS::controlFunctions &controlFns){
+            timer tf_timer_start("LARE3D_startOfTimestep");
+            tf_timer_start.begin("LARE3D_startOfTimestep");
             lagrangian_step(data, controlFns);
+            tf_timer_start.end();
         }
 
         /**
@@ -414,7 +417,10 @@ namespace LARE
          * @param data LARE3D simulation data
          */
         void halfTimestep(simulationData &data){
+            timer tf_timer_half("LARE3D_halfTimestep");
+            tf_timer_half.begin("LARE3D_halfTimestep");
             corrector_step(data);
+            tf_timer_half.end();
         }
 
         /**
@@ -422,11 +428,14 @@ namespace LARE
          * @param data LARE3D simulation data
          */
         void endOfTimestep(simulationData &data, remapData &remap_data){
+            timer tf_timer_end("LARE3D_endOfTimestep");
+            tf_timer_end.begin("LARE3D_endOfTimestep");
             eulerian_remap(data, remap_data);
             if (data.rke){
                 energy_correction(data);
             }
             eta_calc(data);
+            tf_timer_end.end();
         }
 
         /**
@@ -437,9 +446,12 @@ namespace LARE
          * @param data LARE3D simulation data
          */
         void calculateTimestep(SAMS::timeState &timeData, simulationData &data){
+            timer tf_timer_calc("LARE3D_calculateTimestep");
+            tf_timer_calc.begin("LARE3D_calculateTimestep");
             set_dt(data);
             //printf("Plasma timestep = %f \n",data.dt);
             timeData.dt = data.dt<timeData.dt ? data.dt : timeData.dt;
+            tf_timer_calc.end();
         }
 
         /**

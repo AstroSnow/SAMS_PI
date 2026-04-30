@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.20)
 
 # Move Project declaration up so compilers are detected early
 project(SAMS-PP LANGUAGES CXX)
@@ -32,11 +32,24 @@ if(APPLE)
     # Help CMake find the package by setting the root hint
     set(OpenMP_ROOT "${LIBOMP_PREFIX}")
 endif()
+if(MPI)
+  find_package(MPI REQUIRED)
+  if(TARGET MPI::MPI_CXX)
+    message(STATUS "MPI::MPI_CXX target found")
+    # Workaround: HDF5 CMake config expects MPI::MPI_C, but only MPI::MPI_CXX exists in C++-only projects
+    if(NOT TARGET MPI::MPI_C)
+      add_library(MPI::MPI_C ALIAS MPI::MPI_CXX)
+      message(STATUS "Created ALIAS target MPI::MPI_C -> MPI::MPI_CXX for HDF5 compatibility.")
+    endif()
+  else()
+    message(FATAL_ERROR "MPI::MPI_CXX target NOT found")
+  endif()
+endif()
 find_package(OpenMP REQUIRED)
 
 # --- HDF5 SETUP ---
 # Search for HDF5 AFTER Threads is found
-find_package(HDF5 REQUIRED COMPONENTS CXX)
+find_package(HDF5 REQUIRED COMPONENTS C CXX)
 
 # --- NetCDF SETUP ---
 # Pull in NetCDF C library for TWOFLUID utilities
