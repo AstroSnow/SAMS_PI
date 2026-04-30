@@ -563,7 +563,9 @@ namespace SAMS
             initialConditions(); //Set initial conditions
             setBoundaryConditions(); //Attach boundary conditions
             initialiseSource();
-            writeOutput(); //Write initial output
+            if (queryOutput()) {
+                writeOutput(); //Write initial output
+            }
         }
 
         void runPackages(){
@@ -589,7 +591,9 @@ namespace SAMS
                 }
                 steer(); //Computational steering
             }
-            writeOutput(); //Final output
+            if (queryOutput()) {
+                writeOutput(); //Final output
+            }
             SAMS::cout << "Simulation complete. Time stepping ended at step " << std::get<timeState>(runnerData).step << " and time " << std::get<timeState>(runnerData).time << std::endl;
         }
 
