@@ -1,5 +1,6 @@
 
 #include "OrszagTang3D.h"
+#include "harness/timer.h"
 
 namespace examples
 {
@@ -137,6 +138,9 @@ namespace examples
         varRegistry.fillPPArray("by", by);
         varRegistry.fillPPArray("bz", bz);
 
+        timer ot3d_timer_ic("OrszagTang3D_initialConditions");
+        ot3d_timer_ic.begin("OrszagTang3D_initialConditions");
+
         pw::applyKernel(
             LAMBDA(SAMS::T_indexType ix, SAMS::T_indexType iy, SAMS::T_indexType iz) {
                 using T_dataType = SAMS::T_dataType;
@@ -155,6 +159,8 @@ namespace examples
                 energy_ion(ix, iy, iz) = pressure / ((data.gas_gamma - 1.0) * rho(ix, iy, iz)) / 2.0;
             },
             rho.getRange(0), rho.getRange(1), rho.getRange(2));
+
+        ot3d_timer_ic.end();
     }
 
     /**
@@ -182,11 +188,8 @@ namespace examples
      */
     void OrszagTang3D::queryOutput(bool &shouldOutput, LARE::simulationData &data, SAMS::timeState &tData)
     {
-            static double nextOutputTime = data.dt_snapshots;
-            if (tData.time >= (nextOutputTime) || (tData.time == 0.0)){
-                shouldOutput |= true;
-                nextOutputTime += data.dt_snapshots;
-            }
+        // Suppress all output to disk for benchmarking
+        shouldOutput = false;
     }
 
 }
