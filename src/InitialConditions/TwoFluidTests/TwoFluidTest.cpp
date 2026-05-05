@@ -31,15 +31,14 @@ namespace examples
         void TwoFluidTest::controlVariables(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral)
         {
 
-            data.t_end = 5.0;
-            //data.t_end = 1.0;
+            data.t_end = 1.0;
             data.dt_snapshots = data.t_end / 10;
             dataNeutral.t_end = data.t_end;
             dataNeutral.dt_snapshots = data.dt_snapshots;
 
-            data.nx = 8192;
-            data.ny = 16;
-            data.nz = 16;
+            data.nx = 512;
+            data.ny = 512;
+            data.nz = 512;
             dataNeutral.nx = data.nx;
             dataNeutral.ny = data.ny;
             dataNeutral.nz = data.nz;
