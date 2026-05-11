@@ -29,12 +29,12 @@ namespace examples
     void OrszagTang3D::controlVariables(LARE::simulationData &data)
     {
 
-        data.t_end = 3.0; // End time of the simulation
+        data.t_end = 0.6; // End time of the simulation
         data.dt_snapshots = data.t_end / 10;
 
-        data.nx = 128;
-        data.ny = 128;
-        data.nz = 128;
+        data.nx = 768;
+        data.ny = 768;
+        data.nz = 768;
 
         data.x_min = 0.0;
         data.x_max = 2.0 * M_PI;
