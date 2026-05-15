@@ -52,8 +52,10 @@ namespace TWOFLUID
         LARE::volumeArray ac; //coupling coeficient
         LARE::T_dataType two_fluid_timestep; //timestep 
         
-        LARE::volumeArray4D level_populations; //4D array of level populations per cell
-        LARE::volumeArray5D level_rates; //5D array of all the rates per cell
+        // NOTE: level_populations and level_rates removed — their compute kernels are
+        // currently commented out. Re-add when those kernels are re-enabled.
+        // LARE::volumeArray4D level_populations;
+        // LARE::volumeArray5D level_rates;
         
         std::string data_path = "./data/atomic_rates_2.nc";
         LARE::hostLineArray grid_logT;

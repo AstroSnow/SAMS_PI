@@ -101,9 +101,10 @@ namespace TWOFLUID
         
         varRegistry.registerVariable<LARE::T_dataType>("gm_rec", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
-        varRegistry.registerVariable<LARE::T_dataType>("level_populations", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0));
-        
-        varRegistry.registerVariable<LARE::T_dataType>("level_rates", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0), SAMS::dimension("species",0));
+        // NOTE: level_populations and level_rates are intentionally NOT registered here.
+        // Their compute kernels are currently commented out. Registering them as full
+        // volumetric 5D (and 6D) arrays causes massive memory usage (several GB per MPI rank
+        // at production grid sizes) with no benefit. Re-enable once the kernels are active.
     }
 /////////////////////////////////////////////////////////////////////////////////
     void PIP::allocate(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source,SAMS::harness &harness){
@@ -146,10 +147,8 @@ namespace TWOFLUID
         varRegistry.fillPPArray("gm_rec", plasma_source.gm_rec);
         pw::assign(plasma_source.gm_rec, 0.0);
         
-        varRegistry.fillPPArray("level_populations", plasma_source.level_populations);
-        pw::assign(plasma_source.level_populations, 0.0);
-        varRegistry.fillPPArray("level_rates", plasma_source.level_rates);
-        pw::assign(plasma_source.level_rates, 0.0);
+        // level_populations and level_rates are not allocated here because
+        // their compute kernels are disabled. See registerVariables for details.
         
     }
 ////////////////////////////////////////////////////////////////////////////////////////

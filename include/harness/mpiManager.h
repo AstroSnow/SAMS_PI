@@ -786,10 +786,10 @@ namespace SAMS
             }
             ar.setLocalDomainElements(axisName, localElements, staggerType::CENTRED);
 
-            /*if (axis < 0){
+            if (axis < 0){
                 //Axis is not decomposed so nothing more to do
                 return;
-            }*/
+            }
            #ifdef USE_MPI
             //Now set part of the global axis that is on this processor
             size_t localLB = 0;
