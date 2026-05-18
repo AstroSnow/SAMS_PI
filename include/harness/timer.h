@@ -27,6 +27,7 @@ private:
   double elapsed;/** Elapsed time in microseconds */
   bool isPaused = true;
   bool hasEverRun = false;
+  int rank = -1; /** MPI rank to report in output, -1 means do not report rank */
 
   void updateElapsed(){
     hasEverRun = true;
@@ -37,7 +38,7 @@ private:
 
   public:
 
-  timer(std::string name) : name(name), elapsed(0.0), isPaused(true) {}
+  timer(std::string name, int rank = -1) : name(name), elapsed(0.0), isPaused(true), rank(rank) {}
 
   timer() : name("unnamed"), elapsed(0.0), isPaused(true) {}
 
@@ -87,7 +88,11 @@ private:
    */
   float end(){
 		float dt = end_silent();
-    SAMS::cout << "Time taken by " << name << " is " << dt  << " seconds\n";
+    if (rank >= 0){
+      std::cout << "[rank " << rank << "] Time taken by " << name << " is " << dt << " seconds\n";
+    } else {
+      SAMS::cout << "Time taken by " << name << " is " << dt << " seconds\n";
+    }
 		return dt;
   }
 
