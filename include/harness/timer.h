@@ -18,6 +18,9 @@
 #include <chrono>
 #include <string>
 #include <iostream>
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
 #include "mpiManager.h"
 
 struct timer{
@@ -27,7 +30,6 @@ private:
   double elapsed;/** Elapsed time in microseconds */
   bool isPaused = true;
   bool hasEverRun = false;
-  int rank = -1; /** MPI rank to report in output, -1 means do not report rank */
 
   void updateElapsed(){
     hasEverRun = true;
@@ -38,7 +40,18 @@ private:
 
   public:
 
-  timer(std::string name, int rank = -1) : name(name), elapsed(0.0), isPaused(true), rank(rank) {}
+  /** Returns the current MPI rank, or 0 if not using MPI */
+  static int getMPIRank(){
+    #ifdef USE_MPI
+    int r = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &r);
+    return r;
+    #else
+    return 0;
+    #endif
+  }
+
+  timer(std::string name) : name(name), elapsed(0.0), isPaused(true) {}
 
   timer() : name("unnamed"), elapsed(0.0), isPaused(true) {}
 
@@ -88,11 +101,11 @@ private:
    */
   float end(){
 		float dt = end_silent();
-    if (rank >= 0){
-      std::cout << "[rank " << rank << "] Time taken by " << name << " is " << dt << " seconds\n";
-    } else {
-      SAMS::cout << "Time taken by " << name << " is " << dt << " seconds\n";
-    }
+    #ifdef USE_MPI
+    std::cout << "[rank " << getMPIRank() << "] Time taken by " << name << " is " << dt << " seconds\n";
+    #else
+    SAMS::cout << "Time taken by " << name << " is " << dt << " seconds\n";
+    #endif
 		return dt;
   }
 

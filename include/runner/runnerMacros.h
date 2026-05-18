@@ -134,7 +134,7 @@ public: \
             timer& t = std::get<level>(X##_timers);\
             if (simulationActiveFlags[level] && t.everRun()) {\
                 std::string name = static_cast<std::string>(hasParamType_name<std::tuple_element_t<level, T_combined>>::value); \
-                SAMS::cout << "Timer " << TOSTRING(X) << " for simulation " << name << " (level " << level << "): " << t.end_silent() << " seconds." << std::endl;\
+                std::cout << "[rank " << timer::getMPIRank() << "] Timer " << TOSTRING(X) << " for simulation " << name << " (level " << level << "): " << t.end_silent() << " seconds." << std::endl;\
             }\
             if constexpr(level < sizeof...(Packages)-1){\
                 printTimer_##X<level+1>();\
