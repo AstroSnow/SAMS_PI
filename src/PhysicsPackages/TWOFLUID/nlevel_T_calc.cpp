@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/math/special_functions/expint.hpp>
+
 #include <netcdf.h>
 
 static void nc_check(int status, const char *context) {
@@ -13,9 +15,22 @@ static void nc_check(int status, const char *context) {
     }
 }
 
+using Vec3D = std::vector<std::vector<std::vector<double>>>;
+
+static void flatten_3d(const Vec3D &arr, std::vector<double> &flat,
+                       size_t nsamps, size_t nstarts, size_t nfinals) {
+    flat.assign(nsamps * nstarts * nfinals, 0.0);
+    for (size_t sample = 0; sample < nsamps; ++sample)
+        for (size_t start = 0; start < nstarts; ++start)
+            for (size_t fin = 0; fin < nfinals; ++fin)
+                flat[(sample * nstarts + start) * nfinals + fin] = arr[sample][start][fin];
+}
+
 static void write_coeff_table_netcdf(const std::string &path,
                                      const std::vector<double> &logT,
-                                     const std::vector<std::vector<std::vector<double>>> &coeffs,
+                                     const Vec3D &coeffs,
+                                     const Vec3D &rad_absorption,
+                                     const Vec3D &rad_emission_total,
                                      double minT, double maxT) {
     int ncid = -1;
     nc_check(nc_create(path.c_str(), NC_CLOBBER, &ncid), "nc_create");
@@ -33,11 +48,15 @@ static void write_coeff_table_netcdf(const std::string &path,
 
     int var_logT = -1;
     int var_coeffs = -1;
+    int var_rad_abs = -1;
+    int var_rad_emit = -1;
     int dims_logT[1] = {dim_samples};
     int dims_coeffs[3] = {dim_samples, dim_start, dim_final};
 
     nc_check(nc_def_var(ncid, "logT", NC_DOUBLE, 1, dims_logT, &var_logT), "nc_def_var logT");
     nc_check(nc_def_var(ncid, "hydrogen_excitation_rate", NC_DOUBLE, 3, dims_coeffs, &var_coeffs), "nc_def_var hydrogen_excitation_rate");
+    nc_check(nc_def_var(ncid, "rad_absorption", NC_DOUBLE, 3, dims_coeffs, &var_rad_abs), "nc_def_var rad_absorption");
+    nc_check(nc_def_var(ncid, "rad_emission_total", NC_DOUBLE, 3, dims_coeffs, &var_rad_emit), "nc_def_var rad_emission_total");
 
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "min_logT", NC_DOUBLE, 1, &minT), "nc_put_att min_logT");
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "max_logT", NC_DOUBLE, 1, &maxT), "nc_put_att max_logT");
@@ -47,18 +66,17 @@ static void write_coeff_table_netcdf(const std::string &path,
     nc_check(nc_put_var_double(ncid, var_logT, logT.data()), "nc_put_var logT");
 
     std::vector<double> flat;
-    flat.assign(nsamps * nstarts * nfinals, 0.0);
-    for (size_t sample = 0; sample < nsamps; ++sample) {
-        for (size_t start = 0; start < nstarts; ++start) {
-            for (size_t final = 0; final < nfinals; ++final) {
-                const size_t idx = (sample * nstarts + start) * nfinals + final;
-                flat[idx] = coeffs[sample][start][final];
-            }
-        }
-    }
-    if (!flat.empty()) {
+    flatten_3d(coeffs, flat, nsamps, nstarts, nfinals);
+    if (!flat.empty())
         nc_check(nc_put_var_double(ncid, var_coeffs, flat.data()), "nc_put_var hydrogen_excitation_rate");
-    }
+
+    flatten_3d(rad_absorption, flat, nsamps, nstarts, nfinals);
+    if (!flat.empty())
+        nc_check(nc_put_var_double(ncid, var_rad_abs, flat.data()), "nc_put_var rad_absorption");
+
+    flatten_3d(rad_emission_total, flat, nsamps, nstarts, nfinals);
+    if (!flat.empty())
+        nc_check(nc_put_var_double(ncid, var_rad_emit, flat.data()), "nc_put_var rad_emission_total");
 
     nc_check(nc_close(ncid), "nc_close");
 }
@@ -126,44 +144,18 @@ static bool read_coeff_table_netcdf(const std::string &path,
 #include <cmath>
 #include <algorithm>
 
-// Robust generalized exponential integral E_n(x)
-static double gen_exp_int(double x, int n) {
-    if (x == 0.0) {
-        // x = 0: E_n(0) = 1/(n-1) for n>1, diverges for n=1
-        return (n == 1) ? 20.0 : 1.0 / (n - 1); // 20 is arbitrary for E1(0)
-    }
+// Basic Planck Blackbody function for testing
+static double planck_j(double nu, double T) {
+    if (T <= 0.0) return 0.0;
 
-    if (x < 1e-4) {
-        // Small x: use series expansion
-        if (n == 1) {
-            const double gamma = 0.5772156649; // Euler-Mascheroni
-            return -std::log(x) - gamma + x - x*x/4.0 + x*x*x/18.0;
-        } else {
-            // n >= 2: E_n(x) ~ 1/(n-1) - x/(n-2) + x^2/(2(n-3)) - ...
-            double val = 1.0 / (n - 1);
-            double term = x;
-            if (n > 2) val -= term / (n - 2);
-            term *= x;
-            if (n > 3) val += term / (2.0 * (n - 3));
-            term *= x;
-            if (n > 4) val -= term / (6.0 * (n - 4));
-            return val;
-        }
-    }
+    const double cli = 299792458.0;
+    const double k_b = 1.38064852e-23;
+    const double h_plank = 6.62607004e-34;
 
-    // Moderate/large x: use Simpson's rule
-    const int nsteps = 10000;
-    double h = 1.0 / nsteps;
-    double sum = 0.0;
+    double exponent = (h_plank * nu) / (k_b * T);
+    if (exponent > 700.0) return 0.0; // Prevent floating-point overflow
 
-    for (int i = 0; i <= nsteps; ++i) {
-        double u = i * h;
-        double coeff = (i == 0 || i == nsteps) ? 1.0 : (i % 2 == 0) ? 2.0 : 4.0;
-        double integrand = std::pow(u, n - 1) * std::exp(-x * u);
-        sum += coeff * integrand;
-    }
-
-    return sum * h / 3.0;
+    return (2.0 * h_plank * std::pow(nu, 3.0)) / (cli * cli) * (1.0 / (std::exp(exponent) - 1.0));
 }
 
 static int gen_coeff_table(int nsamps) {
@@ -241,6 +233,12 @@ static int gen_coeff_table(int nsamps) {
     std::vector<std::vector<std::vector<double>>> coeffs(
         nsamps + 1,
         std::vector<std::vector<double>>(n_levels + 1, std::vector<double>(n_levels + 2, 0.0)));
+    std::vector<std::vector<std::vector<double>>> rad_absorption(
+        nsamps + 1,
+        std::vector<std::vector<double>>(n_levels + 1, std::vector<double>(n_levels + 2, 0.0)));
+    std::vector<std::vector<std::vector<double>>> rad_emission_total(
+        nsamps + 1,
+        std::vector<std::vector<double>>(n_levels + 1, std::vector<double>(n_levels + 2, 0.0)));
 
     for (int ti = 0; ti <= nsamps; ++ti) {
         std::cout << " Temperature sample " << ti << " of " << nsamps << std::endl;
@@ -250,13 +248,27 @@ static int gen_coeff_table(int nsamps) {
         for (int ii = 1; ii <= n_levels; ++ii) {
             // Excitation part
             for (int jj = ii + 1; jj <= n_levels; ++jj) {
+
+                // 1. Calculate the light field using electron temperature as the proxy
+                double nu = Enn[ii][jj] / h;
+                double J = planck_j(nu, T); 
+
+                // 2. Compute the Einstein B coefficients
+                double A_to_B = (cli * cli) / (2.0 * h * std::pow(nu, 3.0));
+                double B_ji = Ann[ii][jj] * A_to_B;                                   
+                double B_ii_jj = B_ji * (double)(jj * jj) / (double)(ii * ii);
+
+                // 3. Save radiative rates for this specific temperature sample
+                rad_emission_total[ti][jj][ii] = Ann[ii][jj] + (B_ji * J); // Downward (Spontaneous + Stimulated)
+                rad_absorption[ti][ii][jj] = B_ii_jj * J;     
+
                 double yhat = Enn[ii][jj] / (kboltz * T);
                 double zhat = rnn[ii][jj] + Enn[ii][jj] / (kboltz * T);
 
-                double E1y = gen_exp_int(yhat, 1);
-                double E2y = gen_exp_int(yhat, 2);
-                double E1z = gen_exp_int(zhat, 1);
-                double E2z = gen_exp_int(zhat, 2);
+                double E1y = boost::math::expint(1, yhat);
+                double E2y = boost::math::expint(2, yhat);
+                double E1z = boost::math::expint(1, zhat);
+                double E2z = boost::math::expint(2, zhat);
 
                 double prefac = std::sqrt(8.0 * kboltz * T / (pi * melec)) * 2.0 * (double)ii * (double)ii / xrat[ii][jj] * pi * a0bohr * a0bohr * yhat * yhat;
 
@@ -270,13 +282,13 @@ static int gen_coeff_table(int nsamps) {
             double yn = Eion[ii] / (kboltz * T);
             double zn = rn[ii] + Eion[ii] / (kboltz * T);
 
-            double E0y = gen_exp_int(yn, 0);
-            double E1y = gen_exp_int(yn, 1);
-            double E2y = gen_exp_int(yn, 2);
+            double E0y = boost::math::expint(0, yn);
+            double E1y = boost::math::expint(1, yn);
+            double E2y = boost::math::expint(2, yn);
 
-            double E0z = gen_exp_int(zn, 0);
-            double E1z = gen_exp_int(zn, 1);
-            double E2z = gen_exp_int(zn, 2);
+            double E0z = boost::math::expint(0, zn);
+            double E1z = boost::math::expint(1, zn);
+            double E2z = boost::math::expint(2, zn);
 
             double ziyn = E0y - 2.0 * E1y + E2y;
             double zizn = E0z - 2.0 * E1z + E2z;
@@ -314,7 +326,7 @@ static int gen_coeff_table(int nsamps) {
         }
     }
 
-    write_coeff_table_netcdf("atomic_rates.nc", logT_vals, coeffs, minT, maxT);
+    write_coeff_table_netcdf("atomic_rates.nc", logT_vals, coeffs, rad_absorption, rad_emission_total, minT, maxT);
     std::cout << "Wrote atomic_rates.nc (" << (nsamps + 1) << " rows)\n";
 
     return 0;
