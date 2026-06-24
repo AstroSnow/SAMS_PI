@@ -24,7 +24,9 @@ constexpr double T_RAD = 5777.0;
 
 // Constants for the number of levels and electron temperature samples
 constexpr int N_LEVELS = 5;
-constexpr int N_TSAMPLES = 100;
+constexpr int N_TINTERVALS = 100;
+constexpr double MIN_LOGT = 2.0;
+constexpr double MAX_LOGT = 8.0;
 
 // Array type aliases for convenience
 using Vec1D = std::vector<double>;
@@ -266,7 +268,10 @@ static double hydrogen_ionization_energy(const int level) {
 }
 
 // Generate the coefficient table for collisional and radiative rates
-static int generate_atomic_rates_data_tables(const int n_tsamples) {
+static void generate_atomic_rates_data_tables(
+    const int n_tintervals, 
+    const double min_logT, 
+    const double max_logT) {
     
     Vec1D rn(N_LEVELS, 0.0);
     Vec1D bn(N_LEVELS, 0.0);
@@ -279,11 +284,6 @@ static int generate_atomic_rates_data_tables(const int n_tsamples) {
     Vec2D fnn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
     Vec2D Ann(N_LEVELS, Vec1D(N_LEVELS, 0.0));
     Vec2D Bnn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-
-    double min_logT = 2.0;
-    double max_logT = 8.0;
-
-    double dt = (max_logT - min_logT) / n_tsamples;
 
     rn[0] = 0.45;
     for (int i = 1; i < N_LEVELS; ++i) {
@@ -328,24 +328,26 @@ static int generate_atomic_rates_data_tables(const int n_tsamples) {
         }
     }
 
-    Vec1D logT_vals(n_tsamples + 1, 0.0);
+    Vec1D logT_vals(n_tintervals + 1, 0.0);
     Vec2D collisional_ionisation_rates(
-        n_tsamples + 1,
+        n_tintervals + 1,
         Vec1D(N_LEVELS, 0.0));
     Vec3D collisional_excitation_rates(
-        n_tsamples + 1,
+        n_tintervals + 1,
         Vec2D (N_LEVELS, Vec1D (N_LEVELS, 0.0)));
     Vec3D rad_absorption(
-        n_tsamples + 1,
+        n_tintervals + 1,
         Vec2D (N_LEVELS, Vec1D (N_LEVELS, 0.0)));
     Vec3D rad_emission_total(
-        n_tsamples + 1,
+        n_tintervals + 1,
         Vec2D (N_LEVELS, Vec1D (N_LEVELS, 0.0)));
 
-    for (int ti = 0; ti <= n_tsamples; ++ti) {
+    double d_logT = (max_logT - min_logT) / n_tintervals;
 
-        std::cout << " Temperature sample " << ti << " of " << n_tsamples << std::endl;
-        double logT = min_logT + ti * dt;
+    for (int ti = 0; ti <= n_tintervals; ++ti) {
+
+        std::cout << " Temperature sample " << (ti + 1) << " of " << (n_tintervals + 1) << std::endl;
+        double logT = min_logT + ti * d_logT;
         double T = std::pow(10.0, logT);
 
         logT_vals[ti] = logT;
@@ -438,14 +440,12 @@ static int generate_atomic_rates_data_tables(const int n_tsamples) {
         rad_emission_total, 
         min_logT, 
         max_logT);
-    std::cout << "Wrote atomic_rates.nc (" << (n_tsamples + 1) << " rows)\n";
 
-    return 0;
 }
 
 int main() {
 
-    int rc = generate_atomic_rates_data_tables(N_TSAMPLES);
+    generate_atomic_rates_data_tables(N_TINTERVALS, MIN_LOGT, MAX_LOGT);
 
     Vec1D logT_read;
     Vec3D collisional_excitation_rates_read;
@@ -472,5 +472,5 @@ int main() {
         txt << '\n';
     }
 
-    return rc;
+    return 0;
 }
