@@ -28,6 +28,7 @@ constexpr int N_TSAMPLES = 100;
 
 // Array type aliases for convenience
 using Vec1D = std::vector<double>;
+using Vec1I = std::vector<int>;
 using Vec2D = std::vector<std::vector<double>>;
 using Vec3D = std::vector<std::vector<std::vector<double>>>;
 
@@ -86,6 +87,12 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
     int dims_logT[1] = {dim_tsamples};
     nc_check(nc_def_var(ncid, "logT", NC_DOUBLE, 1, dims_logT, &var_logT), "nc_def_var logT");
 
+    int var_lower_level = -1;
+    nc_check(nc_def_var(ncid, "lower_level", NC_INT, 1, &dim_lower_level, &var_lower_level), "nc_def_var lower_level");
+
+    int var_upper_level = -1;
+    nc_check(nc_def_var(ncid, "upper_level", NC_INT, 1, &dim_upper_level, &var_upper_level), "nc_def_var upper_level");
+
     int dims_rates_2d[2] = {dim_tsamples, dim_lower_level}; // Rates that depend on temperature and lower level
     int dims_rates_3d[3] = {dim_tsamples, dim_lower_level, dim_upper_level}; // Rates that depend on temperature, lower level, and upper level
 
@@ -107,6 +114,14 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
     nc_check(nc_enddef(ncid), "nc_enddef");
 
     nc_check(nc_put_var_double(ncid, var_logT, logT.data()), "nc_put_var logT");
+
+    Vec1I lower_level_vals(n_lower_levels);
+    for (size_t i = 0; i < n_lower_levels; ++i) lower_level_vals[i] = static_cast<int>(i + 1);
+    nc_check(nc_put_var_int(ncid, var_lower_level, lower_level_vals.data()), "nc_put_var lower_level");
+
+    Vec1I upper_level_vals(n_upper_levels);
+    for (size_t i = 0; i < n_upper_levels; ++i) upper_level_vals[i] = static_cast<int>(i + 1);
+    nc_check(nc_put_var_int(ncid, var_upper_level, upper_level_vals.data()), "nc_put_var upper_level");
 
     Vec1D flat;
 
