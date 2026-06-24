@@ -9,9 +9,7 @@
 
 #include <netcdf.h>
 
-//
-// Global constants visible to all functions in this file
-//
+// Physical constants used in calculations
 constexpr double PI = 3.14159265358979323846;
 constexpr double C_LIGHT = 299792458.0;
 constexpr double K_BOLTZ = 1.38064852e-23;
@@ -19,9 +17,14 @@ constexpr double H_PLANCK = 6.62607004e-34;
 constexpr double A0_BOHR = 5.29e-11;
 constexpr double MASS_ELECTRON = 9.10938356e-31;
 constexpr double CHARGE_ELECTRON = 1.602176634e-19;
-constexpr double T_RAD = 5777.0; // Sun's surface temperature in K - the radiation field temperature at source.
-//
-constexpr int N_LEVELS = 5; // number of levels
+
+// Sun's surface temperature in K - used in radiative rates calculations 
+// as the radiation source temperature.
+constexpr double T_RAD = 5777.0;
+
+// Constants for the number of levels and electron temperature samples
+constexpr int N_LEVELS = 5;
+constexpr int N_TSAMPLES = 100;
 
 // Array type aliases for convenience
 using Vec1D = std::vector<double>;
@@ -35,6 +38,15 @@ static void nc_check(const int status, const char *context) {
     }
 }
 
+//Flatten a 2D array into a 1D array for NetCDF storage
+static void flatten_2d(const Vec2D &arr, Vec1D &flat,
+                       size_t n_tsamples, size_t n_lower_levels) {
+    flat.assign(n_tsamples * n_lower_levels, 0.0);
+    for (size_t tsample = 0; tsample < n_tsamples; ++tsample)
+        for (size_t lower_level = 0; lower_level < n_lower_levels; ++lower_level)
+            flat[tsample * n_lower_levels + lower_level] = arr[tsample][lower_level];
+}
+
 // Flatten a 3D array into a 1D array for NetCDF storage
 static void flatten_3d(const Vec3D &arr, Vec1D &flat,
                        size_t n_tsamples, size_t n_lower_levels, size_t n_upper_levels) {
@@ -46,9 +58,10 @@ static void flatten_3d(const Vec3D &arr, Vec1D &flat,
 }
 
 // Write the coefficient table to a NetCDF file
-static void write_coeff_table_netcdf(const std::string &path,
+static void write_atomic_rates_tables_netcdf(const std::string &path,
                                      const Vec1D &logT,
-                                     const Vec3D &collisional_rates,
+                                     const Vec3D &collisional_excitation_rates,
+                                     const Vec2D &collisional_ionisation_rates,
                                      const Vec3D &rad_absorption,
                                      const Vec3D &rad_emission_total,
                                      const double min_logT, 
@@ -60,23 +73,27 @@ static void write_coeff_table_netcdf(const std::string &path,
     const size_t n_tsamples = logT.size();
 
     int dim_lower_level = -1;
-    const size_t n_lower_levels = collisional_rates.empty() ? 0 : collisional_rates.front().size();
+    const size_t n_lower_levels = collisional_excitation_rates.empty() ? 0 : collisional_excitation_rates.front().size();
 
     int dim_upper_level = -1;
-    const size_t n_upper_levels = (n_lower_levels == 0 || collisional_rates.front().empty()) ? 0 : collisional_rates.front().front().size();
+    const size_t n_upper_levels = (n_lower_levels == 0 || collisional_excitation_rates.front().empty()) ? 0 : collisional_excitation_rates.front().front().size();
 
-    nc_check(nc_def_dim(ncid, "tsample", n_tsamples, &dim_tsamples), "nc_def_dim tsample");
-    nc_check(nc_def_dim(ncid, "lower_level", n_lower_levels, &dim_lower_level), "nc_def_dim lower_level");
-    nc_check(nc_def_dim(ncid, "upper_level", n_upper_levels, &dim_upper_level), "nc_def_dim upper_level");
+    nc_check(nc_def_dim(ncid, "n_tsample", n_tsamples, &dim_tsamples), "nc_def_dim tsample");
+    nc_check(nc_def_dim(ncid, "n_lower_level", n_lower_levels, &dim_lower_level), "nc_def_dim lower_level");
+    nc_check(nc_def_dim(ncid, "n_upper_level", n_upper_levels, &dim_upper_level), "nc_def_dim upper_level");
 
     int var_logT = -1;
     int dims_logT[1] = {dim_tsamples};
     nc_check(nc_def_var(ncid, "logT", NC_DOUBLE, 1, dims_logT, &var_logT), "nc_def_var logT");
 
+    int dims_rates_2d[2] = {dim_tsamples, dim_lower_level}; // Rates that depend on temperature and lower level
     int dims_rates_3d[3] = {dim_tsamples, dim_lower_level, dim_upper_level}; // Rates that depend on temperature, lower level, and upper level
-    
-    int var_collisional_rates = -1;
-    nc_check(nc_def_var(ncid, "collisional_rates", NC_DOUBLE, 3, dims_rates_3d, &var_collisional_rates), "nc_def_var collisional_rates");
+
+    int var_collisional_ionisation_rates = -1;
+    nc_check(nc_def_var(ncid, "collisional_ionisation_rates", NC_DOUBLE, 2, dims_rates_2d, &var_collisional_ionisation_rates), "nc_def_var collisional_ionisation_rates");
+
+    int var_collisional_excitation_rates = -1;
+    nc_check(nc_def_var(ncid, "collisional_excitation_rates", NC_DOUBLE, 3, dims_rates_3d, &var_collisional_excitation_rates), "nc_def_var collisional_excitation_rates");
     
     int var_rad_abs = -1;
     nc_check(nc_def_var(ncid, "rad_absorption", NC_DOUBLE, 3, dims_rates_3d, &var_rad_abs), "nc_def_var rad_absorption");
@@ -92,9 +109,14 @@ static void write_coeff_table_netcdf(const std::string &path,
     nc_check(nc_put_var_double(ncid, var_logT, logT.data()), "nc_put_var logT");
 
     Vec1D flat;
-    flatten_3d(collisional_rates, flat, n_tsamples, n_lower_levels, n_upper_levels);
+
+    flatten_2d(collisional_ionisation_rates, flat, n_tsamples, n_lower_levels);
     if (!flat.empty())
-        nc_check(nc_put_var_double(ncid, var_collisional_rates, flat.data()), "nc_put_var collisional_rates");
+        nc_check(nc_put_var_double(ncid, var_collisional_ionisation_rates, flat.data()), "nc_put_var collisional_ionisation_rates");
+
+    flatten_3d(collisional_excitation_rates, flat, n_tsamples, n_lower_levels, n_upper_levels);
+    if (!flat.empty())
+        nc_check(nc_put_var_double(ncid, var_collisional_excitation_rates, flat.data()), "nc_put_var collisional_excitation_rates");
 
     flatten_3d(rad_absorption, flat, n_tsamples, n_lower_levels, n_upper_levels);
     if (!flat.empty())
@@ -108,9 +130,9 @@ static void write_coeff_table_netcdf(const std::string &path,
 }
 
 // Read the coefficient table from a NetCDF file
-static bool read_coeff_table_netcdf(const std::string &path,
+static bool read_atomic_rates_tables_netcdf(const std::string &path,
                                     Vec1D &logT,
-                                    Vec3D &collisional_rates) {
+                                    Vec3D &collisional_excitation_rates) {
     int ncid = -1;
     if (nc_open(path.c_str(), NC_NOWRITE, &ncid) != NC_NOERR) {
         return false;
@@ -123,9 +145,9 @@ static bool read_coeff_table_netcdf(const std::string &path,
     size_t n_lower_levels = 0;
     size_t n_upper_levels = 0;
 
-    if (nc_inq_dimid(ncid, "tsample", &dim_tsamples) != NC_NOERR ||
-        nc_inq_dimid(ncid, "lower_level", &dim_lower_level) != NC_NOERR ||
-        nc_inq_dimid(ncid, "upper_level", &dim_upper_level) != NC_NOERR) {
+    if (nc_inq_dimid(ncid, "n_tsample", &dim_tsamples) != NC_NOERR ||
+        nc_inq_dimid(ncid, "n_lower_level", &dim_lower_level) != NC_NOERR ||
+        nc_inq_dimid(ncid, "n_upper_level", &dim_upper_level) != NC_NOERR) {
         nc_close(ncid);
         return false;
     }
@@ -138,9 +160,9 @@ static bool read_coeff_table_netcdf(const std::string &path,
     }
 
     int var_logT = -1;
-    int var_collisional_rates = -1;
+    int var_collisional_excitation_rates = -1;
     if (nc_inq_varid(ncid, "logT", &var_logT) != NC_NOERR ||
-        nc_inq_varid(ncid, "collisional_rates", &var_collisional_rates) != NC_NOERR) {
+        nc_inq_varid(ncid, "collisional_excitation_rates", &var_collisional_excitation_rates) != NC_NOERR) {
         nc_close(ncid);
         return false;
     }
@@ -148,17 +170,17 @@ static bool read_coeff_table_netcdf(const std::string &path,
     logT.assign(n_tsamples, 0.0);
     Vec1D flat(n_tsamples * n_lower_levels * n_upper_levels, 0.0);
     if (nc_get_var_double(ncid, var_logT, logT.data()) != NC_NOERR ||
-        (!flat.empty() && nc_get_var_double(ncid, var_collisional_rates, flat.data()) != NC_NOERR)) {
+        (!flat.empty() && nc_get_var_double(ncid, var_collisional_excitation_rates, flat.data()) != NC_NOERR)) {
         nc_close(ncid);
         return false;
     }
 
-    collisional_rates.assign(n_tsamples, Vec2D(n_lower_levels, Vec1D(n_upper_levels, 0.0)));
+    collisional_excitation_rates.assign(n_tsamples, Vec2D(n_lower_levels, Vec1D(n_upper_levels, 0.0)));
     for (size_t tsample = 0; tsample < n_tsamples; ++tsample) {
         for (size_t lower_level = 0; lower_level < n_lower_levels; ++lower_level) {
             for (size_t upper_level = 0; upper_level < n_upper_levels; ++upper_level) {
                 const size_t idx = (tsample * n_lower_levels + lower_level) * n_upper_levels + upper_level;
-                collisional_rates[tsample][lower_level][upper_level] = flat[idx];
+                collisional_excitation_rates[tsample][lower_level][upper_level] = flat[idx];
             }
         }
     }
@@ -229,7 +251,7 @@ static double hydrogen_ionization_energy(const int level) {
 }
 
 // Generate the coefficient table for collisional and radiative rates
-static int gen_coeff_table(const int n_tsamples) {
+static int generate_atomic_rates_data_tables(const int n_tsamples) {
     
     Vec1D rn(N_LEVELS + 2, 0.0);
     Vec1D bn(N_LEVELS + 2, 0.0);
@@ -284,15 +306,18 @@ static int gen_coeff_table(const int n_tsamples) {
     }
 
     Vec1D logT_vals(n_tsamples + 1, 0.0);
-    Vec3D collisional_rates(
+    Vec2D collisional_ionisation_rates(
         n_tsamples + 1,
-        Vec2D (N_LEVELS + 1, Vec1D (N_LEVELS + 2, 0.0)));
+        Vec1D(N_LEVELS + 1, 0.0));
+    Vec3D collisional_excitation_rates(
+        n_tsamples + 1,
+        Vec2D (N_LEVELS + 1, Vec1D (N_LEVELS + 1, 0.0)));
     Vec3D rad_absorption(
         n_tsamples + 1,
-        Vec2D (N_LEVELS + 1, Vec1D (N_LEVELS + 2, 0.0)));
+        Vec2D (N_LEVELS + 1, Vec1D (N_LEVELS + 1, 0.0)));
     Vec3D rad_emission_total(
         n_tsamples + 1,
-        Vec2D (N_LEVELS + 1, Vec1D (N_LEVELS + 2, 0.0)));
+        Vec2D (N_LEVELS + 1, Vec1D (N_LEVELS + 1, 0.0)));
 
     for (int ti = 0; ti <= n_tsamples; ++ti) {
         std::cout << " Temperature sample " << ti << " of " << n_tsamples << std::endl;
@@ -300,7 +325,7 @@ static int gen_coeff_table(const int n_tsamples) {
         double T = std::pow(10.0, logT);
 
         for (int ii = 1; ii <= N_LEVELS; ++ii) {
-            // Excitation part
+            // Excitation rates
             for (int jj = ii + 1; jj <= N_LEVELS; ++jj) {
 
                 // 1. Calculate the light field using electron temperature as the proxy
@@ -332,7 +357,7 @@ static int gen_coeff_table(const int n_tsamples) {
                 G_T[ii][jj] = prefac * (term1 + term2);
             }
 
-            // Ionisation part
+            // Ionisation rates
             double yn = hydrogen_ionization_energy(ii) / (K_BOLTZ * T);
             double zn = rn[ii] + hydrogen_ionization_energy(ii) / (K_BOLTZ * T);
 
@@ -374,13 +399,23 @@ static int gen_coeff_table(const int n_tsamples) {
 
         logT_vals[ti] = logT;
         for (int ii = 1; ii <= N_LEVELS; ++ii) {
-            for (int jj = ii + 1; jj <= N_LEVELS + 1; ++jj) {
-                collisional_rates[ti][ii][jj] = G_T[ii][jj];
+            for (int jj = ii + 1; jj <= N_LEVELS; ++jj) {
+                collisional_excitation_rates[ti][ii][jj] = G_T[ii][jj];
             }
+            collisional_ionisation_rates[ti][ii] = G_T[ii][N_LEVELS + 1];
         }
+
     }
 
-    write_coeff_table_netcdf("atomic_rates.nc", logT_vals, collisional_rates, rad_absorption, rad_emission_total, min_logT, max_logT);
+    write_atomic_rates_tables_netcdf(
+        "atomic_rates.nc", 
+        logT_vals, 
+        collisional_excitation_rates, 
+        collisional_ionisation_rates, 
+        rad_absorption, 
+        rad_emission_total, 
+        min_logT, 
+        max_logT);
     std::cout << "Wrote atomic_rates.nc (" << (n_tsamples + 1) << " rows)\n";
 
     return 0;
@@ -388,12 +423,11 @@ static int gen_coeff_table(const int n_tsamples) {
 
 int main() {
 
-    int n_tsamples = 100;
-    int rc = gen_coeff_table(n_tsamples);
+    int rc = generate_atomic_rates_data_tables(N_TSAMPLES);
 
     Vec1D logT_read;
-    Vec3D collisional_rates_read;
-    if (!read_coeff_table_netcdf("atomic_rates.nc", logT_read, collisional_rates_read)) {
+    Vec3D collisional_excitation_rates_read;
+    if (!read_atomic_rates_tables_netcdf("atomic_rates.nc", logT_read, collisional_excitation_rates_read)) {
         std::cerr << "Failed to read atomic_rates.nc\n";
         return 1;
     }
@@ -404,13 +438,13 @@ int main() {
         return 1;
     }
 
-    const int max_lower_level = collisional_rates_read.empty() ? 0 : static_cast<int>(collisional_rates_read.front().size()) - 1;
-    const int max_upper_level = (max_lower_level <= 0) ? 0 : static_cast<int>(collisional_rates_read.front().front().size()) - 1;
+    const int max_lower_level = collisional_excitation_rates_read.empty() ? 0 : static_cast<int>(collisional_excitation_rates_read.front().size()) - 1;
+    const int max_upper_level = (max_lower_level <= 0) ? 0 : static_cast<int>(collisional_excitation_rates_read.front().front().size()) - 1;
     for (size_t i = 0; i < logT_read.size(); ++i) {
         txt << logT_read[i];
         for (int lower_level = 1; lower_level <= max_lower_level; ++lower_level) {
             for (int upper_level = lower_level + 1; upper_level <= max_upper_level; ++upper_level) {
-                txt << " " << collisional_rates_read[i][lower_level][upper_level];
+                txt << " " << collisional_excitation_rates_read[i][lower_level][upper_level];
             }
         }
         txt << '\n';
