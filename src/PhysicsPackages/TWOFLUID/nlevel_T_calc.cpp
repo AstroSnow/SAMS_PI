@@ -9,6 +9,99 @@
 
 #include <netcdf.h>
 
+struct HydrogenData {
+
+    // First-principles bound-free Gaunt factors at threshold
+    const std::vector<double> gaunt_factors = { 
+        0.0,       // Index 0 padding
+        0.7973,    // n = 1
+        0.9355,    // n = 2
+        0.9840,    // n = 3
+        1.0,       // n = 4
+        1.0        // n = 5
+    };
+
+    // Ionisation energies
+    const std::vector<double> ionisation_energies = {
+        0.0,         // Index 0 padding
+        2.178720e-18, // n = 1 (Exact NIST: 13.598433 eV)
+        3.399608e-19, // n = 2 (Exact NIST: 3.399608 eV)
+        1.510937e-19, // n = 3 (Exact NIST: 1.510937 eV)
+        8.49902e-20,  // n = 4 (Exact NIST: 0.849902 eV)
+        5.43937e-20   // n = 5 (Exact NIST: 0.543937 eV)
+    };
+
+    // Statistical weights for each level
+    const std::vector<int> statistical_weights = {
+        0, // Index 0 padding
+        2, // n = 1
+        8, // n = 2
+        18, // n = 3
+        32, // n = 4
+        50  // n = 5
+    };
+
+    /**
+     * Retrieves the bound-free Gaunt factor for a specific level.
+     */
+    double get_gaunt_factor(int level) const {
+        if (level < 1 || level >= static_cast<int>(gaunt_factors.size())) {
+            throw std::out_of_range("Hydrogen level out of bounds for Gaunt factor lookup.");
+        }
+        return gaunt_factors[level];
+    }
+
+    /**
+     * Retrieves the ionization energy in Joules for a specific level.
+     */
+    double get_ionization_energy(int level) const {
+        if (level < 1 || level >= static_cast<int>(ionisation_energies.size())) {
+            throw std::out_of_range("Hydrogen level out of bounds for ionization energy lookup.");
+        }
+        return ionisation_energies[level];
+    }
+
+    /**
+     * Retrieves the statistical weight (gi) for a specific level.
+     */
+    int get_statistical_weight(int level) const {
+        if (level < 1 || level >= static_cast<int>(statistical_weights.size())) {
+            throw std::out_of_range("Hydrogen level out of bounds for statistical weight lookup.");
+        }
+        return statistical_weights[level];
+    }
+
+    /**
+     * Pre-computed Oscillator Strengths (f_osc) Matrix for Hydrogen.
+     * Rows: Lower Level (1 to 4)
+     * Columns: Upper Level (2 to 5)
+     * 
+     * Formula Reference: f_osc represents the dimensionless quantum probability 
+     * of a bound electron absorbing a photon to jump from lower_level to upper_level.
+     */
+    static double get_oscillator_strength(int lower, int upper) {
+        if (lower < 1 || upper < 1 || lower >= upper || upper > 5) {
+            return 0.0;
+        }
+
+        // Fast lookup matrix for oscillator strengths.
+        // Matrix layout: [lower - 1][upper - 1]
+        static const double f_matrix[5][5] = {
+            // Upper:  n=1,   n=2,          n=3,          n=4,          n=5
+            /* n=1 */ { 0.0,  4.1619672e-1, 7.9101563e-2, 2.8991029e-2, 1.3938344e-2 },
+            /* n=2 */ { 0.0,  0.0,          6.4074704e-1, 1.1932114e-1, 4.4670295e-2 },
+            /* n=3 */ { 0.0,  0.0,          0.0,          8.4209639e-1, 1.5058408e-1 },
+            /* n=4 */ { 0.0,  0.0,          0.0,          0.0,          1.0377363e0  },
+            /* n=5 */ { 0.0,  0.0,          0.0,          0.0,          0.0          }
+        };
+
+        return f_matrix[lower - 1][upper - 1];
+    }
+};
+
+// Number of hydrogen levels considered in the calculations
+constexpr int N_LEVELS = 5;
+
 // Physical constants used in calculations
 constexpr double PI = 3.14159265358979323846;
 constexpr double C_LIGHT = 299792458.0;
@@ -22,8 +115,7 @@ constexpr double CHARGE_ELECTRON = 1.602176634e-19;
 // as the radiation source temperature.
 constexpr double T_RAD = 5777.0;
 
-// Constants for the number of levels and electron temperature samples
-constexpr int N_LEVELS = 5;
+// Electron temperature sampling grid parameters for the NetCDF file
 constexpr int N_TINTERVALS = 100;
 constexpr double MIN_LOGT = 2.0;
 constexpr double MAX_LOGT = 8.0;
@@ -163,66 +255,6 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
     nc_check(nc_close(ncid), "nc_close");
 }
 
-// Read the coefficient table from a NetCDF file
-static bool read_atomic_rates_tables_netcdf(const std::string &path,
-                                    Vec1D &logT,
-                                    Vec3D &collisional_excitation_rates) {
-    int ncid = -1;
-    if (nc_open(path.c_str(), NC_NOWRITE, &ncid) != NC_NOERR) {
-        return false;
-    }
-
-    int dim_tsamples = -1;
-    int dim_lower_level = -1;
-    int dim_upper_level = -1;    
-    size_t n_tsamples = 0;
-    size_t n_lower_levels = 0;
-    size_t n_upper_levels = 0;
-
-    if (nc_inq_dimid(ncid, "n_tsample", &dim_tsamples) != NC_NOERR ||
-        nc_inq_dimid(ncid, "n_lower_level", &dim_lower_level) != NC_NOERR ||
-        nc_inq_dimid(ncid, "n_upper_level", &dim_upper_level) != NC_NOERR) {
-        nc_close(ncid);
-        return false;
-    }
-
-    if (nc_inq_dimlen(ncid, dim_tsamples, &n_tsamples) != NC_NOERR ||
-        nc_inq_dimlen(ncid, dim_lower_level, &n_lower_levels) != NC_NOERR ||
-        nc_inq_dimlen(ncid, dim_upper_level, &n_upper_levels) != NC_NOERR) {
-        nc_close(ncid);
-        return false;
-    }
-
-    int var_logT = -1;
-    int var_collisional_excitation_rates = -1;
-    if (nc_inq_varid(ncid, "logT", &var_logT) != NC_NOERR ||
-        nc_inq_varid(ncid, "collisional_excitation_rates", &var_collisional_excitation_rates) != NC_NOERR) {
-        nc_close(ncid);
-        return false;
-    }
-
-    logT.assign(n_tsamples, 0.0);
-    Vec1D flat(n_tsamples * n_lower_levels * n_upper_levels, 0.0);
-    if (nc_get_var_double(ncid, var_logT, logT.data()) != NC_NOERR ||
-        (!flat.empty() && nc_get_var_double(ncid, var_collisional_excitation_rates, flat.data()) != NC_NOERR)) {
-        nc_close(ncid);
-        return false;
-    }
-
-    collisional_excitation_rates.assign(n_tsamples, Vec2D(n_lower_levels, Vec1D(n_upper_levels, 0.0)));
-    for (size_t tsample = 0; tsample < n_tsamples; ++tsample) {
-        for (size_t lower_level = 0; lower_level < n_lower_levels; ++lower_level) {
-            for (size_t upper_level = 0; upper_level < n_upper_levels; ++upper_level) {
-                const size_t idx = (tsample * n_lower_levels + lower_level) * n_upper_levels + upper_level;
-                collisional_excitation_rates[tsample][lower_level][upper_level] = flat[idx];
-            }
-        }
-    }
-
-    nc_close(ncid);
-    return true;
-}
-
 // Planck blackbody function
 static double planck_j(const double nu, const double T) {
     
@@ -234,54 +266,40 @@ static double planck_j(const double nu, const double T) {
     return (2.0 * H_PLANCK * std::pow(nu, 3.0)) / (C_LIGHT * C_LIGHT) * (1.0 / (std::exp(exponent) - 1.0));
 }
 
-// Statistical weight for hydrogenic levels
-static double statistical_weight(const int level) {
-    if (level < 1) return 0.0;
-    return 2.0 * level * level; // g_n = 2n^2 for hydrogenic levels
-}
-
 // Photon frequency from photon energy
 static double photon_frequency(const double photon_energy) {
     if (photon_energy <= 0.0) return 0.0;
     return photon_energy / H_PLANCK;
 }
 
-// Oscillator strength for transitions between hydrogenic levels
-static double oscillator_strength(const int lower_level, const int upper_level) {
+//Calculates the threshold photo-ionisation cross-section (alpha_zero) for a 
+// specific atomic level of a hydrogen atom.
+double calculate_alpha_zero(const HydrogenData& hydro_data, int level) {
+    // 1. Fetch level-specific boundaries
+    double E_ionisation = hydro_data.get_ionization_energy(level); // Joules
+    double g_bf         = hydro_data.get_gaunt_factor(level);
 
-    if (lower_level < 1 || upper_level < 1 || lower_level >= upper_level) return 0.0;
+    // 2. Derive threshold frequency (nu_0 = E / h)
+    double nu_0 = photon_frequency(E_ionisation);
 
-    double f_osc = 0.0;
-    if (lower_level == 1 && upper_level == 2) f_osc = 4.1619672e-1;
-    else if (lower_level == 1 && upper_level == 3) f_osc = 7.9101563e-2;
-    else if (lower_level == 1 && upper_level == 4) f_osc = 2.8991029e-2;
-    else if (lower_level == 1 && upper_level == 5) f_osc = 1.3938344e-2;
-    else if (lower_level == 2 && upper_level == 3) f_osc = 6.4074704e-1;
-    else if (lower_level == 2 && upper_level == 4) f_osc = 1.1932114e-1;
-    else if (lower_level == 2 && upper_level == 5) f_osc = 4.4670295e-2;
-    else if (lower_level == 3 && upper_level == 4) f_osc = 8.4209639e-1;
-    else if (lower_level == 3 && upper_level == 5) f_osc = 1.5058408e-1;
-    else if (lower_level == 4 && upper_level == 5) f_osc = 1.0377363e0;
+    // 3. Compute Kramers' Constant prefactor dynamically from SI constants
+    double h_pow4    = std::pow(H_PLANCK, 4.0);
+    double pi_pow6    = std::pow(PI, 6.0);
+    double me_pow4    = std::pow(MASS_ELECTRON, 4.0);
+    double a0_pow5    = std::pow(A0_BOHR, 5.0);
 
-    return f_osc;
+    double kramers_constant_si = h_pow4 / (48.0 * std::sqrt(3.0) * pi_pow6 * C_LIGHT * me_pow4 * a0_pow5);
 
-}
+    // 4. Evaluate Kramers' scaling laws for cross-section
+    double atomic_number_Z = 1.0;
+    double z_pow4          = std::pow(atomic_number_Z, 4.0);
+    double level_pow5      = std::pow(static_cast<double>(level), 5.0);
+    double nu_pow3         = std::pow(nu_0, 3.0);
 
-// Hydrogen ionization energy for a given level (in Joules). Only first 5 levels are considered.
-static double hydrogen_ionization_energy(const int level) {
-    
-    double eion = 0.0;
+    // This yields the raw cross-section in SI units
+    double alpha_zero = (kramers_constant_si * z_pow4) / (level_pow5 * nu_pow3) * g_bf;
 
-    switch (level) {
-        case 1: eion = 2.178720e-18; break; // n = 1 (Exact NIST: 13.598433 eV)
-        case 2: eion = 3.399608e-19; break; // n = 2 (Exact NIST: 3.399608 eV)
-        case 3: eion = 1.510937e-19; break; // n = 3 (Exact NIST: 1.510937 eV)
-        case 4: eion = 8.49902e-20; break; // n = 4 (Exact NIST: 0.849902 eV)
-        case 5: eion = 5.43937e-20; break; // n = 5 (Exact NIST: 0.543937 eV)
-        default: eion = 0.0; break;
-    }
-
-    return eion;
+    return alpha_zero;
 }
 
 // Generate the coefficient table for collisional and radiative rates
@@ -290,6 +308,8 @@ static void generate_atomic_rates_data_tables(
     const double min_logT, 
     const double max_logT) {
     
+    static const HydrogenData hydro_data;
+
     Vec1D rn(N_LEVELS, 0.0);
     Vec1D bn(N_LEVELS, 0.0);
     Vec1D garr(3, 0.0);
@@ -333,7 +353,7 @@ static void generate_atomic_rates_data_tables(
             int upper_level = upper_levels[jj];
 
             xrat[ii][jj] = 1.0 - std::pow((double)lower_level / (double)upper_level, 2.0);
-            Enn[ii][jj] = hydrogen_ionization_energy(lower_level) - hydrogen_ionization_energy(upper_level);
+            Enn[ii][jj] = hydro_data.get_ionization_energy(lower_level) - hydro_data.get_ionization_energy(upper_level);
             rnn[ii][jj] = rn[ii] * xrat[ii][jj];
 
             if (lower_level == 1) {
@@ -424,8 +444,8 @@ static void generate_atomic_rates_data_tables(
             
             int lower_level = lower_levels[ii];
 
-            double yn = hydrogen_ionization_energy(lower_level) / (K_BOLTZ * T);
-            double zn = rn[ii] + hydrogen_ionization_energy(lower_level) / (K_BOLTZ * T);
+            double yn = hydro_data.get_ionization_energy(lower_level) / (K_BOLTZ * T);
+            double zn = rn[ii] + hydro_data.get_ionization_energy(lower_level) / (K_BOLTZ * T);
 
             double E0y = boost::math::expint(0, yn);
             double E1y = boost::math::expint(1, yn);
@@ -471,24 +491,24 @@ static void generate_atomic_rates_data_tables(
         int lower_level = lower_levels[ii];
         for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
             int upper_level = upper_levels[jj];
-            double photon_energy = hydrogen_ionization_energy(lower_level) - hydrogen_ionization_energy(upper_level);
+            double photon_energy = hydro_data.get_ionization_energy(lower_level) - hydro_data.get_ionization_energy(upper_level);
             double nu = photon_frequency(photon_energy);
-            double f_osc = oscillator_strength(lower_level, upper_level);
-            double g_lower = statistical_weight(lower_level);
-            double g_upper = statistical_weight(upper_level);
+            double f_osc = hydro_data.get_oscillator_strength(lower_level, upper_level);
+            double g_lower = hydro_data.get_statistical_weight(lower_level);
+            double g_upper = hydro_data.get_statistical_weight(upper_level);
             radiative_excitation_rates[ii][jj] = ((4.0 * PI) / (H_PLANCK * nu))* ((PI * CHARGE_ELECTRON * CHARGE_ELECTRON) / (MASS_ELECTRON * C_LIGHT)) * f_osc * planck_j(nu, T_RAD);
             radiative_de_excitation_rates[ii][jj] = (g_lower / g_upper) * radiative_excitation_rates[ii][jj] * (std::exp(photon_energy / (K_BOLTZ * T_RAD)));
         }
     }
 
-    // Configure tolerance and iteration limits for series calculations below
+    // Configure tolerance for series calculations below
     double tolerance = std::numeric_limits<double>::epsilon(); // Machine precision threshold
 
     // 4. Compute radiative ionisation rates
     std::cout << " Computing radiative ionisation rates " << std::endl;
     for (int ii = 0; ii < N_LEVELS; ++ii) {
         int lower_level = lower_levels[ii];
-        double photon_energy = hydrogen_ionization_energy(lower_level);
+        double photon_energy = hydro_data.get_ionization_energy(lower_level);
         double nu = photon_frequency(photon_energy);
         double x0  = photon_energy / (K_BOLTZ * T_RAD);
 
@@ -505,7 +525,7 @@ static void generate_atomic_rates_data_tables(
                 break;
             }
         }
-        radiative_ionisation_rates[ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * (nu * nu * nu) * series_sum;
+        radiative_ionisation_rates[ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * calculate_alpha_zero(hydro_data, lower_level) * (nu * nu * nu) * series_sum;
     }
 
     // 5. Compute radiative recombination rates
@@ -515,7 +535,7 @@ static void generate_atomic_rates_data_tables(
         double T = std::pow(10.0, logT);
         for (int ii = 0; ii < N_LEVELS; ++ii) {
             int lower_level = lower_levels[ii];
-            double photon_energy = hydrogen_ionization_energy(lower_level);
+            double photon_energy = hydro_data.get_ionization_energy(lower_level);
             double nu = photon_frequency(photon_energy);
             double x0  = photon_energy / (K_BOLTZ * T);
 
@@ -532,7 +552,7 @@ static void generate_atomic_rates_data_tables(
                     break;
                 }
             }
-            radiative_recombination_rates[ti][ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * (nu * nu * nu) * series_sum;
+            radiative_recombination_rates[ti][ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * calculate_alpha_zero(hydro_data, lower_level) * (nu * nu * nu) * series_sum;
         }
     }
 
@@ -553,33 +573,6 @@ static void generate_atomic_rates_data_tables(
 }
 
 int main() {
-
     generate_atomic_rates_data_tables(N_TINTERVALS, MIN_LOGT, MAX_LOGT);
-
-    Vec1D logT_read;
-    Vec3D collisional_excitation_rates_read;
-    if (!read_atomic_rates_tables_netcdf("atomic_rates.nc", logT_read, collisional_excitation_rates_read)) {
-        std::cerr << "Failed to read atomic_rates.nc\n";
-        return 1;
-    }
-
-    std::ofstream txt("atomic_rates_from_netcdf.txt");
-    if (!txt) {
-        std::cerr << "Failed to open atomic_rates_from_netcdf.txt for writing\n";
-        return 1;
-    }
-
-    const int max_lower_level = collisional_excitation_rates_read.empty() ? 0 : static_cast<int>(collisional_excitation_rates_read.front().size()) - 1;
-    const int max_upper_level = (max_lower_level <= 0) ? 0 : static_cast<int>(collisional_excitation_rates_read.front().front().size()) - 1;
-    for (size_t i = 0; i < logT_read.size(); ++i) {
-        txt << logT_read[i];
-        for (int lower_level = 1; lower_level <= max_lower_level; ++lower_level) {
-            for (int upper_level = lower_level + 1; upper_level <= max_upper_level; ++upper_level) {
-                txt << " " << collisional_excitation_rates_read[i][lower_level][upper_level];
-            }
-        }
-        txt << '\n';
-    }
-
     return 0;
 }
