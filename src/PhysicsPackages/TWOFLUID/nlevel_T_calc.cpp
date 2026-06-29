@@ -501,6 +501,7 @@ static void generate_atomic_rates_data_tables(
 
             // Automatically break when the next term is too small to change the sum
             if (term <= tolerance * series_sum) {
+                std::cout << "Breaking series sum for radiative ionisation at level " << lower_level << " after " << k << " terms." << std::endl;   
                 break;
             }
         }
@@ -527,6 +528,7 @@ static void generate_atomic_rates_data_tables(
 
                 // Automatically break when the next term is too small to change the sum
                 if (term <= tolerance * series_sum) {
+                    std::cout << "Breaking series sum for radiative recombination at level " << lower_level << " after " << k << " terms - logT = " << logT << std::endl;
                     break;
                 }
             }
