@@ -41,23 +41,26 @@ static void nc_check(const int status, const char *context) {
     }
 }
 
-//Flatten a 2D array into a 1D array for NetCDF storage
-static void flatten_2d(const Vec2D &arr, Vec1D &flat,
-                       size_t n_tsamples, size_t n_lower_levels) {
-    flat.assign(n_tsamples * n_lower_levels, 0.0);
-    for (size_t tsample = 0; tsample < n_tsamples; ++tsample)
-        for (size_t lower_level = 0; lower_level < n_lower_levels; ++lower_level)
-            flat[tsample * n_lower_levels + lower_level] = arr[tsample][lower_level];
+// Flatten a 2D array into a 1D array for NetCDF storage
+static void flatten_2d(const Vec2D &arr, Vec1D &flat) {
+    const size_t dim0 = arr.size();
+    const size_t dim1 = dim0 == 0 ? 0 : arr.front().size();
+    flat.assign(dim0 * dim1, 0.0);
+    for (size_t i = 0; i < dim0; ++i)
+        for (size_t j = 0; j < dim1; ++j)
+            flat[i * dim1 + j] = arr[i][j];
 }
 
 // Flatten a 3D array into a 1D array for NetCDF storage
-static void flatten_3d(const Vec3D &arr, Vec1D &flat,
-                       size_t n_tsamples, size_t n_lower_levels, size_t n_upper_levels) {
-    flat.assign(n_tsamples * n_lower_levels * n_upper_levels, 0.0);
-    for (size_t tsample = 0; tsample < n_tsamples; ++tsample)
-        for (size_t lower_level = 0; lower_level < n_lower_levels; ++lower_level)
-            for (size_t upper_level = 0; upper_level < n_upper_levels; ++upper_level)
-                flat[(tsample * n_lower_levels + lower_level) * n_upper_levels + upper_level] = arr[tsample][lower_level][upper_level];
+static void flatten_3d(const Vec3D &arr, Vec1D &flat) {
+    const size_t dim0 = arr.size();
+    const size_t dim1 = dim0 == 0 ? 0 : arr.front().size();
+    const size_t dim2 = (dim0 == 0 || arr.front().empty()) ? 0 : arr.front().front().size();
+    flat.assign(dim0 * dim1 * dim2, 0.0);
+    for (size_t i = 0; i < dim0; ++i)
+        for (size_t j = 0; j < dim1; ++j)
+            for (size_t k = 0; k < dim2; ++k)
+                flat[(i * dim1 + j) * dim2 + k] = arr[i][j][k];
 }
 
 // Write the coefficient table to a NetCDF file
@@ -67,8 +70,10 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
                                      const Vec1I &upper_levels,
                                      const Vec3D &collisional_excitation_rates,
                                      const Vec2D &collisional_ionisation_rates,
-                                     const Vec3D &rad_absorption,
-                                     const Vec3D &rad_emission_total,
+                                     const Vec2D &radiative_excitation_rates, 
+                                     const Vec2D &radiative_de_excitation_rates,
+                                     const Vec1D &radiative_ionisation_rates,
+                                     const Vec2D &radiative_recombination_rates,
                                      const double min_logT, 
                                      const double max_logT) {
     int ncid = -1;
@@ -106,11 +111,19 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
     int var_collisional_excitation_rates = -1;
     nc_check(nc_def_var(ncid, "collisional_excitation_rates", NC_DOUBLE, 3, dims_rates_3d, &var_collisional_excitation_rates), "nc_def_var collisional_excitation_rates");
     
-    int var_rad_abs = -1;
-    nc_check(nc_def_var(ncid, "rad_absorption", NC_DOUBLE, 3, dims_rates_3d, &var_rad_abs), "nc_def_var rad_absorption");
-    
-    int var_rad_emit = -1;
-    nc_check(nc_def_var(ncid, "rad_emission_total", NC_DOUBLE, 3, dims_rates_3d, &var_rad_emit), "nc_def_var rad_emission_total");
+    int dims_levels_2d[2] = {dim_lower_level, dim_upper_level}; // Level-to-level rates (not temperature-dependent)
+
+    int var_radiative_excitation_rates = -1;
+    nc_check(nc_def_var(ncid, "radiative_excitation_rates", NC_DOUBLE, 2, dims_levels_2d, &var_radiative_excitation_rates), "nc_def_var radiative_excitation_rates");
+
+    int var_radiative_de_excitation_rates = -1;
+    nc_check(nc_def_var(ncid, "radiative_de_excitation_rates", NC_DOUBLE, 2, dims_levels_2d, &var_radiative_de_excitation_rates), "nc_def_var radiative_de_excitation_rates");
+
+    int var_radiative_ionisation_rates = -1;
+    nc_check(nc_def_var(ncid, "radiative_ionisation_rates", NC_DOUBLE, 1, &dim_lower_level, &var_radiative_ionisation_rates), "nc_def_var radiative_ionisation_rates");
+
+    int var_radiative_recombination_rates = -1;
+    nc_check(nc_def_var(ncid, "radiative_recombination_rates", NC_DOUBLE, 2, dims_rates_2d, &var_radiative_recombination_rates), "nc_def_var radiative_recombination_rates");
 
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "min_logT", NC_DOUBLE, 1, &min_logT), "nc_put_att min_logT");
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "max_logT", NC_DOUBLE, 1, &max_logT), "nc_put_att max_logT");
@@ -123,21 +136,28 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
 
     Vec1D flat;
 
-    flatten_2d(collisional_ionisation_rates, flat, n_tsamples, n_lower_levels);
+    flatten_2d(collisional_ionisation_rates, flat);
     if (!flat.empty())
         nc_check(nc_put_var_double(ncid, var_collisional_ionisation_rates, flat.data()), "nc_put_var collisional_ionisation_rates");
 
-    flatten_3d(collisional_excitation_rates, flat, n_tsamples, n_lower_levels, n_upper_levels);
+    flatten_3d(collisional_excitation_rates, flat);
     if (!flat.empty())
         nc_check(nc_put_var_double(ncid, var_collisional_excitation_rates, flat.data()), "nc_put_var collisional_excitation_rates");
 
-    flatten_3d(rad_absorption, flat, n_tsamples, n_lower_levels, n_upper_levels);
-    if (!flat.empty())
-        nc_check(nc_put_var_double(ncid, var_rad_abs, flat.data()), "nc_put_var rad_absorption");
+    if (!radiative_ionisation_rates.empty())
+        nc_check(nc_put_var_double(ncid, var_radiative_ionisation_rates, radiative_ionisation_rates.data()), "nc_put_var radiative_ionisation_rates");
 
-    flatten_3d(rad_emission_total, flat, n_tsamples, n_lower_levels, n_upper_levels);
+    flatten_2d(radiative_excitation_rates, flat);
     if (!flat.empty())
-        nc_check(nc_put_var_double(ncid, var_rad_emit, flat.data()), "nc_put_var rad_emission_total");
+        nc_check(nc_put_var_double(ncid, var_radiative_excitation_rates, flat.data()), "nc_put_var radiative_excitation_rates");
+
+    flatten_2d(radiative_de_excitation_rates, flat);
+    if (!flat.empty())
+        nc_check(nc_put_var_double(ncid, var_radiative_de_excitation_rates, flat.data()), "nc_put_var radiative_de_excitation_rates");
+
+    flatten_2d(radiative_recombination_rates, flat);
+    if (!flat.empty())
+        nc_check(nc_put_var_double(ncid, var_radiative_recombination_rates, flat.data()), "nc_put_var radiative_recombination_rates");
 
     nc_check(nc_close(ncid), "nc_close");
 }
@@ -334,18 +354,21 @@ static void generate_atomic_rates_data_tables(
     }
 
     Vec1D logT_vals(n_tintervals + 1, 0.0);
+
     Vec2D collisional_ionisation_rates(
         n_tintervals + 1,
         Vec1D(N_LEVELS, 0.0));
     Vec3D collisional_excitation_rates(
         n_tintervals + 1,
         Vec2D (N_LEVELS, Vec1D (N_LEVELS, 0.0)));
-    Vec3D rad_absorption(
+
+    Vec1D radiative_ionisation_rates(N_LEVELS, 0.0);
+    Vec2D radiative_recombination_rates(
         n_tintervals + 1,
-        Vec2D (N_LEVELS, Vec1D (N_LEVELS, 0.0)));
-    Vec3D rad_emission_total(
-        n_tintervals + 1,
-        Vec2D (N_LEVELS, Vec1D (N_LEVELS, 0.0)));
+        Vec1D (N_LEVELS, 0.0));   
+
+    Vec2D radiative_excitation_rates(N_LEVELS, Vec1D(N_LEVELS, 0.0));
+    Vec2D radiative_de_excitation_rates(N_LEVELS, Vec1D(N_LEVELS, 0.0));
 
     double d_logT = (max_logT - min_logT) / n_tintervals;
 
@@ -358,26 +381,14 @@ static void generate_atomic_rates_data_tables(
         logT_vals[ti] = logT;
 
         for (int ii = 0; ii < N_LEVELS; ++ii) {
-            // Excitation rates
+            
             int lower_level = ii + 1;
 
             for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
 
                 int upper_level = jj + 1;
 
-                // 1. Calculate the light field using electron temperature as the proxy
-                double nu = Enn[ii][jj] / H_PLANCK;
-                double J = planck_j(nu, T); 
-
-                // 2. Compute the Einstein B coefficients
-                double A_to_B = (C_LIGHT * C_LIGHT) / (2.0 * H_PLANCK * std::pow(nu, 3.0));
-                double B_ji = Ann[ii][jj] * A_to_B;                                   
-                double B_ii_jj = B_ji * (double)(upper_level * upper_level) / (double)(lower_level * lower_level);
-
-                // 3. Save radiative rates for this specific temperature sample
-                rad_emission_total[ti][jj][ii] = Ann[ii][jj] + (B_ji * J); // Downward (Spontaneous + Stimulated)
-                rad_absorption[ti][ii][jj] = B_ii_jj * J;     
-
+                // Compute collisional excitation rates
                 double yhat = Enn[ii][jj] / (K_BOLTZ * T);
                 double zhat = rnn[ii][jj] + Enn[ii][jj] / (K_BOLTZ * T);
 
@@ -391,10 +402,11 @@ static void generate_atomic_rates_data_tables(
                 double term1 = Ann[ii][jj] * ((1.0 / yhat + 0.5) * E1y - (1.0 / zhat + 0.5) * E1z);
                 double term2 = (Bnn[ii][jj] - Ann[ii][jj] * std::log(2.0 * (double)lower_level * (double)lower_level / xrat[ii][jj])) * (E2y / yhat - E2z / zhat);
 
-                collisional_excitation_rates[ti][ii][jj] = prefac * (term1 + term2);
+                collisional_excitation_rates[ti][ii][jj] = prefac * (term1 + term2); 
+            
             }
 
-            // Ionisation rates
+            // Compute collisional ionisation rates
             double yn = hydrogen_ionization_energy(lower_level) / (K_BOLTZ * T);
             double zn = rn[ii] + hydrogen_ionization_energy(lower_level) / (K_BOLTZ * T);
 
@@ -443,8 +455,10 @@ static void generate_atomic_rates_data_tables(
         upper_levels,
         collisional_excitation_rates, 
         collisional_ionisation_rates, 
-        rad_absorption, 
-        rad_emission_total, 
+        radiative_excitation_rates, 
+        radiative_de_excitation_rates,
+        radiative_ionisation_rates,
+        radiative_recombination_rates,
         min_logT, 
         max_logT);
 
