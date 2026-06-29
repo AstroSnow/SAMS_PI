@@ -481,6 +481,59 @@ static void generate_atomic_rates_data_tables(
         }
     }
 
+    // Configure tolerance and iteration limits for series calculations below
+    double tolerance = std::numeric_limits<double>::epsilon(); // Machine precision threshold
+
+    // 4. Compute radiative ionisation rates
+    std::cout << " Computing radiative ionisation rates " << std::endl;
+    for (int ii = 0; ii < N_LEVELS; ++ii) {
+        int lower_level = lower_levels[ii];
+        double photon_energy = hydrogen_ionization_energy(lower_level);
+        double nu = photon_frequency(photon_energy);
+        double x0  = photon_energy / (K_BOLTZ * T_RAD);
+
+        double series_sum = 0.0;
+    
+        // Explicit loop to sum series
+        for (int k = 1; k <= 1000000; ++k) {
+            double term = boost::math::expint(1, static_cast<double>(k) * x0);
+            series_sum += term;
+
+            // Automatically break when the next term is too small to change the sum
+            if (term <= tolerance * series_sum) {
+                break;
+            }
+        }
+        radiative_ionisation_rates[ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * (nu * nu * nu) * series_sum;
+    }
+
+    // 5. Compute radiative recombination rates
+    std::cout << " Computing radiative recombination rates " << std::endl;
+    for (int ti = 0; ti <= n_tintervals; ++ti) {
+        double logT = min_logT + ti * d_logT;
+        double T = std::pow(10.0, logT);
+        for (int ii = 0; ii < N_LEVELS; ++ii) {
+            int lower_level = lower_levels[ii];
+            double photon_energy = hydrogen_ionization_energy(lower_level);
+            double nu = photon_frequency(photon_energy);
+            double x0  = photon_energy / (K_BOLTZ * T);
+
+            double series_sum = 0.0;
+    
+            // Explicit loop to sum series
+            for (int k = 0; k <= 1000000; ++k) {
+                double term = boost::math::expint(1, (static_cast<double>(k) * (T / T_RAD) + 1.0) * x0);
+                series_sum += term;
+
+                // Automatically break when the next term is too small to change the sum
+                if (term <= tolerance * series_sum) {
+                    break;
+                }
+            }
+            radiative_recombination_rates[ti][ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * (nu * nu * nu) * series_sum;
+        }
+    }
+
     write_atomic_rates_tables_netcdf(
         "atomic_rates.nc", 
         logT_vals,
