@@ -102,28 +102,29 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
     int var_upper_level = -1;
     nc_check(nc_def_var(ncid, "upper_level", NC_INT, 1, &dim_upper_level, &var_upper_level), "nc_def_var upper_level");
 
-    int dims_rates_2d[2] = {dim_tsamples, dim_lower_level}; // Rates that depend on temperature and lower level
-    int dims_rates_3d[3] = {dim_tsamples, dim_lower_level, dim_upper_level}; // Rates that depend on temperature, lower level, and upper level
-
     int var_collisional_ionisation_rates = -1;
-    nc_check(nc_def_var(ncid, "collisional_ionisation_rates", NC_DOUBLE, 2, dims_rates_2d, &var_collisional_ionisation_rates), "nc_def_var collisional_ionisation_rates");
+    int dims_collisional_ionisation[2] = {dim_tsamples, dim_lower_level};
+    nc_check(nc_def_var(ncid, "collisional_ionisation_rates", NC_DOUBLE, 2, dims_collisional_ionisation, &var_collisional_ionisation_rates), "nc_def_var collisional_ionisation_rates");
 
     int var_collisional_excitation_rates = -1;
-    nc_check(nc_def_var(ncid, "collisional_excitation_rates", NC_DOUBLE, 3, dims_rates_3d, &var_collisional_excitation_rates), "nc_def_var collisional_excitation_rates");
+    int dims_collisional_excitation[3] = {dim_tsamples, dim_lower_level, dim_upper_level};
+    nc_check(nc_def_var(ncid, "collisional_excitation_rates", NC_DOUBLE, 3, dims_collisional_excitation, &var_collisional_excitation_rates), "nc_def_var collisional_excitation_rates");
     
-    int dims_levels_2d[2] = {dim_lower_level, dim_upper_level}; // Level-to-level rates (not temperature-dependent)
-
     int var_radiative_excitation_rates = -1;
-    nc_check(nc_def_var(ncid, "radiative_excitation_rates", NC_DOUBLE, 2, dims_levels_2d, &var_radiative_excitation_rates), "nc_def_var radiative_excitation_rates");
+    int dims_radiative_excitation[2] = {dim_lower_level, dim_upper_level};
+    nc_check(nc_def_var(ncid, "radiative_excitation_rates", NC_DOUBLE, 2, dims_radiative_excitation, &var_radiative_excitation_rates), "nc_def_var radiative_excitation_rates");
 
     int var_radiative_de_excitation_rates = -1;
-    nc_check(nc_def_var(ncid, "radiative_de_excitation_rates", NC_DOUBLE, 2, dims_levels_2d, &var_radiative_de_excitation_rates), "nc_def_var radiative_de_excitation_rates");
+    int dims_radiative_de_excitation[2] = {dim_lower_level, dim_upper_level};
+    nc_check(nc_def_var(ncid, "radiative_de_excitation_rates", NC_DOUBLE, 2, dims_radiative_de_excitation, &var_radiative_de_excitation_rates), "nc_def_var radiative_de_excitation_rates");
 
     int var_radiative_ionisation_rates = -1;
-    nc_check(nc_def_var(ncid, "radiative_ionisation_rates", NC_DOUBLE, 1, &dim_lower_level, &var_radiative_ionisation_rates), "nc_def_var radiative_ionisation_rates");
+    int dims_radiative_ionisation[1] = {dim_lower_level};
+    nc_check(nc_def_var(ncid, "radiative_ionisation_rates", NC_DOUBLE, 1, dims_radiative_ionisation, &var_radiative_ionisation_rates), "nc_def_var radiative_ionisation_rates");
 
     int var_radiative_recombination_rates = -1;
-    nc_check(nc_def_var(ncid, "radiative_recombination_rates", NC_DOUBLE, 2, dims_rates_2d, &var_radiative_recombination_rates), "nc_def_var radiative_recombination_rates");
+    int dims_radiative_recombination[2] = {dim_tsamples, dim_lower_level};
+    nc_check(nc_def_var(ncid, "radiative_recombination_rates", NC_DOUBLE, 2, dims_radiative_recombination, &var_radiative_recombination_rates), "nc_def_var radiative_recombination_rates");
 
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "min_logT", NC_DOUBLE, 1, &min_logT), "nc_put_att min_logT");
     nc_check(nc_put_att_double(ncid, NC_GLOBAL, "max_logT", NC_DOUBLE, 1, &max_logT), "nc_put_att max_logT");
@@ -372,9 +373,10 @@ static void generate_atomic_rates_data_tables(
 
     double d_logT = (max_logT - min_logT) / n_tintervals;
 
+    // 1. Compute collisional excitation rates
+    std::cout << " Computing collisional excitation rates " << std::endl;
     for (int ti = 0; ti <= n_tintervals; ++ti) {
 
-        std::cout << " Temperature sample " << (ti + 1) << " of " << (n_tintervals + 1) << std::endl;
         double logT = min_logT + ti * d_logT;
         double T = std::pow(10.0, logT);
 
@@ -382,13 +384,12 @@ static void generate_atomic_rates_data_tables(
 
         for (int ii = 0; ii < N_LEVELS; ++ii) {
             
-            int lower_level = ii + 1;
+            int lower_level = lower_levels[ii];
 
             for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
 
-                int upper_level = jj + 1;
+                int upper_level = upper_levels[jj];
 
-                // Compute collisional excitation rates
                 double yhat = Enn[ii][jj] / (K_BOLTZ * T);
                 double zhat = rnn[ii][jj] + Enn[ii][jj] / (K_BOLTZ * T);
 
@@ -405,8 +406,24 @@ static void generate_atomic_rates_data_tables(
                 collisional_excitation_rates[ti][ii][jj] = prefac * (term1 + term2); 
             
             }
+        
+        }
 
-            // Compute collisional ionisation rates
+    }
+
+    // 2. Compute collisional ionisation rates
+    std::cout << " Computing collisional ionisation rates " << std::endl;
+    for (int ti = 0; ti <= n_tintervals; ++ti) {
+
+        double logT = min_logT + ti * d_logT;
+        double T = std::pow(10.0, logT);
+
+        logT_vals[ti] = logT;
+
+        for (int ii = 0; ii < N_LEVELS; ++ii) {
+            
+            int lower_level = lower_levels[ii];
+
             double yn = hydrogen_ionization_energy(lower_level) / (K_BOLTZ * T);
             double zn = rn[ii] + hydrogen_ionization_energy(lower_level) / (K_BOLTZ * T);
 
@@ -446,6 +463,22 @@ static void generate_atomic_rates_data_tables(
             collisional_ionisation_rates[ti][ii] = prefac_ion * (ion_term1 + ion_term2);
         }
 
+    }
+
+    // 3. Compute radiative excitation and de-excitation rates
+    std::cout << " Computing radiative excitation and de-excitation rates " << std::endl;
+    for (int ii = 0; ii < N_LEVELS; ++ii) {
+        int lower_level = lower_levels[ii];
+        for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
+            int upper_level = upper_levels[jj];
+            double photon_energy = hydrogen_ionization_energy(lower_level) - hydrogen_ionization_energy(upper_level);
+            double nu = photon_frequency(photon_energy);
+            double f_osc = oscillator_strength(lower_level, upper_level);
+            double g_lower = statistical_weight(lower_level);
+            double g_upper = statistical_weight(upper_level);
+            radiative_excitation_rates[ii][jj] = ((4.0 * PI) / (H_PLANCK * nu))* ((PI * CHARGE_ELECTRON * CHARGE_ELECTRON) / (MASS_ELECTRON * C_LIGHT)) * f_osc * planck_j(nu, T_RAD);
+            radiative_de_excitation_rates[ii][jj] = (g_lower / g_upper) * radiative_excitation_rates[ii][jj] * (std::exp(photon_energy / (K_BOLTZ * T_RAD)));
+        }
     }
 
     write_atomic_rates_tables_netcdf(
