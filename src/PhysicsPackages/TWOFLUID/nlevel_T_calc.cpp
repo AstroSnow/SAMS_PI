@@ -63,6 +63,8 @@ static void flatten_3d(const Vec3D &arr, Vec1D &flat,
 // Write the coefficient table to a NetCDF file
 static void write_atomic_rates_tables_netcdf(const std::string &path,
                                      const Vec1D &logT,
+                                     const Vec1I &lower_levels,
+                                     const Vec1I &upper_levels,
                                      const Vec3D &collisional_excitation_rates,
                                      const Vec2D &collisional_ionisation_rates,
                                      const Vec3D &rad_absorption,
@@ -76,10 +78,10 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
     const size_t n_tsamples = logT.size();
 
     int dim_lower_level = -1;
-    const size_t n_lower_levels = collisional_excitation_rates.empty() ? 0 : collisional_excitation_rates.front().size();
+    const size_t n_lower_levels = lower_levels.empty() ? 0 : lower_levels.size();
 
     int dim_upper_level = -1;
-    const size_t n_upper_levels = (n_lower_levels == 0 || collisional_excitation_rates.front().empty()) ? 0 : collisional_excitation_rates.front().front().size();
+    const size_t n_upper_levels = upper_levels.empty() ? 0 : upper_levels.size();
 
     nc_check(nc_def_dim(ncid, "n_tsample", n_tsamples, &dim_tsamples), "nc_def_dim tsample");
     nc_check(nc_def_dim(ncid, "n_lower_level", n_lower_levels, &dim_lower_level), "nc_def_dim lower_level");
@@ -116,14 +118,8 @@ static void write_atomic_rates_tables_netcdf(const std::string &path,
     nc_check(nc_enddef(ncid), "nc_enddef");
 
     nc_check(nc_put_var_double(ncid, var_logT, logT.data()), "nc_put_var logT");
-
-    Vec1I lower_level_vals(n_lower_levels);
-    for (size_t i = 0; i < n_lower_levels; ++i) lower_level_vals[i] = static_cast<int>(i + 1);
-    nc_check(nc_put_var_int(ncid, var_lower_level, lower_level_vals.data()), "nc_put_var lower_level");
-
-    Vec1I upper_level_vals(n_upper_levels);
-    for (size_t i = 0; i < n_upper_levels; ++i) upper_level_vals[i] = static_cast<int>(i + 1);
-    nc_check(nc_put_var_int(ncid, var_upper_level, upper_level_vals.data()), "nc_put_var upper_level");
+    nc_check(nc_put_var_int(ncid, var_lower_level, lower_levels.data()), "nc_put_var lower_level");
+    nc_check(nc_put_var_int(ncid, var_upper_level, upper_levels.data()), "nc_put_var upper_level");
 
     Vec1D flat;
 
@@ -277,6 +273,15 @@ static void generate_atomic_rates_data_tables(
     Vec1D bn(N_LEVELS, 0.0);
     Vec1D garr(3, 0.0);
 
+    Vec1I lower_levels(N_LEVELS, 0);
+    for (int i = 0; i < N_LEVELS; ++i) {
+        lower_levels[i] = (i + 1);
+    }
+    Vec1I upper_levels(N_LEVELS, 0);
+    for (int i = 0; i < N_LEVELS; ++i) {
+        upper_levels[i] = (i + 1);
+    }
+
     Vec2D xrat(N_LEVELS, Vec1D(N_LEVELS, 0.0));
     Vec2D Enn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
     Vec2D rnn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
@@ -300,11 +305,11 @@ static void generate_atomic_rates_data_tables(
     // Precompute pairwise quantities
     for (int ii = 0; ii < N_LEVELS; ++ii) {
 
-        int lower_level = ii + 1;
+        int lower_level = lower_levels[ii];
 
         for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
 
-            int upper_level = jj + 1;
+            int upper_level = upper_levels[jj];
 
             xrat[ii][jj] = 1.0 - std::pow((double)lower_level / (double)upper_level, 2.0);
             Enn[ii][jj] = hydrogen_ionization_energy(lower_level) - hydrogen_ionization_energy(upper_level);
@@ -433,7 +438,9 @@ static void generate_atomic_rates_data_tables(
 
     write_atomic_rates_tables_netcdf(
         "atomic_rates.nc", 
-        logT_vals, 
+        logT_vals,
+        lower_levels,
+        upper_levels,
         collisional_excitation_rates, 
         collisional_ionisation_rates, 
         rad_absorption, 
