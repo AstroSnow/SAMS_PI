@@ -363,14 +363,14 @@ static void generate_atomic_rates_data_tables(
     rn[0] = 0.45;
     for (int i = 1; i < HydrogenData::get_n_levels(); ++i)
     {
-        double level = (double)(i + 1);
+        double level = static_cast<double>(i + 1);
         rn[i] = 1.94 * std::pow(level, -1.57);
     }
 
     bn[0] = -0.603;
     for (int i = 1; i < HydrogenData::get_n_levels(); ++i)
     {
-        double level = (double)(i + 1);
+        double level = static_cast<double>(i + 1);
         bn[i] = (1.0 / level) * (4.0 - 18.63 / level + 36.24 / (level * level) - 28.09 / (level * level * level));
     }
 
@@ -385,7 +385,7 @@ static void generate_atomic_rates_data_tables(
 
             int upper_level = upper_levels[jj];
 
-            xrat[ii][jj] = 1.0 - std::pow((double)lower_level / (double)upper_level, 2.0);
+            xrat[ii][jj] = 1.0 - std::pow(static_cast<double>(lower_level) / static_cast<double>(upper_level), 2.0);
             Enn[ii][jj] = HydrogenData::get_ionization_energy(lower_level) - HydrogenData::get_ionization_energy(upper_level);
             rnn[ii][jj] = rn[ii] * xrat[ii][jj];
 
@@ -399,14 +399,14 @@ static void generate_atomic_rates_data_tables(
             }
             else
             {
-                double di = (double)lower_level;
+                double di = static_cast<double>(lower_level);
                 double xr = xrat[ii][jj];
                 gauntfac[ii][jj] = 0.9935 + 0.2328 / di - 0.1296 / (di * di) - (1.0 / xr) * (1.0 / di) * (0.6282 - 0.5598 / di + 0.5299 / (di * di)) + (1.0 / (xr * xr)) * (1.0 / (di * di)) * (0.3887 - 1.181 / di + 1.470 / (di * di));
             }
 
-            fnn[ii][jj] = 32.0 / 3.0 / std::sqrt(3.0) / PI * (double)lower_level / std::pow((double)upper_level, 3.0) / std::pow(xrat[ii][jj], 3.0) * gauntfac[ii][jj];
-            Ann[ii][jj] = 2.0 * (double)lower_level * (double)lower_level / xrat[ii][jj] * fnn[ii][jj];
-            Bnn[ii][jj] = 4.0 * std::pow((double)lower_level, 4.0) / (std::pow((double)upper_level, 3.0) * xrat[ii][jj] * xrat[ii][jj]) * (1.0 + 4.0 / 3.0 / xrat[ii][jj] + bn[ii] / (xrat[ii][jj] * xrat[ii][jj]));
+            fnn[ii][jj] = 32.0 / 3.0 / std::sqrt(3.0) / PI * static_cast<double>(lower_level) / std::pow(static_cast<double>(upper_level), 3.0) / std::pow(xrat[ii][jj], 3.0) * gauntfac[ii][jj];
+            Ann[ii][jj] = 2.0 * static_cast<double>(lower_level) * static_cast<double>(lower_level) / xrat[ii][jj] * fnn[ii][jj];
+            Bnn[ii][jj] = 4.0 * std::pow(static_cast<double>(lower_level), 4.0) / (std::pow(static_cast<double>(upper_level), 3.0) * xrat[ii][jj] * xrat[ii][jj]) * (1.0 + 4.0 / 3.0 / xrat[ii][jj] + bn[ii] / (xrat[ii][jj] * xrat[ii][jj]));
         }
     }
 
@@ -457,10 +457,10 @@ static void generate_atomic_rates_data_tables(
                 double E1z = boost::math::expint(1, zhat);
                 double E2z = boost::math::expint(2, zhat);
 
-                double prefac = std::sqrt(8.0 * K_BOLTZ * T / (PI * MASS_ELECTRON)) * 2.0 * (double)lower_level * (double)lower_level / xrat[ii][jj] * PI * A0_BOHR * A0_BOHR * yhat * yhat;
+                double prefac = std::sqrt(8.0 * K_BOLTZ * T / (PI * MASS_ELECTRON)) * 2.0 * static_cast<double>(lower_level) * static_cast<double>(lower_level) / xrat[ii][jj] * PI * A0_BOHR * A0_BOHR * yhat * yhat;
 
                 double term1 = Ann[ii][jj] * ((1.0 / yhat + 0.5) * E1y - (1.0 / zhat + 0.5) * E1z);
-                double term2 = (Bnn[ii][jj] - Ann[ii][jj] * std::log(2.0 * (double)lower_level * (double)lower_level / xrat[ii][jj])) * (E2y / yhat - E2z / zhat);
+                double term2 = (Bnn[ii][jj] - Ann[ii][jj] * std::log(2.0 * static_cast<double>(lower_level) * static_cast<double>(lower_level) / xrat[ii][jj])) * (E2y / yhat - E2z / zhat);
 
                 collisional_excitation_rates[ti][ii][jj] = prefac * (term1 + term2);
             }
@@ -510,18 +510,18 @@ static void generate_atomic_rates_data_tables(
             }
             else
             {
-                double di = (double)lower_level;
+                double di = static_cast<double>(lower_level);
                 garr[0] = 0.9935 + 0.2328 / di - 0.1296 / (di * di);
                 garr[1] = (-1.0 / di) * (0.6282 - 0.5598 / di + 0.5299 / (di * di));
                 garr[2] = (1.0 / di) * (1.0 / di) * (0.3887 - 1.181 / di + 1.470 / (di * di));
             }
 
-            double An0 = 32.0 / 3.0 / std::sqrt(3.0) / PI * (double)lower_level + garr[0] / 3.0 + garr[1] / 4.0 + garr[2] / 5.0;
-            double Bn0 = 2.0 / 3.0 * (double)lower_level * (double)lower_level * (5.0 + bn[ii]);
+            double An0 = 32.0 / 3.0 / std::sqrt(3.0) / PI * static_cast<double>(lower_level) + garr[0] / 3.0 + garr[1] / 4.0 + garr[2] / 5.0;
+            double Bn0 = 2.0 / 3.0 * static_cast<double>(lower_level) * static_cast<double>(lower_level) * (5.0 + bn[ii]);
 
-            double prefac_ion = std::sqrt(8.0 * K_BOLTZ * T / (PI * MASS_ELECTRON)) * 2.0 * (double)lower_level * (double)lower_level * PI * A0_BOHR * A0_BOHR * yn * yn;
+            double prefac_ion = std::sqrt(8.0 * K_BOLTZ * T / (PI * MASS_ELECTRON)) * 2.0 * static_cast<double>(lower_level) * static_cast<double>(lower_level) * PI * A0_BOHR * A0_BOHR * yn * yn;
             double ion_term1 = An0 * (E1y / yn - E1z / zn);
-            double ion_term2 = (Bn0 - An0 * std::log(2.0 * (double)lower_level * (double)lower_level)) * (ziyn - zizn);
+            double ion_term2 = (Bn0 - An0 * std::log(2.0 * static_cast<double>(lower_level) * static_cast<double>(lower_level))) * (ziyn - zizn);
 
             collisional_ionisation_rates[ti][ii] = prefac_ion * (ion_term1 + ion_term2);
         }
