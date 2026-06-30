@@ -11,8 +11,11 @@
 
 struct HydrogenData {
 
+    // Number of hydrogen levels considered in the calculations
+    static constexpr int N_LEVELS = 5;
+
     // First-principles bound-free Gaunt factors at threshold
-    const std::vector<double> gaunt_factors = { 
+    static constexpr double gaunt_factors[N_LEVELS + 1] = { 
         0.0,       // Index 0 padding
         0.7973,    // n = 1
         0.9355,    // n = 2
@@ -22,8 +25,8 @@ struct HydrogenData {
     };
 
     // Ionisation energies
-    const std::vector<double> ionisation_energies = {
-        0.0,         // Index 0 padding
+    static constexpr double ionisation_energies[N_LEVELS + 1] = {
+        0.0,          // Index 0 padding
         2.178720e-18, // n = 1 (Exact NIST: 13.598433 eV)
         3.399608e-19, // n = 2 (Exact NIST: 3.399608 eV)
         1.510937e-19, // n = 3 (Exact NIST: 1.510937 eV)
@@ -32,7 +35,7 @@ struct HydrogenData {
     };
 
     // Statistical weights for each level
-    const std::vector<int> statistical_weights = {
+    static constexpr int statistical_weights[N_LEVELS + 1] = {
         0, // Index 0 padding
         2, // n = 1
         8, // n = 2
@@ -42,10 +45,17 @@ struct HydrogenData {
     };
 
     /**
+     * Retrieves the number of hydrogen levels considered in the calculations.
+     */
+    static int get_n_levels() {
+        return N_LEVELS;
+    }
+
+    /**
      * Retrieves the bound-free Gaunt factor for a specific level.
      */
-    double get_gaunt_factor(int level) const {
-        if (level < 1 || level >= static_cast<int>(gaunt_factors.size())) {
+    static double get_gaunt_factor(int level) {
+        if (level < 1 || level > N_LEVELS) {
             throw std::out_of_range("Hydrogen level out of bounds for Gaunt factor lookup.");
         }
         return gaunt_factors[level];
@@ -54,8 +64,8 @@ struct HydrogenData {
     /**
      * Retrieves the ionization energy in Joules for a specific level.
      */
-    double get_ionization_energy(int level) const {
-        if (level < 1 || level >= static_cast<int>(ionisation_energies.size())) {
+    static double get_ionization_energy(int level) {
+        if (level < 1 || level > N_LEVELS) {
             throw std::out_of_range("Hydrogen level out of bounds for ionization energy lookup.");
         }
         return ionisation_energies[level];
@@ -64,8 +74,8 @@ struct HydrogenData {
     /**
      * Retrieves the statistical weight (gi) for a specific level.
      */
-    int get_statistical_weight(int level) const {
-        if (level < 1 || level >= static_cast<int>(statistical_weights.size())) {
+    static int get_statistical_weight(int level) {
+        if (level < 1 || level > N_LEVELS) {
             throw std::out_of_range("Hydrogen level out of bounds for statistical weight lookup.");
         }
         return statistical_weights[level];
@@ -80,13 +90,13 @@ struct HydrogenData {
      * of a bound electron absorbing a photon to jump from lower_level to upper_level.
      */
     static double get_oscillator_strength(int lower, int upper) {
-        if (lower < 1 || upper < 1 || lower >= upper || upper > 5) {
+        if (lower < 1 || upper < 1 || lower >= upper || upper > N_LEVELS) {
             return 0.0;
         }
 
         // Fast lookup matrix for oscillator strengths.
         // Matrix layout: [lower - 1][upper - 1]
-        static const double f_matrix[5][5] = {
+        static const double f_matrix[N_LEVELS][N_LEVELS] = {
             // Upper:  n=1,   n=2,          n=3,          n=4,          n=5
             /* n=1 */ { 0.0,  4.1619672e-1, 7.9101563e-2, 2.8991029e-2, 1.3938344e-2 },
             /* n=2 */ { 0.0,  0.0,          6.4074704e-1, 1.1932114e-1, 4.4670295e-2 },
@@ -98,9 +108,6 @@ struct HydrogenData {
         return f_matrix[lower - 1][upper - 1];
     }
 };
-
-// Number of hydrogen levels considered in the calculations
-constexpr int N_LEVELS = 5;
 
 // Physical constants used in calculations
 constexpr double PI = 3.14159265358979323846;
@@ -274,10 +281,10 @@ static double photon_frequency(const double photon_energy) {
 
 //Calculates the threshold photo-ionisation cross-section (alpha_zero) for a 
 // specific atomic level of a hydrogen atom.
-double calculate_alpha_zero(const HydrogenData& hydro_data, int level) {
+double calculate_alpha_zero(const int level) {
     // 1. Fetch level-specific boundaries
-    double E_ionisation = hydro_data.get_ionization_energy(level); // Joules
-    double g_bf         = hydro_data.get_gaunt_factor(level);
+    double E_ionisation = HydrogenData::get_ionization_energy(level); // Joules
+    double g_bf         = HydrogenData::get_gaunt_factor(level);
 
     // 2. Derive threshold frequency (nu_0 = E / h)
     double nu_0 = photon_frequency(E_ionisation);
@@ -307,53 +314,51 @@ static void generate_atomic_rates_data_tables(
     const int n_tintervals, 
     const double min_logT, 
     const double max_logT) {
-    
-    static const HydrogenData hydro_data;
 
-    Vec1D rn(N_LEVELS, 0.0);
-    Vec1D bn(N_LEVELS, 0.0);
     Vec1D garr(3, 0.0);
 
-    Vec1I lower_levels(N_LEVELS, 0);
-    for (int i = 0; i < N_LEVELS; ++i) {
+    Vec1I lower_levels(HydrogenData::get_n_levels(), 0);
+    for (int i = 0; i < HydrogenData::get_n_levels(); ++i) {
         lower_levels[i] = (i + 1);
     }
-    Vec1I upper_levels(N_LEVELS, 0);
-    for (int i = 0; i < N_LEVELS; ++i) {
+    Vec1I upper_levels(HydrogenData::get_n_levels(), 0);
+    for (int i = 0; i < HydrogenData::get_n_levels(); ++i) {
         upper_levels[i] = (i + 1);
     }
 
-    Vec2D xrat(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-    Vec2D Enn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-    Vec2D rnn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-    Vec2D gauntfac(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-    Vec2D fnn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-    Vec2D Ann(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-    Vec2D Bnn(N_LEVELS, Vec1D(N_LEVELS, 0.0));
+    Vec1D rn(HydrogenData::get_n_levels(), 0.0);
+    Vec1D bn(HydrogenData::get_n_levels(), 0.0);
+    Vec2D xrat(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
+    Vec2D Enn(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
+    Vec2D rnn(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
+    Vec2D gauntfac(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
+    Vec2D fnn(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
+    Vec2D Ann(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
+    Vec2D Bnn(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
 
     rn[0] = 0.45;
-    for (int i = 1; i < N_LEVELS; ++i) {
+    for (int i = 1; i < HydrogenData::get_n_levels(); ++i) {
         double level = (double)(i + 1);
         rn[i] = 1.94 * std::pow(level, -1.57);
     }
 
     bn[0] = -0.603;
-    for (int i = 1; i < N_LEVELS; ++i) {
+    for (int i = 1; i < HydrogenData::get_n_levels(); ++i) {
         double level = (double)(i + 1);
         bn[i] = (1.0 / level) * (4.0 - 18.63 / level + 36.24 / (level * level) - 28.09 / (level * level * level));
     }
 
     // Precompute pairwise quantities
-    for (int ii = 0; ii < N_LEVELS; ++ii) {
+    for (int ii = 0; ii < HydrogenData::get_n_levels(); ++ii) {
 
         int lower_level = lower_levels[ii];
 
-        for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
+        for (int jj = ii + 1; jj < HydrogenData::get_n_levels(); ++jj) {
 
             int upper_level = upper_levels[jj];
 
             xrat[ii][jj] = 1.0 - std::pow((double)lower_level / (double)upper_level, 2.0);
-            Enn[ii][jj] = hydro_data.get_ionization_energy(lower_level) - hydro_data.get_ionization_energy(upper_level);
+            Enn[ii][jj] = HydrogenData::get_ionization_energy(lower_level) - HydrogenData::get_ionization_energy(upper_level);
             rnn[ii][jj] = rn[ii] * xrat[ii][jj];
 
             if (lower_level == 1) {
@@ -378,18 +383,18 @@ static void generate_atomic_rates_data_tables(
 
     Vec2D collisional_ionisation_rates(
         n_tintervals + 1,
-        Vec1D(N_LEVELS, 0.0));
+        Vec1D(HydrogenData::get_n_levels(), 0.0));
     Vec3D collisional_excitation_rates(
         n_tintervals + 1,
-        Vec2D (N_LEVELS, Vec1D (N_LEVELS, 0.0)));
+        Vec2D (HydrogenData::get_n_levels(), Vec1D (HydrogenData::get_n_levels(), 0.0)));
 
-    Vec1D radiative_ionisation_rates(N_LEVELS, 0.0);
+    Vec1D radiative_ionisation_rates(HydrogenData::get_n_levels(), 0.0);
     Vec2D radiative_recombination_rates(
         n_tintervals + 1,
-        Vec1D (N_LEVELS, 0.0));   
+        Vec1D (HydrogenData::get_n_levels(), 0.0));   
 
-    Vec2D radiative_excitation_rates(N_LEVELS, Vec1D(N_LEVELS, 0.0));
-    Vec2D radiative_de_excitation_rates(N_LEVELS, Vec1D(N_LEVELS, 0.0));
+    Vec2D radiative_excitation_rates(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
+    Vec2D radiative_de_excitation_rates(HydrogenData::get_n_levels(), Vec1D(HydrogenData::get_n_levels(), 0.0));
 
     double d_logT = (max_logT - min_logT) / n_tintervals;
 
@@ -402,11 +407,11 @@ static void generate_atomic_rates_data_tables(
 
         logT_vals[ti] = logT;
 
-        for (int ii = 0; ii < N_LEVELS; ++ii) {
+        for (int ii = 0; ii < HydrogenData::get_n_levels(); ++ii) {
             
             int lower_level = lower_levels[ii];
 
-            for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
+            for (int jj = ii + 1; jj < HydrogenData::get_n_levels(); ++jj) {
 
                 int upper_level = upper_levels[jj];
 
@@ -440,12 +445,12 @@ static void generate_atomic_rates_data_tables(
 
         logT_vals[ti] = logT;
 
-        for (int ii = 0; ii < N_LEVELS; ++ii) {
+        for (int ii = 0; ii < HydrogenData::get_n_levels(); ++ii) {
             
             int lower_level = lower_levels[ii];
 
-            double yn = hydro_data.get_ionization_energy(lower_level) / (K_BOLTZ * T);
-            double zn = rn[ii] + hydro_data.get_ionization_energy(lower_level) / (K_BOLTZ * T);
+            double yn = HydrogenData::get_ionization_energy(lower_level) / (K_BOLTZ * T);
+            double zn = rn[ii] + HydrogenData::get_ionization_energy(lower_level) / (K_BOLTZ * T);
 
             double E0y = boost::math::expint(0, yn);
             double E1y = boost::math::expint(1, yn);
@@ -487,15 +492,15 @@ static void generate_atomic_rates_data_tables(
 
     // 3. Compute radiative excitation and de-excitation rates
     std::cout << " Computing radiative excitation and de-excitation rates " << std::endl;
-    for (int ii = 0; ii < N_LEVELS; ++ii) {
+    for (int ii = 0; ii < HydrogenData::get_n_levels(); ++ii) {
         int lower_level = lower_levels[ii];
-        for (int jj = ii + 1; jj < N_LEVELS; ++jj) {
+        for (int jj = ii + 1; jj < HydrogenData::get_n_levels(); ++jj) {
             int upper_level = upper_levels[jj];
-            double photon_energy = hydro_data.get_ionization_energy(lower_level) - hydro_data.get_ionization_energy(upper_level);
+            double photon_energy = HydrogenData::get_ionization_energy(lower_level) - HydrogenData::get_ionization_energy(upper_level);
             double nu = photon_frequency(photon_energy);
-            double f_osc = hydro_data.get_oscillator_strength(lower_level, upper_level);
-            double g_lower = hydro_data.get_statistical_weight(lower_level);
-            double g_upper = hydro_data.get_statistical_weight(upper_level);
+            double f_osc = HydrogenData::get_oscillator_strength(lower_level, upper_level);
+            double g_lower = HydrogenData::get_statistical_weight(lower_level);
+            double g_upper = HydrogenData::get_statistical_weight(upper_level);
             radiative_excitation_rates[ii][jj] = ((4.0 * PI) / (H_PLANCK * nu))* ((PI * CHARGE_ELECTRON * CHARGE_ELECTRON) / (MASS_ELECTRON * C_LIGHT)) * f_osc * planck_j(nu, T_RAD);
             radiative_de_excitation_rates[ii][jj] = (g_lower / g_upper) * radiative_excitation_rates[ii][jj] * (std::exp(photon_energy / (K_BOLTZ * T_RAD)));
         }
@@ -506,9 +511,9 @@ static void generate_atomic_rates_data_tables(
 
     // 4. Compute radiative ionisation rates
     std::cout << " Computing radiative ionisation rates " << std::endl;
-    for (int ii = 0; ii < N_LEVELS; ++ii) {
+    for (int ii = 0; ii < HydrogenData::get_n_levels(); ++ii) {
         int lower_level = lower_levels[ii];
-        double photon_energy = hydro_data.get_ionization_energy(lower_level);
+        double photon_energy = HydrogenData::get_ionization_energy(lower_level);
         double nu = photon_frequency(photon_energy);
         double x0  = photon_energy / (K_BOLTZ * T_RAD);
 
@@ -525,7 +530,7 @@ static void generate_atomic_rates_data_tables(
                 break;
             }
         }
-        radiative_ionisation_rates[ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * calculate_alpha_zero(hydro_data, lower_level) * (nu * nu * nu) * series_sum;
+        radiative_ionisation_rates[ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * calculate_alpha_zero(lower_level) * (nu * nu * nu) * series_sum;
     }
 
     // 5. Compute radiative recombination rates
@@ -533,9 +538,9 @@ static void generate_atomic_rates_data_tables(
     for (int ti = 0; ti <= n_tintervals; ++ti) {
         double logT = min_logT + ti * d_logT;
         double T = std::pow(10.0, logT);
-        for (int ii = 0; ii < N_LEVELS; ++ii) {
+        for (int ii = 0; ii < HydrogenData::get_n_levels(); ++ii) {
             int lower_level = lower_levels[ii];
-            double photon_energy = hydro_data.get_ionization_energy(lower_level);
+            double photon_energy = HydrogenData::get_ionization_energy(lower_level);
             double nu = photon_frequency(photon_energy);
             double x0  = photon_energy / (K_BOLTZ * T);
 
@@ -552,7 +557,7 @@ static void generate_atomic_rates_data_tables(
                     break;
                 }
             }
-            radiative_recombination_rates[ti][ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * calculate_alpha_zero(hydro_data, lower_level) * (nu * nu * nu) * series_sum;
+            radiative_recombination_rates[ti][ii] = ((8.0 * PI) / (C_LIGHT * C_LIGHT)) * calculate_alpha_zero(lower_level) * (nu * nu * nu) * series_sum;
         }
     }
 
