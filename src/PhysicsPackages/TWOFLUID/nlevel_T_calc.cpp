@@ -12,6 +12,9 @@
 struct HydrogenData
 {
 
+    // Atomic number for hydrogen
+    static constexpr int ATOMIC_NUMBER = 1;
+
     // Number of hydrogen levels considered in the calculations
     static constexpr int N_LEVELS = 5;
 
@@ -123,7 +126,7 @@ constexpr double PI = 3.14159265358979323846;
 constexpr double C_LIGHT = 299792458.0;
 constexpr double K_BOLTZ = 1.38064852e-23;
 constexpr double H_PLANCK = 6.62607004e-34;
-constexpr double A0_BOHR = 5.29e-11;
+constexpr double A0_BOHR = 5.29177210544e-11;
 constexpr double MASS_ELECTRON = 9.10938356e-31;
 constexpr double CHARGE_ELECTRON = 1.602176634e-19;
 
@@ -319,8 +322,7 @@ double calculate_alpha_zero(const int level)
     double kramers_constant_si = h_pow4 / (48.0 * std::sqrt(3.0) * pi_pow6 * C_LIGHT * me_pow4 * a0_pow5);
 
     // 4. Evaluate Kramers' scaling laws for cross-section
-    double atomic_number_Z = 1.0;
-    double z_pow4 = std::pow(atomic_number_Z, 4.0);
+    double z_pow4 = std::pow(HydrogenData::ATOMIC_NUMBER, 4.0);
     double level_pow5 = std::pow(static_cast<double>(level), 5.0);
     double nu_pow3 = std::pow(nu_0, 3.0);
 
