@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cassert>
 #include <string>
+#include <vector>
 #include "constants.h"
 #include "pp/parallelWrapper.h"
 #include "remapData.h"
@@ -55,9 +56,17 @@ namespace TWOFLUID
         LARE::volumeArray4D level_populations; //4D array of level populations per cell
         LARE::volumeArray5D level_rates; //5D array of all the rates per cell
         
-        std::string data_path = "./data/atomic_rates_2.nc";
+        std::string data_path = "./data/atomic_rates.nc";
         LARE::hostLineArray grid_logT;
-        LARE::hostVolumeArray hydrogen_excitation_rate;
+        int level_offset = 1;                               // atomic level number at array index 0
+        std::vector<int> lower_level_map;                   // host: array_index -> level number
+        std::vector<int> upper_level_map;                   // host: array_index -> level number
+        LARE::hostVolumeArray collisional_excitation_rates; // [n_tsample][n_lower][n_upper]
+        LARE::hostPlaneArray collisional_ionisation_rates;  // [n_tsample][n_lower]
+        LARE::hostPlaneArray radiative_recombination_rates; // [n_tsample][n_lower]
+        LARE::hostPlaneArray radiative_excitation_rates;    // [n_lower][n_upper]
+        LARE::hostPlaneArray radiative_de_excitation_rates; // [n_lower][n_upper]
+        LARE::hostLineArray radiative_ionisation_rates;     // [n_lower]
     };
     
     class PIP
