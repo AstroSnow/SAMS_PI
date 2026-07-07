@@ -90,6 +90,7 @@ namespace TWOFLUID
              */
             void initialize(LARE::simulationData &data,LARE_neutral::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 two_fluid_read_rates(plasma_source);
+                two_fluid_test_rates(plasma_source);
                 //plasma_source_allocate(data,dataNeutral,plasma_source);
             };
             //}
@@ -231,6 +232,7 @@ namespace TWOFLUID
             void get_equilibrium_ion_fraction(LARE::T_dataType T0,LARE::T_dataType &xi_n);
             
             void two_fluid_read_rates(data_two_fluid_source &plasma_source);
+            void two_fluid_test_rates(const data_two_fluid_source &plasma_source);
             
             template<typename T_writer>
             void writeOutputMeshes(writer<T_writer> &writer, LARE::simulationData &data);

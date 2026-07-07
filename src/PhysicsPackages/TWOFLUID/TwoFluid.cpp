@@ -849,6 +849,46 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     return;
 }
 
+void PIP::two_fluid_test_rates(const data_two_fluid_source &plasma_source)
+{
+    constexpr LARE::T_dataType  logT_test    = 6.0;
+    constexpr LARE::T_indexType lower_level  = 2;
+    constexpr LARE::T_indexType upper_level  = 4;
+
+    const LARE::T_dataType T_test = std::pow(10.0, logT_test);
+
+    fprintf(stdout, "\n--- two_fluid_test_rates: logT=%.1f, lower=%d, upper=%d ---\n",
+            logT_test, static_cast<int>(lower_level), static_cast<int>(upper_level));
+    fprintf(stdout, "  collisional_excitation   (%d->%d) : %e\n",
+            static_cast<int>(lower_level), static_cast<int>(upper_level),
+            interpolate_collisional_excitation(plasma_source, T_test, lower_level, upper_level));
+    fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
+            static_cast<int>(lower_level), static_cast<int>(upper_level),
+            get_radiative_excitation(plasma_source, lower_level, upper_level));
+    fprintf(stdout, "  radiative_de_excitation  (%d->%d) : %e\n",
+            static_cast<int>(upper_level), static_cast<int>(lower_level),
+            get_radiative_de_excitation(plasma_source, lower_level, upper_level));
+    fprintf(stdout, "  collisional_ionisation   (level=%d) : %e\n",
+            static_cast<int>(lower_level),
+            interpolate_collisional_ionisation(plasma_source, T_test, lower_level));
+    fprintf(stdout, "  collisional_ionisation   (level=%d) : %e\n",
+            static_cast<int>(upper_level),
+            interpolate_collisional_ionisation(plasma_source, T_test, upper_level));
+    fprintf(stdout, "  radiative_recombination  (level=%d) : %e\n",
+            static_cast<int>(lower_level),
+            interpolate_radiative_recombination(plasma_source, T_test, lower_level));
+    fprintf(stdout, "  radiative_recombination  (level=%d) : %e\n",
+            static_cast<int>(upper_level),
+            interpolate_radiative_recombination(plasma_source, T_test, upper_level));
+    fprintf(stdout, "  radiative_ionisation     (level=%d) : %e\n",
+            static_cast<int>(lower_level),
+            get_radiative_ionisation(plasma_source, lower_level));
+    fprintf(stdout, "  radiative_ionisation     (level=%d) : %e\n",
+            static_cast<int>(upper_level),
+            get_radiative_ionisation(plasma_source, upper_level));
+    fprintf(stdout, "---\n\n");
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 // Shared internal helpers for logT bracket search and log-linear interpolation //
 //////////////////////////////////////////////////////////////////////////////////
