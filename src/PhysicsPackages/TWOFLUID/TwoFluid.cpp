@@ -914,10 +914,20 @@ static LARE::T_dataType loglinear_interp(LARE::T_dataType v0, LARE::T_dataType v
     return std::pow(10.0, std::log10(v0) + (std::log10(v1) - std::log10(v0)) * t);
 }
 
-//////////////////////////////////////////////////////
-// Interpolation and lookup functions for the rates //
-//////////////////////////////////////////////////////
-
+/////////////////////////////////////////////////////////////////////////////////////
+// Interpolation and lookup functions for the rates ...                            //
+//                                                                                 //
+// These functions are marked DEVICEPREFIX INLINE because they are called          //
+// from inside LAMBDA kernels that execute on the GPU (via applyKernel).           //
+// DEVICEPREFIX (expands to __device__ __host__ for CUDA/HIP, KOKKOS_FUNCTION      //
+// for Kokkos, or empty for CPU-only) instructs the compiler to generate both      //
+// a host and a device version of each function so they can be called from         //
+// device code. INLINE (expands to always_inline or KOKKOS_FORCEINLINE_FUNCTION)   //
+// forces the compiler to inline the function body at every call site, which       //
+// avoids GPU function-call overhead inside kernels and enables the compiler       //
+// to optimise across the call boundary (e.g. eliminating redundant log10/bracket  //
+// evaluations when multiple rate functions are called with the same temperature). //
+/////////////////////////////////////////////////////////////////////////////////////
 DEVICEPREFIX INLINE LARE::T_dataType interpolate_collisional_excitation(
     const data_two_fluid_source &ps, LARE::T_dataType temperature,
     LARE::T_indexType lower_level_num, LARE::T_indexType upper_level_num)
