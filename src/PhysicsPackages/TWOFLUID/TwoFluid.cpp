@@ -4,6 +4,7 @@
 
 //////////////////////No idea which ones of these are needed
 #include <iostream>
+#include <algorithm>
 #include <cstdint>
 #include <cassert>
 #include <string>
@@ -294,9 +295,11 @@ namespace TWOFLUID
             LARE::T_dataType T0=8000.0;//data.T_reference; //Reference temperature
             LARE::T_dataType n0=1.0e16;//data.ne_reference; //Reference electron number density
             LARE::T_dataType t_ir=1.0e-5; //Reference recombination timescale (relative to collisional timescale)
-            LARE::T_indexType nLevels = static_cast<LARE::T_indexType>(
-                                            plasma_source.collisional_ionisation_rates.getSize(1)) +
-                                        static_cast<LARE::T_indexType>(plasma_source.level_offset);
+            
+            // nUpperLevel is the upper bound of the upper level number. Variable used in loops.
+            LARE::T_indexType nUpperLevel = static_cast<LARE::T_indexType>(
+                                            *std::max_element(plasma_source.upper_level_map.begin(),
+                                                              plasma_source.upper_level_map.end())) + 1;
 
             LARE::T_dataType Te_0=T0/1.1604e4; //Calculate electron temperature in eV
             LARE::T_dataType rec_fac=2.6e-19*(n0*1.0e6)/std::sqrt(Te_0);  //reference recombination rate (n0 converted to m^-3)
@@ -319,10 +322,10 @@ namespace TWOFLUID
                 LARE::T_dataType numberDensity_electron=data.rho(ix,iy,iz)*n0; 
 
                 
-                // --- Level population triangular loop---
-                for (LARE::T_indexType lower_level = 1; lower_level < nLevels; ++lower_level) {
+                // Level population triangular loop
+                for (LARE::T_indexType lower_level = 1; lower_level < nUpperLevel; ++lower_level) {
                     //Loop over (de)excitation
-                    for (LARE::T_indexType upper_level = lower_level + 1; upper_level < nLevels; ++upper_level) {
+                    for (LARE::T_indexType upper_level = lower_level + 1; upper_level < nUpperLevel; ++upper_level) {
                     
                         LARE::T_dataType coll_exc   = interpolate_collisional_excitation(plasma_source, temperature_electron, lower_level, upper_level);
                         LARE::T_dataType rad_exc    = get_radiative_excitation(plasma_source, lower_level, upper_level);
@@ -340,10 +343,10 @@ namespace TWOFLUID
                     LARE::T_dataType rad_rec  = interpolate_radiative_recombination(plasma_source, temperature_electron, lower_level);
                     LARE::T_dataType rad_ion  = get_radiative_ionisation(plasma_source, lower_level);
                     //Ionisation rate
-                    //plasma_source.level_rates(ix,iy,iz,lower_level,nLevels)=rate_coefficient;
+                    //plasma_source.level_rates(ix,iy,iz,lower_level,nUpperLevel)=rate_coefficient;
                     //Recombination rate
-                    //plasma_source.level_rates(ix,iy,iz,nLevels,lower_level)=rate_coefficient;
-                    //fprintf(stdout, "Ionisation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, nLevels, temperature_electron, rate_coefficient);
+                    //plasma_source.level_rates(ix,iy,iz,nUpperLevel,lower_level)=rate_coefficient;
+                    //fprintf(stdout, "Ionisation rate coefficient for levels %li to %li at temperature %e is %e \n", lower_level, nUpperLevel, temperature_electron, rate_coefficient);
                 }
 
                 //Get ionisation and recomination rates
@@ -724,9 +727,14 @@ void PIP::get_equilibrium_ion_fraction(LARE::T_dataType T0,LARE::T_dataType &xi_
     //f_p_p=2.0d0*f_p/(f_n+2.0d0*f_p)
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////
-//Routine for the reading the rates
+////////////////////////////////////////////////////////////////////////////
+// Code below relates to handling and reading of offline atomic rate data //
+////////////////////////////////////////////////////////////////////////////
+//
+///////////////////////////////////////
+// Routine for the reading the rates //
+///////////////////////////////////////
+
 void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
 
     int ncid = -1;
@@ -739,7 +747,7 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     }
     fprintf(stdout, "two_fluid_read_rates: using file '%s'\n", data_path.c_str());
 
-    // --- Read dimensions ---
+    // Read dimensions
     int dim_tsamp = -1, dim_lower = -1, dim_upper = -1;
     size_t n_tsamp = 0, n_lower = 0, n_upper = 0;
 
@@ -764,7 +772,7 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
         nc_close(ncid); return;
     }
 
-    // --- Read level mapping arrays ---
+    // Read level mapping arrays
     int var_lower_lvl = -1, var_upper_lvl = -1;
     if (!check(nc_inq_varid(ncid, "lower_level", &var_lower_lvl), "missing var 'lower_level'")) { nc_close(ncid); return; }
     if (!check(nc_inq_varid(ncid, "upper_level", &var_upper_lvl), "missing var 'upper_level'")) { nc_close(ncid); return; }
@@ -775,7 +783,7 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     if (!check(nc_get_var_int(ncid, var_upper_lvl, plasma_source.upper_level_map.data()), "read 'upper_level'")) { nc_close(ncid); return; }
     plasma_source.level_offset = plasma_source.lower_level_map[0];
 
-    // --- Allocate portable arrays ---
+    // Allocate portable arrays 
     using Range = pw::Range;
     Range T_range (0, static_cast<LARE::T_indexType>(n_tsamp - 1));
     Range lo_range(0, static_cast<LARE::T_indexType>(n_lower - 1));
@@ -789,12 +797,12 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     svManager.allocate(plasma_source.radiative_de_excitation_rates, lo_range, up_range);
     svManager.allocate(plasma_source.radiative_ionisation_rates,    lo_range);
 
-    // --- Read logT ---
+    // Read logT
     int var_logT = -1;
     if (!check(nc_inq_varid(ncid, "logT", &var_logT), "missing var 'logT'")) { nc_close(ncid); return; }
     if (!check(nc_get_var_double(ncid, var_logT, plasma_source.grid_logT.data()), "read 'logT'")) { nc_close(ncid); return; }
 
-    // --- Helpers to read variables into flat buffers then copy into arrays ---
+    // Helpers to read variables into flat buffers then copy into arrays
     auto read3D = [&](const char *name, LARE::hostVolumeArray &arr,
                       size_t s0, size_t s1, size_t s2) -> bool {
         int varid = -1;
@@ -841,8 +849,9 @@ void PIP::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     return;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
-// Shared internal helpers for logT bracket search and log-linear interpolation
+//////////////////////////////////////////////////////////////////////////////////
+// Shared internal helpers for logT bracket search and log-linear interpolation //
+//////////////////////////////////////////////////////////////////////////////////
 
 static LARE::T_indexType find_logT_bracket(const data_two_fluid_source &ps, LARE::T_dataType logT)
 {
@@ -865,7 +874,10 @@ static LARE::T_dataType loglinear_interp(LARE::T_dataType v0, LARE::T_dataType v
     return std::pow(10.0, std::log10(v0) + (std::log10(v1) - std::log10(v0)) * t);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+// Interpolation and lookup functions for the rates //
+//////////////////////////////////////////////////////
+
 DEVICEPREFIX INLINE LARE::T_dataType interpolate_collisional_excitation(
     const data_two_fluid_source &ps, LARE::T_dataType temperature,
     LARE::T_indexType lower_level_num, LARE::T_indexType upper_level_num)
