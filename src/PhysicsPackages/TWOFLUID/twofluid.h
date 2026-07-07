@@ -56,7 +56,7 @@ namespace TWOFLUID
         LARE::volumeArray4D level_populations; //4D array of level populations per cell
         LARE::volumeArray5D level_rates; //5D array of all the rates per cell
         
-        std::string data_path = "./data/atomic_rates.nc";
+        std::string data_path = "./data/hydrogen_atomic_rates.nc";
         LARE::hostLineArray grid_logT;
         int level_offset = 1;                               // atomic level number at array index 0
         std::vector<int> lower_level_map;                   // host: array_index -> level number
