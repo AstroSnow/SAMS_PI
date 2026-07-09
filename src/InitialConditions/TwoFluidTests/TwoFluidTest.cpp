@@ -31,10 +31,10 @@ namespace examples
         void TwoFluidTest::controlVariables(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral)
         {
 
-            data.t_end = 1000.0;
+            data.t_end = 600.0;
             data.dt_snapshots = data.t_end / 100;
 
-            data.nx = 16384;
+            data.nx = 8192;
             data.ny = 2;
             data.nz = 2;
 
