@@ -77,6 +77,8 @@ namespace TWOFLUID
         bool vertex_rates=false;
         LARE::volumeArray rho_p_ac_vertex; // velocity source at vertex
         LARE::volumeArray rho_n_ac_vertex; // velocity source at vertex
+        LARE::volumeArray gm_ion_vertex; //
+        LARE::volumeArray gm_rec_vertex; // 
         
         bool check_source=false;
     };

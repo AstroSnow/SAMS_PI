@@ -76,9 +76,15 @@ namespace TWOFLUID
         
         varRegistry.registerVariable<T_dataType>("PIPSource/ion_loss", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
+        //////////////////////////////////////////////////////////////
+        
         varRegistry.registerVariable<T_dataType>("PIPSource/rho_p_ac_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
         
         varRegistry.registerVariable<T_dataType>("PIPSource/rho_n_ac_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPSource/gm_rec_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPSource/gm_ion_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
         
         //////////////////////////////////////////////////////////////
         
@@ -147,6 +153,10 @@ namespace TWOFLUID
             pw::assign(plasma_source.rho_p_ac_vertex, 0.0);
             varRegistry.fillPPArray("PIPSource/rho_n_ac_vertex", plasma_source.rho_n_ac_vertex);
             pw::assign(plasma_source.rho_n_ac_vertex, 0.0);
+            varRegistry.fillPPArray("PIPSource/gm_ion_vertex", plasma_source.gm_ion_vertex);
+            pw::assign(plasma_source.gm_ion_vertex, 0.0);
+            varRegistry.fillPPArray("PIPSource/gm_rec_vertex", plasma_source.gm_rec_vertex);
+            pw::assign(plasma_source.gm_rec_vertex, 0.0);
         }
         
     }
@@ -349,6 +359,22 @@ namespace TWOFLUID
                                   13.6/kb_ev/T0/data.gas_gamma;  	
             	//printf("%f %f %f %f %f \n",f_p,data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz), temperature_electron,plasma_source.gm_rec(ix,iy,iz),plasma_source.gm_ion(ix,iy,iz));    
             }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+            
+        	if (plasma_source.vertex_rates){
+            	using Range = portableWrapper::Range;
+                portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+                    plasma_source.gm_rec_vertex(ix,iy,iz)=0.125*t_ir/f_p*std::sqrt(tfac)*(
+                    data.rho(ix  ,iy  ,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy  ,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix  ,iy+1,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy+1,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix  ,iy  ,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz+1)*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy  ,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz+1)*(data.gas_gamma-1.0))+
+                    data.rho(ix  ,iy+1,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz+1)*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy+1,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0))
+                    );
+        	    }, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
+    	    }
         };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         template<typename T_EOS>
