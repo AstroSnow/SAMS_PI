@@ -73,7 +73,7 @@ namespace TWOFLUID
         bool ion_rec_empirical=false;
         bool ion_rec_nlevel=false;
         
-        bool vertex_rates=true;
+        bool vertex_rates=false;
         LARE::volumeArray rho_p_ac_vertex; // velocity source at vertex
         LARE::volumeArray rho_n_ac_vertex; // velocity source at vertex
         
@@ -136,13 +136,13 @@ namespace TWOFLUID
             void applySourceTermsStart(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData){
                 if (plasma_source.check_source) {copyState(data, dataNeutral, oldData);};
                 apply_two_fluid_source(data,dataNeutral,plasma_source);
-                if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,oldData);};
             };
 
-            void afterEndOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
+            void afterEndOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData){
                 get_ac(data,dataNeutral,plasma_source);
                 get_two_fluid_source(data,dataNeutral,plasma_source);
                 apply_two_fluid_source(data,dataNeutral,plasma_source); 
+                if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,oldData);};
             };
 
             void calculateTimestep(SAMS::timeState &timeData,LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
