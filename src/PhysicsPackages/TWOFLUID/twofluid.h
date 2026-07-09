@@ -49,6 +49,7 @@ namespace TWOFLUID
         LARE::volumeArray gm_ion; //ionisation rate
         LARE::volumeArray gm_rec; //recombination rate
         LARE::volumeArray ion_loss; //ionisation loss term
+        LARE::volumeArray ion_heating; //heating term
         
         LARE::volumeArray ac; //coupling coeficient
         LARE::T_dataType two_fluid_timestep; //timestep
@@ -121,6 +122,7 @@ namespace TWOFLUID
                 printf("Getting IC for two_fluid rates \n");
                 get_ac(data,dataNeutral,plasma_source);
                 get_two_fluid_source(data,dataNeutral,plasma_source);
+                if (plasma_source.ion_rec_empirical) {set_bc_heating(data,plasma_source);}
             }
             
             void getVariables(data_two_fluid_source &plasma_source,oldData &oldData, SAMS::harness &harness){
@@ -186,6 +188,7 @@ namespace TWOFLUID
         void get_collisional_source_terms(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
         void get_ion_rec_source_terms(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
         void two_fluid_read_rates(data_two_fluid_source &plasma_source);
+        void set_bc_heating(LARE::LARE3DST<T_EOS>::simulationData &data,data_two_fluid_source &plasma_source);
 
         void checkSourceConservation(
                 LARE::LARE3DST<T_EOS>::simulationData &data,

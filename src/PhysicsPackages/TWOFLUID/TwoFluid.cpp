@@ -351,6 +351,14 @@ namespace TWOFLUID
             }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
         };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        template<typename T_EOS>
+        void PIP<T_EOS>::set_bc_heating(LARE::LARE3DST<T_EOS>::simulationData &data,data_two_fluid_source &plasma_source){
+            using Range = portableWrapper::Range;
+            portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+                plasma_source.ion_heating(ix,iy,iz)=-plasma_source.ion_loss(ix,iy,iz);
+            }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));        
+        }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //multi-level hydrogen rates
     template<typename T_EOS>
@@ -749,7 +757,7 @@ namespace TWOFLUID
         //Work out how much energy is spent/gained by IR processes
         //if (two_fluid_flags.ion_rec_empirical) { 
             //printf("ionisation energy, rho = %f %f \n",ionisation_energy, dataNeutral.rho(ix,iy,iz));
-            plasma_source.source_energy(ix,iy,iz)+=plasma_source.ion_loss(ix,iy,iz)/data.rho(ix,iy,iz);//factor of pho comes from denergy density being specified
+            plasma_source.source_energy(ix,iy,iz)+=(plasma_source.ion_heating(ix,iy,iz)+plasma_source.ion_loss(ix,iy,iz))/data.rho(ix,iy,iz);//factor of pho comes from denergy density being specified
         //}
         
     }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
