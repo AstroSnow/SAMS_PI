@@ -373,6 +373,26 @@ namespace TWOFLUID
                     data.rho(ix  ,iy+1,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz+1)*(data.gas_gamma-1.0))+
                     data.rho(ix+1,iy+1,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0))
                     );
+                    
+                    SAMS::T_dataType Te1=0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te2=0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te3=0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te4=0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te5=0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz+1)*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te6=0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz+1)*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te7=0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz+1)*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te8=0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0);
+                    
+                    plasma_source.gm_ion_vertex(ix,iy,iz)=2.91e-14*(n0*1.0e6)/rec_fac/f_p *t_ir*(
+                    data.rho(ix  ,iy  ,iz  )*std::exp(-13.6/Te_0/Te1*tfac)*std::pow(13.6/Te_0/Te1*tfac,0.39)/(0.232+13.6/Te_0/Te1*tfac)+
+                    data.rho(ix+1,iy  ,iz  )*std::exp(-13.6/Te_0/Te2*tfac)*std::pow(13.6/Te_0/Te2*tfac,0.39)/(0.232+13.6/Te_0/Te2*tfac)+
+                    data.rho(ix  ,iy+1,iz  )*std::exp(-13.6/Te_0/Te3*tfac)*std::pow(13.6/Te_0/Te3*tfac,0.39)/(0.232+13.6/Te_0/Te3*tfac)+
+                    data.rho(ix+1,iy+1,iz  )*std::exp(-13.6/Te_0/Te4*tfac)*std::pow(13.6/Te_0/Te4*tfac,0.39)/(0.232+13.6/Te_0/Te4*tfac)+
+                    data.rho(ix  ,iy  ,iz+1)*std::exp(-13.6/Te_0/Te5*tfac)*std::pow(13.6/Te_0/Te5*tfac,0.39)/(0.232+13.6/Te_0/Te5*tfac)+
+                    data.rho(ix+1,iy  ,iz+1)*std::exp(-13.6/Te_0/Te6*tfac)*std::pow(13.6/Te_0/Te6*tfac,0.39)/(0.232+13.6/Te_0/Te6*tfac)+
+                    data.rho(ix  ,iy+1,iz+1)*std::exp(-13.6/Te_0/Te7*tfac)*std::pow(13.6/Te_0/Te7*tfac,0.39)/(0.232+13.6/Te_0/Te7*tfac)+
+                    data.rho(ix+1,iy+1,iz+1)*std::exp(-13.6/Te_0/Te8*tfac)*std::pow(13.6/Te_0/Te8*tfac,0.39)/(0.232+13.6/Te_0/Te8*tfac)
+                    );    
         	    }, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
     	    }
         };
