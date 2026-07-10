@@ -75,6 +75,38 @@ namespace TWOFLUID
         varRegistry.registerVariable<T_dataType>("PIPSource/gm_rec", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
         varRegistry.registerVariable<T_dataType>("PIPSource/ion_loss", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
+        
+        //////////////////////////////////////////////////////////////
+        
+        varRegistry.registerVariable<T_dataType>("PIPSource/rho_p_ac_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPSource/rho_n_ac_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPSource/gm_rec_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPSource/gm_ion_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        //////////////////////////////////////////////////////////////
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/rho", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/energy", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/vx",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/vy",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/vz",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/rho_n", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/energy_n", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/vx_n",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/vy_n",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
+        
+        varRegistry.registerVariable<T_dataType>("PIPconserve/vz_n",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
     }
 /////////////////////////////////////////////////////////////////////////////////
     template<typename T_EOS>
@@ -114,9 +146,53 @@ namespace TWOFLUID
         varRegistry.fillPPArray("PIPSource/gm_rec", plasma_source.gm_rec);
         pw::assign(plasma_source.gm_rec, 0.0);
         varRegistry.fillPPArray("PIPSource/ion_loss", plasma_source.ion_loss);
-        pw::assign(plasma_source.gm_rec, 0.0);
+        pw::assign(plasma_source.ion_loss, 0.0);
+        
+        if (plasma_source.vertex_rates){
+            varRegistry.fillPPArray("PIPSource/rho_p_ac_vertex", plasma_source.rho_p_ac_vertex);
+            pw::assign(plasma_source.rho_p_ac_vertex, 0.0);
+            varRegistry.fillPPArray("PIPSource/rho_n_ac_vertex", plasma_source.rho_n_ac_vertex);
+            pw::assign(plasma_source.rho_n_ac_vertex, 0.0);
+            varRegistry.fillPPArray("PIPSource/gm_ion_vertex", plasma_source.gm_ion_vertex);
+            pw::assign(plasma_source.gm_ion_vertex, 0.0);
+            varRegistry.fillPPArray("PIPSource/gm_rec_vertex", plasma_source.gm_rec_vertex);
+            pw::assign(plasma_source.gm_rec_vertex, 0.0);
+        }
         
     }
+    
+    
+/////////////////////////////////////////////////////////////////////////////////
+    template<typename T_EOS>
+    void PIP<T_EOS>::allocate_conserved(oldData &oldData,SAMS::harness &harness){
+        //data_two_fluid_source plasma_source;
+        //data_two_fluid_source neutral_source;
+       
+        auto &axRegistry = harness.axisRegistry;
+        auto &varRegistry = harness.variableRegistry;
+        
+        using Range = pw::Range;
+        varRegistry.fillPPArray("PIPconserve/rho", oldData.rho);
+        pw::assign(oldData.rho, 0.0);
+        varRegistry.fillPPArray("PIPconserve/energy", oldData.energy);
+        pw::assign(oldData.energy, 0.0);
+        varRegistry.fillPPArray("PIPconserve/vx", oldData.vx);
+        pw::assign(oldData.vx, 0.0);
+        varRegistry.fillPPArray("PIPconserve/vy", oldData.vy);
+        pw::assign(oldData.vy, 0.0);
+        varRegistry.fillPPArray("PIPconserve/vz", oldData.vz);
+        pw::assign(oldData.vz, 0.0);
+        varRegistry.fillPPArray("PIPconserve/rho_n", oldData.rho_n);
+        pw::assign(oldData.rho_n, 0.0);
+        varRegistry.fillPPArray("PIPconserve/energy_n", oldData.energy_n);
+        pw::assign(oldData.energy_n, 0.0);
+        varRegistry.fillPPArray("PIPconserve/vx_n", oldData.vx_n);
+        pw::assign(oldData.vx_n, 0.0);
+        varRegistry.fillPPArray("PIPconserve/vy_n", oldData.vy_n);
+        pw::assign(oldData.vy_n, 0.0);
+        varRegistry.fillPPArray("PIPconserve/vz", oldData.vz_n);
+        pw::assign(oldData.vz_n, 0.0);        
+    }    
 ////////////////////////////////////////////////////////////////////////////////////////
      template<typename T_EOS>
     void PIP<T_EOS>::get_two_fluid_source(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
@@ -207,10 +283,39 @@ namespace TWOFLUID
             using Range = portableWrapper::Range;
             portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
                 //Get Temperatures
-                SAMS::T_dataType  temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0);
+                SAMS::T_dataType  temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*0.5;
                 SAMS::T_dataType  temperature_neutral = data.gas_gamma*dataNeutral.energy(ix,iy,iz)*(data.gas_gamma-1.0);
                 plasma_source.ac(ix,iy,iz)=plasma_source.alpha0*std::sqrt(0.5*(temperature_neutral+temperature_ion));
             	}, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+            	
+        	if (plasma_source.vertex_rates){
+            	using Range = portableWrapper::Range;
+                portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+                    //Get Temperatures
+                    //SAMS::T_dataType  temperature_ion = data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*0.5;
+                    //SAMS::T_dataType  temperature_neutral = data.gas_gamma*dataNeutral.energy(ix,iy,iz)*(data.gas_gamma-1.0);
+                    plasma_source.rho_p_ac_vertex(ix,iy,iz)=0.125*plasma_source.alpha0*(
+                    data.rho(ix,iy,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*0.5))+
+                    data.rho(ix+1,iy,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy,iz)*(data.gas_gamma-1.0)*0.5))+
+                    data.rho(ix,iy+1,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy+1,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy+1,iz)*(data.gas_gamma-1.0)*0.5))+
+                    data.rho(ix+1,iy+1,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy+1,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy+1,iz)*(data.gas_gamma-1.0)*0.5))+
+                    data.rho(ix,iy,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy,iz+1)*(data.gas_gamma-1.0)*0.5))+
+                    data.rho(ix+1,iy,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy,iz+1)*(data.gas_gamma-1.0)*0.5))+
+                    data.rho(ix,iy+1,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy+1,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy+1,iz+1)*(data.gas_gamma-1.0)*0.5))+
+                    data.rho(ix+1,iy+1,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0)*0.5))
+                    );
+                    plasma_source.rho_n_ac_vertex(ix,iy,iz)=0.125*plasma_source.alpha0*(
+                    dataNeutral.rho(ix,iy,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*0.5))+
+                    dataNeutral.rho(ix+1,iy,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy,iz)*(data.gas_gamma-1.0)*0.5))+
+                    dataNeutral.rho(ix,iy+1,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy+1,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy+1,iz)*(data.gas_gamma-1.0)*0.5))+
+                    dataNeutral.rho(ix+1,iy+1,iz)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy+1,iz)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy+1,iz)*(data.gas_gamma-1.0)*0.5))+
+                    dataNeutral.rho(ix,iy,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy,iz+1)*(data.gas_gamma-1.0)*0.5))+
+                    dataNeutral.rho(ix+1,iy,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy,iz+1)*(data.gas_gamma-1.0)*0.5))+
+                    dataNeutral.rho(ix,iy+1,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix,iy+1,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix,iy+1,iz+1)*(data.gas_gamma-1.0)*0.5))+
+                    dataNeutral.rho(ix+1,iy+1,iz+1)*std::sqrt(0.5*(data.gas_gamma*dataNeutral.energy(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0)+ data.gas_gamma*data.energy_ion(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0)*0.5))
+                    );
+                	}, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
+        	}
 
         };
         
@@ -254,8 +359,52 @@ namespace TWOFLUID
                                   13.6/kb_ev/T0/data.gas_gamma;  	
             	//printf("%f %f %f %f %f \n",f_p,data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz), temperature_electron,plasma_source.gm_rec(ix,iy,iz),plasma_source.gm_ion(ix,iy,iz));    
             }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));
+            
+        	if (plasma_source.vertex_rates){
+            	using Range = portableWrapper::Range;
+                portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+                    plasma_source.gm_rec_vertex(ix,iy,iz)=0.125*t_ir/f_p*std::sqrt(tfac)*(
+                    data.rho(ix  ,iy  ,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy  ,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix  ,iy+1,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy+1,iz  )/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz  )*(data.gas_gamma-1.0))+
+                    data.rho(ix  ,iy  ,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz+1)*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy  ,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz+1)*(data.gas_gamma-1.0))+
+                    data.rho(ix  ,iy+1,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz+1)*(data.gas_gamma-1.0))+
+                    data.rho(ix+1,iy+1,iz+1)/std::sqrt(0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0))
+                    );
+                    
+                    SAMS::T_dataType Te1=0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te2=0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te3=0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te4=0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz  )*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te5=0.5*data.gas_gamma*data.energy_ion(ix  ,iy  ,iz+1)*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te6=0.5*data.gas_gamma*data.energy_ion(ix+1,iy  ,iz+1)*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te7=0.5*data.gas_gamma*data.energy_ion(ix  ,iy+1,iz+1)*(data.gas_gamma-1.0);
+                    SAMS::T_dataType Te8=0.5*data.gas_gamma*data.energy_ion(ix+1,iy+1,iz+1)*(data.gas_gamma-1.0);
+                    
+                    plasma_source.gm_ion_vertex(ix,iy,iz)=2.91e-14*(n0*1.0e6)/rec_fac/f_p *t_ir*(
+                    data.rho(ix  ,iy  ,iz  )*std::exp(-13.6/Te_0/Te1*tfac)*std::pow(13.6/Te_0/Te1*tfac,0.39)/(0.232+13.6/Te_0/Te1*tfac)+
+                    data.rho(ix+1,iy  ,iz  )*std::exp(-13.6/Te_0/Te2*tfac)*std::pow(13.6/Te_0/Te2*tfac,0.39)/(0.232+13.6/Te_0/Te2*tfac)+
+                    data.rho(ix  ,iy+1,iz  )*std::exp(-13.6/Te_0/Te3*tfac)*std::pow(13.6/Te_0/Te3*tfac,0.39)/(0.232+13.6/Te_0/Te3*tfac)+
+                    data.rho(ix+1,iy+1,iz  )*std::exp(-13.6/Te_0/Te4*tfac)*std::pow(13.6/Te_0/Te4*tfac,0.39)/(0.232+13.6/Te_0/Te4*tfac)+
+                    data.rho(ix  ,iy  ,iz+1)*std::exp(-13.6/Te_0/Te5*tfac)*std::pow(13.6/Te_0/Te5*tfac,0.39)/(0.232+13.6/Te_0/Te5*tfac)+
+                    data.rho(ix+1,iy  ,iz+1)*std::exp(-13.6/Te_0/Te6*tfac)*std::pow(13.6/Te_0/Te6*tfac,0.39)/(0.232+13.6/Te_0/Te6*tfac)+
+                    data.rho(ix  ,iy+1,iz+1)*std::exp(-13.6/Te_0/Te7*tfac)*std::pow(13.6/Te_0/Te7*tfac,0.39)/(0.232+13.6/Te_0/Te7*tfac)+
+                    data.rho(ix+1,iy+1,iz+1)*std::exp(-13.6/Te_0/Te8*tfac)*std::pow(13.6/Te_0/Te8*tfac,0.39)/(0.232+13.6/Te_0/Te8*tfac)
+                    );    
+        	    }, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
+    	    }
         };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        template<typename T_EOS>
+        void PIP<T_EOS>::set_bc_heating(LARE::LARE3DST<T_EOS>::simulationData &data,data_two_fluid_source &plasma_source){
+            using Range = portableWrapper::Range;
+            portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+                plasma_source.ion_heating(ix,iy,iz)=-plasma_source.ion_loss(ix,iy,iz);
+            }, Range(-1,data.nx+1), Range(-1,data.ny+1), Range(-1,data.nz+1));        
+        }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //multi-level hydrogen rates
     template<typename T_EOS>
@@ -346,58 +495,68 @@ namespace TWOFLUID
     template<typename T_EOS>
  void PIP<T_EOS>::get_collisional_source_terms(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){	
 
-    using Range = portableWrapper::Range;
-    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
-        //printf("getting source terms \n");    
-        
-        //SAMS::T_dataType   ac;
-        //get_ac(data.alpha0,temperature_ion,temperature_neutral);
-        
-        
-        //printf("getting vertex values \n");
-        //Get ac and rho at the location of v (vertex)
-        SAMS::T_dataType  ac_vertex=(plasma_source.ac(ix  , iy  , iz  ) + 
-                                        plasma_source.ac(ix+1, iy  , iz  ) + 
-                                        plasma_source.ac(ix  , iy+1, iz  ) + 
-                                        plasma_source.ac(ix+1, iy+1, iz  ) + 
-                                        plasma_source.ac(ix  , iy  , iz+1) + 
-                                        plasma_source.ac(ix+1, iy  , iz+1) + 
-                                        plasma_source.ac(ix  , iy+1, iz+1) + 
-                                        plasma_source.ac(ix+1, iy+1, iz+1))* 
-                                        0.125;
-        SAMS::T_dataType  rho_plasma_vertex=  (data.rho(ix  , iy  , iz  ) + 
-                                        data.rho(ix+1, iy  , iz  ) + 
-                                        data.rho(ix  , iy+1, iz  ) + 
-                                        data.rho(ix+1, iy+1, iz  ) + 
-                                        data.rho(ix  , iy  , iz+1) + 
-                                        data.rho(ix+1, iy  , iz+1) + 
-                                        data.rho(ix  , iy+1, iz+1) + 
-                                        data.rho(ix+1, iy+1, iz+1))* 
-                                        0.125;
-        SAMS::T_dataType  rho_neutral_vertex=  (dataNeutral.rho(ix  , iy  , iz  ) + 
-                                         dataNeutral.rho(ix+1, iy  , iz  ) + 
-                                         dataNeutral.rho(ix  , iy+1, iz  ) + 
-                                         dataNeutral.rho(ix+1, iy+1, iz  ) + 
-                                         dataNeutral.rho(ix  , iy  , iz+1) + 
-                                         dataNeutral.rho(ix+1, iy  , iz+1) + 
-                                         dataNeutral.rho(ix  , iy+1, iz+1) + 
-                                         dataNeutral.rho(ix+1, iy+1, iz+1))* 
-                                         0.125;
-        
-                
-        //Apply the velocity exchange terms
-        plasma_source.source_v_x(ix,iy,iz)=ac_vertex*rho_neutral_vertex*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
-        plasma_source.source_v_x_n(ix,iy,iz)=-ac_vertex*rho_plasma_vertex*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
-        
-        //printf("v_n %f %f \n", plasma_source.source_v_x(ix,iy,iz),plasma_source.source_v_x_n(ix,iy,iz));
-        
-        plasma_source.source_v_y(ix,iy,iz)=ac_vertex*rho_neutral_vertex*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
-        plasma_source.source_v_y_n(ix,iy,iz)=-ac_vertex*rho_plasma_vertex*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
-        
-        plasma_source.source_v_z(ix,iy,iz)=ac_vertex*rho_neutral_vertex*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
-        plasma_source.source_v_z_n(ix,iy,iz)=-ac_vertex*rho_plasma_vertex*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
+    if (plasma_source.vertex_rates){
+        //This part of the loop uses the rho*ac at the vertex for the momentum source terms directly
+        using Range = portableWrapper::Range;
+        portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+
+            //Apply the velocity exchange terms
+            plasma_source.source_v_x(ix,iy,iz)=plasma_source.rho_n_ac_vertex(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
+            plasma_source.source_v_x_n(ix,iy,iz)=-plasma_source.rho_p_ac_vertex(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
+            
+            //printf("v_n %f %f \n", plasma_source.source_v_x(ix,iy,iz),plasma_source.source_v_x_n(ix,iy,iz));
+            
+            plasma_source.source_v_y(ix,iy,iz)=plasma_source.rho_n_ac_vertex(ix,iy,iz)*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
+            plasma_source.source_v_y_n(ix,iy,iz)=-plasma_source.rho_p_ac_vertex(ix,iy,iz)*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
+            
+            plasma_source.source_v_z(ix,iy,iz)=plasma_source.rho_n_ac_vertex(ix,iy,iz)*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
+            plasma_source.source_v_z_n(ix,iy,iz)=-plasma_source.rho_p_ac_vertex(ix,iy,iz)*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
         }, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
-        
+    } else {
+        //This part of the loop interpolates the ac and rho to the vertex for the momentum source terms
+        using Range = portableWrapper::Range;
+        portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+            //Get ac and rho at the location of v (vertex)
+            SAMS::T_dataType  ac_vertex=(plasma_source.ac(ix  , iy  , iz  ) + 
+                                            plasma_source.ac(ix+1, iy  , iz  ) + 
+                                            plasma_source.ac(ix  , iy+1, iz  ) + 
+                                            plasma_source.ac(ix+1, iy+1, iz  ) + 
+                                            plasma_source.ac(ix  , iy  , iz+1) + 
+                                            plasma_source.ac(ix+1, iy  , iz+1) + 
+                                            plasma_source.ac(ix  , iy+1, iz+1) + 
+                                            plasma_source.ac(ix+1, iy+1, iz+1))* 
+                                            0.125;
+            SAMS::T_dataType  rho_plasma_vertex=  (data.rho(ix  , iy  , iz  ) + 
+                                            data.rho(ix+1, iy  , iz  ) + 
+                                            data.rho(ix  , iy+1, iz  ) + 
+                                            data.rho(ix+1, iy+1, iz  ) + 
+                                            data.rho(ix  , iy  , iz+1) + 
+                                            data.rho(ix+1, iy  , iz+1) + 
+                                            data.rho(ix  , iy+1, iz+1) + 
+                                            data.rho(ix+1, iy+1, iz+1))* 
+                                            0.125;
+            SAMS::T_dataType  rho_neutral_vertex=  (dataNeutral.rho(ix  , iy  , iz  ) + 
+                                             dataNeutral.rho(ix+1, iy  , iz  ) + 
+                                             dataNeutral.rho(ix  , iy+1, iz  ) + 
+                                             dataNeutral.rho(ix+1, iy+1, iz  ) + 
+                                             dataNeutral.rho(ix  , iy  , iz+1) + 
+                                             dataNeutral.rho(ix+1, iy  , iz+1) + 
+                                             dataNeutral.rho(ix  , iy+1, iz+1) + 
+                                             dataNeutral.rho(ix+1, iy+1, iz+1))* 
+                                             0.125;
+            
+                    
+            //Apply the velocity exchange terms
+            plasma_source.source_v_x(ix,iy,iz)=ac_vertex*rho_neutral_vertex*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
+            plasma_source.source_v_x_n(ix,iy,iz)=-ac_vertex*rho_plasma_vertex*(dataNeutral.vx(ix,iy,iz)-data.vx(ix,iy,iz));
+
+            plasma_source.source_v_y(ix,iy,iz)=ac_vertex*rho_neutral_vertex*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
+            plasma_source.source_v_y_n(ix,iy,iz)=-ac_vertex*rho_plasma_vertex*(dataNeutral.vy(ix,iy,iz)-data.vy(ix,iy,iz));
+            
+            plasma_source.source_v_z(ix,iy,iz)=ac_vertex*rho_neutral_vertex*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
+            plasma_source.source_v_z_n(ix,iy,iz)=-ac_vertex*rho_plasma_vertex*(dataNeutral.vz(ix,iy,iz)-data.vz(ix,iy,iz));
+        }, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
+    }
         
         using Range = portableWrapper::Range;
     portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
@@ -486,11 +645,11 @@ namespace TWOFLUID
        
     plasma_source.source_energy(ix,iy,iz)=plasma_source.ac(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*(\
                         0.5*vd2 \
-                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));
+                        + (temperature_neutral-temperature_ion)/(data.gas_gamma*(data.gas_gamma-1)));
         //printf("getting neutral energy source terms \n");
-        plasma_source.source_energy_n(ix,iy,iz)=-plasma_source.ac(ix,iy,iz)*data.rho(ix,iy,iz)*(\
+        plasma_source.source_energy_n(ix,iy,iz)=plasma_source.ac(ix,iy,iz)*data.rho(ix,iy,iz)*(\
                         0.5*vd2 \
-                        + 3.0/data.gas_gamma/2.0*(temperature_neutral-temperature_ion));  
+                        - (temperature_neutral-temperature_ion)/(data.gas_gamma*(data.gas_gamma-1)));  
                                    
         //printf("%i,%i,%i \n",ix,iy,iz);
     }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
@@ -644,7 +803,7 @@ namespace TWOFLUID
         //Work out how much energy is spent/gained by IR processes
         //if (two_fluid_flags.ion_rec_empirical) { 
             //printf("ionisation energy, rho = %f %f \n",ionisation_energy, dataNeutral.rho(ix,iy,iz));
-            plasma_source.source_energy(ix,iy,iz)+=plasma_source.ion_loss(ix,iy,iz)/data.rho(ix,iy,iz);//factor of pho comes from denergy density being specified
+            plasma_source.source_energy(ix,iy,iz)+=(plasma_source.ion_heating(ix,iy,iz)+plasma_source.ion_loss(ix,iy,iz))/data.rho(ix,iy,iz);//factor of pho comes from denergy density being specified
         //}
         
     }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
@@ -912,5 +1071,399 @@ template<typename T_EOS>
 
     return std::pow(10.0, logv);
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+    template<typename T_EOS>
+    void TWOFLUID::PIP<T_EOS>::copyState(
+        LARE::LARE3DST<T_EOS>::simulationData &source,
+        LARE::LARE3DNF<T_EOS>::simulationData &source_n,
+        oldData &dest)
+    {
+       printf("%p %p\n",
+       source.vx.data(),
+       dest.vx.data());
+        for (int ix=0; ix<=source.nx; ix++)
+        {
+            for (int iy=0; iy<=source.ny; iy++)
+            {
+                for (int iz=0; iz<=source.nz; iz++)
+                {
+                    dest.vx(ix,iy,iz)=source.vx(ix,iy,iz);
+                    dest.vy(ix,iy,iz)=source.vy(ix,iy,iz);
+                    dest.vz(ix,iy,iz)=source.vz(ix,iy,iz);
+                    
+                    dest.vx_n(ix,iy,iz)=source_n.vx(ix,iy,iz);
+                    dest.vy_n(ix,iy,iz)=source_n.vy(ix,iy,iz);
+                    dest.vz_n(ix,iy,iz)=source_n.vz(ix,iy,iz);
+                }
+            }
+        }
+
+        for (int ix=0; ix<source.nx; ix++)
+        {
+            for (int iy=0; iy<source.ny; iy++)
+            {
+                for (int iz=0; iz<source.nz; iz++)
+                {
+                    dest.rho(ix,iy,iz)=source.rho(ix,iy,iz);
+                    dest.energy(ix,iy,iz)=source.energy_ion(ix,iy,iz);
+                    
+                    dest.rho_n(ix,iy,iz)=source_n.rho(ix,iy,iz);
+                    dest.energy_n(ix,iy,iz)=source_n.energy(ix,iy,iz);
+                }
+            }
+        }
+    }
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+template<typename T_EOS>
+void PIP<T_EOS>::checkSourceConservation(
+        LARE::LARE3DST<T_EOS>::simulationData &data,
+        LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
+        oldData &dataOld)
+{
+
+    using Range = portableWrapper::Range;
+
+
+    const int nx = data.nx;
+    const int ny = data.ny;
+    const int nz = data.nz;
+
+
+    int ncell = (nx+1)*(ny+1)*(nz+1);
+
+
+
+    struct conservationBuffers
+    {
+        SAMS::T_dataType *mass_error;
+        SAMS::T_dataType *momentum_x_error;
+        SAMS::T_dataType *momentum_y_error;
+        SAMS::T_dataType *momentum_z_error;
+        SAMS::T_dataType *energy_error;
+
+        SAMS::T_dataType *thermal_energy_error;
+        SAMS::T_dataType *kinetic_energy_error;
+    };
+
+
+    conservationBuffers buffers;
+
+
+    buffers.mass_error =
+        new SAMS::T_dataType[ncell];
+
+    buffers.momentum_x_error =
+        new SAMS::T_dataType[ncell];
+
+    buffers.momentum_y_error =
+        new SAMS::T_dataType[ncell];
+
+    buffers.momentum_z_error =
+        new SAMS::T_dataType[ncell];
+
+    buffers.energy_error =
+        new SAMS::T_dataType[ncell];
+
+    buffers.thermal_energy_error =
+        new SAMS::T_dataType[ncell];
+
+    buffers.kinetic_energy_error =
+        new SAMS::T_dataType[ncell];
+
+
+
+    portableWrapper::applyKernel(
+    LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz)
+    {
+
+        int index =
+              ix
+            + (nx+1)*(iy
+            + (ny+1)*iz);
+
+
+
+        //
+        // Density
+        //
+        SAMS::T_dataType drho_p =
+            data.rho(ix,iy,iz)
+            -
+            dataOld.rho(ix,iy,iz);
+
+
+        SAMS::T_dataType drho_n =
+            dataNeutral.rho(ix,iy,iz)
+            -
+            dataOld.rho_n(ix,iy,iz);
+
+
+
+        //
+        // Momentum
+        //
+        SAMS::T_dataType dp_x =
+            data.rho(ix,iy,iz)
+            *
+            data.vx(ix,iy,iz)
+            -
+            dataOld.rho(ix,iy,iz)
+            *
+            dataOld.vx(ix,iy,iz);
+
+
+        SAMS::T_dataType dn_x =
+            dataNeutral.rho(ix,iy,iz)
+            *
+            dataNeutral.vx(ix,iy,iz)
+            -
+            dataOld.rho_n(ix,iy,iz)
+            *
+            dataOld.vx_n(ix,iy,iz);
+
+
+
+        SAMS::T_dataType dp_y =
+            data.rho(ix,iy,iz)
+            *
+            data.vy(ix,iy,iz)
+            -
+            dataOld.rho(ix,iy,iz)
+            *
+            dataOld.vy(ix,iy,iz);
+
+
+        SAMS::T_dataType dn_y =
+            dataNeutral.rho(ix,iy,iz)
+            *
+            dataNeutral.vy(ix,iy,iz)
+            -
+            dataOld.rho_n(ix,iy,iz)
+            *
+            dataOld.vy_n(ix,iy,iz);
+
+
+
+        SAMS::T_dataType dp_z =
+            data.rho(ix,iy,iz)
+            *
+            data.vz(ix,iy,iz)
+            -
+            dataOld.rho(ix,iy,iz)
+            *
+            dataOld.vz(ix,iy,iz);
+
+
+        SAMS::T_dataType dn_z =
+            dataNeutral.rho(ix,iy,iz)
+            *
+            dataNeutral.vz(ix,iy,iz)
+            -
+            dataOld.rho_n(ix,iy,iz)
+            *
+            dataOld.vz_n(ix,iy,iz);
+
+
+
+        //
+        // Thermal energy
+        //
+        SAMS::T_dataType thermal_p =
+            data.rho(ix,iy,iz)
+            *
+            data.energy_ion(ix,iy,iz)
+            -
+            dataOld.rho(ix,iy,iz)
+            *
+            dataOld.energy(ix,iy,iz);
+
+
+        SAMS::T_dataType thermal_n =
+            dataNeutral.rho(ix,iy,iz)
+            *
+            dataNeutral.energy(ix,iy,iz)
+            -
+            dataOld.rho_n(ix,iy,iz)
+            *
+            dataOld.energy_n(ix,iy,iz);
+
+
+        SAMS::T_dataType thermal_error =
+            thermal_p + thermal_n;
+
+
+
+        //
+        // Kinetic energy
+        //
+        SAMS::T_dataType v2_p =
+              data.vx(ix,iy,iz)*data.vx(ix,iy,iz)
+            + data.vy(ix,iy,iz)*data.vy(ix,iy,iz)
+            + data.vz(ix,iy,iz)*data.vz(ix,iy,iz);
+
+
+        SAMS::T_dataType v2_p_old =
+              dataOld.vx(ix,iy,iz)*dataOld.vx(ix,iy,iz)
+            + dataOld.vy(ix,iy,iz)*dataOld.vy(ix,iy,iz)
+            + dataOld.vz(ix,iy,iz)*dataOld.vz(ix,iy,iz);
+
+
+
+        SAMS::T_dataType v2_n =
+              dataNeutral.vx(ix,iy,iz)*dataNeutral.vx(ix,iy,iz)
+            + dataNeutral.vy(ix,iy,iz)*dataNeutral.vy(ix,iy,iz)
+            + dataNeutral.vz(ix,iy,iz)*dataNeutral.vz(ix,iy,iz);
+
+
+        SAMS::T_dataType v2_n_old =
+              dataOld.vx_n(ix,iy,iz)*dataOld.vx_n(ix,iy,iz)
+            + dataOld.vy_n(ix,iy,iz)*dataOld.vy_n(ix,iy,iz)
+            + dataOld.vz_n(ix,iy,iz)*dataOld.vz_n(ix,iy,iz);
+
+
+
+        SAMS::T_dataType kinetic_error =
+              0.5
+            *
+              (
+                data.rho(ix,iy,iz)*v2_p
+                -
+                dataOld.rho(ix,iy,iz)*v2_p_old
+              )
+
+            +
+
+              0.5
+            *
+              (
+                dataNeutral.rho(ix,iy,iz)*v2_n
+                -
+                dataOld.rho_n(ix,iy,iz)*v2_n_old
+              );
+
+
+
+        //
+        // Store
+        //
+        buffers.mass_error[index] =
+            drho_p + drho_n;
+
+
+        buffers.momentum_x_error[index] =
+            dp_x + dn_x;
+
+
+        buffers.momentum_y_error[index] =
+            dp_y + dn_y;
+
+
+        buffers.momentum_z_error[index] =
+            dp_z + dn_z;
+
+
+        buffers.thermal_energy_error[index] =
+            thermal_error;
+
+
+        buffers.kinetic_energy_error[index] =
+            kinetic_error;
+
+
+        buffers.energy_error[index] =
+            thermal_error + kinetic_error;
+
+
+    },
+    Range(0,nx),
+    Range(0,ny),
+    Range(0,nz));
+
+
+
+    //
+    // Reduction
+    //
+    SAMS::T_dataType total_mass_error = 0.0;
+    SAMS::T_dataType total_momentum_x_error = 0.0;
+    SAMS::T_dataType total_momentum_y_error = 0.0;
+    SAMS::T_dataType total_momentum_z_error = 0.0;
+
+    SAMS::T_dataType total_thermal_error = 0.0;
+    SAMS::T_dataType total_kinetic_error = 0.0;
+    SAMS::T_dataType total_energy_error = 0.0;
+
+
+
+    for (int ix=0; ix<nx; ix++)
+    {
+        for (int iy=0; iy<ny; iy++)
+        {
+            for (int iz=0; iz<nz; iz++)
+            {
+
+                int index =
+                      ix
+                    + (nx+1)*(iy
+                    + (ny+1)*iz);
+
+
+
+                total_mass_error +=
+                    buffers.mass_error[index];
+
+
+                total_momentum_x_error +=
+                    buffers.momentum_x_error[index];
+
+
+                total_momentum_y_error +=
+                    buffers.momentum_y_error[index];
+
+
+                total_momentum_z_error +=
+                    buffers.momentum_z_error[index];
+
+
+                total_thermal_error +=
+                    buffers.thermal_energy_error[index];
+
+
+                total_kinetic_error +=
+                    buffers.kinetic_energy_error[index];
+
+
+                total_energy_error +=
+                    buffers.energy_error[index];
+
+            }
+        }
+    }
+
+
+
+    printf("\nSource conservation diagnostic\n");
+    printf("--------------------------------\n");
+    printf("Mass            : %.12e\n", total_mass_error);
+    printf("Momentum x      : %.12e\n", total_momentum_x_error);
+    printf("Momentum y      : %.12e\n", total_momentum_y_error);
+    printf("Momentum z      : %.12e\n", total_momentum_z_error);
+    printf("Thermal energy  : %.12e\n", total_thermal_error);
+    printf("Kinetic energy  : %.12e\n", total_kinetic_error);
+    printf("Total energy    : %.12e\n", total_energy_error);
+    printf("--------------------------------\n");
+
+
+
+    delete[] buffers.mass_error;
+    delete[] buffers.momentum_x_error;
+    delete[] buffers.momentum_y_error;
+    delete[] buffers.momentum_z_error;
+    delete[] buffers.energy_error;
+    delete[] buffers.thermal_energy_error;
+    delete[] buffers.kinetic_energy_error;
+
+}
 
 }
