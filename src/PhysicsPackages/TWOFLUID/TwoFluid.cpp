@@ -779,32 +779,61 @@ namespace TWOFLUID
                                         dataNeutral.vz(ix-1, iy-1, iz-1))* 
                                         0.125;
         
-        //Energy source terms
-        plasma_source.source_energy(ix,iy,iz) += -0.5*(plasma_source.gm_rec(ix,iy,iz)*(pow(v_x_plasma_centre,2)+
-                                                                                 pow(v_y_plasma_centre,2)+
-                                                                                 pow(v_z_plasma_centre,2))
-                                                        -plasma_source.gm_ion(ix,iy,iz)*(pow(v_x_neutral_centre,2)+
-                                                                                pow(v_y_neutral_centre,2)+
-                                                                                pow(v_z_neutral_centre,2))
-                                                                              *dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)                                                                                
-                                                        )
-                                                   -(plasma_source.gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)-plasma_source.gm_ion(ix,iy,iz)*dataNeutral.energy(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
+        SAMS::T_dataType  vp2=v_x_plasma_centre*v_x_plasma_centre+
+                              v_y_plasma_centre*v_y_plasma_centre+
+                              v_z_plasma_centre*v_z_plasma_centre;
+                              
+        SAMS::T_dataType  vn2=v_x_neutral_centre*v_x_neutral_centre+
+                              v_y_neutral_centre*v_y_neutral_centre+
+                              v_z_neutral_centre*v_z_neutral_centre;
         
-        plasma_source.source_energy_n(ix,iy,iz) += 0.5*(plasma_source.gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
-                                                                                data.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
-                                                                                data.vz(ix,iy,iz)*data.vz(ix,iy,iz))
-                                                                                *data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)
-                                                        -plasma_source.gm_ion(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
-                                                                                dataNeutral.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
-                                                                                dataNeutral.vz(ix,iy,iz)*data.vz(ix,iy,iz))
-                                                        )
-                                                   +(plasma_source.gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)-plasma_source.gm_ion(ix,iy,iz)*dataNeutral.energy(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
+        SAMS::T_dataType  vpvn= v_x_plasma_centre*v_x_neutral_centre+
+                                v_y_plasma_centre*v_y_neutral_centre+
+                                v_z_plasma_centre*v_z_neutral_centre;                      
+        
+        //Pressure 
+        SAMS::T_dataType  pr_p=data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz); //Note that this is electron+ion pressure hence the factor of 0.5 in the TeIR formula
+        SAMS::T_dataType  pr_n=dataNeutral.energy(ix,iy,iz)*(data.gas_gamma-1.0)*dataNeutral.rho(ix,iy,iz);
+        
+        //work done on the neutrals through ionisation/recombiation
+        SAMS::T_dataType  Hn=0.5*(plasma_source.gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)*(vp2-2.0*vpvn)+
+                                  plasma_source.gm_ion(ix,iy,iz)*vn2);
+        SAMS::T_dataType  Hp=0.5*(plasma_source.gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)*(vn2-2.0*vpvn)+
+                                  plasma_source.gm_rec(ix,iy,iz)*vp2);
+                                  
+        //Thermal equalisation from IR
+        SAMS::T_dataType  TeIR=(plasma_source.gm_ion(ix,iy,iz)*pr_n-0.5*plasma_source.gm_rec(ix,iy,iz)*pr_p)/(data.gas_gamma-1.0);
+        
+        
+        //Corrected energy source terms
+        plasma_source.source_energy(ix,iy,iz) +=Hp+TeIR/data.rho(ix,iy,iz);
+        plasma_source.source_energy_n(ix,iy,iz) +=Hn+TeIR/dataNeutral.rho(ix,iy,iz);
+        //Energy source terms - Not correct ones!
+        //plasma_source.source_energy(ix,iy,iz) += -0.5*(plasma_source.gm_rec(ix,iy,iz)*(pow(v_x_plasma_centre,2)+
+        //                                                                         pow(v_y_plasma_centre,2)+
+        //                                                                         pow(v_z_plasma_centre,2))
+        //                                                -plasma_source.gm_ion(ix,iy,iz)*(pow(v_x_neutral_centre,2)+
+        //                                                                        pow(v_y_neutral_centre,2)+
+        //                                                                        pow(v_z_neutral_centre,2))
+        //                                                                      *dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)                                                                                
+         //                                               )
+         //                                          -(plasma_source.gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)-plasma_source.gm_ion(ix,iy,iz)*dataNeutral.energy(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
+        
+        //plasma_source.source_energy_n(ix,iy,iz) += 0.5*(plasma_source.gm_rec(ix,iy,iz)*(data.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
+        //                                                                        data.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
+        //                                                                        data.vz(ix,iy,iz)*data.vz(ix,iy,iz))
+        //                                                                        *data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)
+        //                                                -plasma_source.gm_ion(ix,iy,iz)*(dataNeutral.vx(ix,iy,iz)*data.vx(ix,iy,iz)+
+        //                                                                        dataNeutral.vy(ix,iy,iz)*data.vy(ix,iy,iz)+
+        //                                                                        dataNeutral.vz(ix,iy,iz)*data.vz(ix,iy,iz))
+        //                                                )
+         //                                          +(plasma_source.gm_rec(ix,iy,iz)*data.energy_ion(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)-plasma_source.gm_ion(ix,iy,iz)*dataNeutral.energy(ix,iy,iz))/(data.gas_gamma-1.0); //Is this electron or ion energy (or mean energy)? is the half needed?
         
         //Work out how much energy is spent/gained by IR processes
-        //if (two_fluid_flags.ion_rec_empirical) { 
+        if (plasma_source.ion_rec_empirical) { 
             //printf("ionisation energy, rho = %f %f \n",ionisation_energy, dataNeutral.rho(ix,iy,iz));
             plasma_source.source_energy(ix,iy,iz)+=(plasma_source.ion_heating(ix,iy,iz)+plasma_source.ion_loss(ix,iy,iz))/data.rho(ix,iy,iz);//factor of pho comes from denergy density being specified
-        //}
+        }
         
     }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
 
