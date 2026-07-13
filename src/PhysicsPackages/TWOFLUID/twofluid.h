@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cassert>
 #include <string>
+#include <vector>
 #include "constants.h"
 #include "pp/parallelWrapper.h"
 #include "mpiManager.h"
@@ -59,9 +60,19 @@ namespace TWOFLUID
         LARE::volumeArray4D level_populations; //4D array of level populations per cell
         LARE::volumeArray5D level_rates; //5D array of all the rates per cell
         
-        std::string data_path = "./data/atomic_rates_2.nc";
+        std::string data_path = "./data/hydrogen_atomic_rates.nc";
         LARE::hostLineArray grid_logT;
         LARE::hostVolumeArray hydrogen_excitation_rate;
+        
+        int level_offset = 1;                               // atomic level number at array index 0
+        std::vector<int> lower_level_map;                   // host: array_index -> level number
+        std::vector<int> upper_level_map;                   // host: array_index -> level number
+        LARE::hostVolumeArray collisional_excitation_rates; // [n_tsample][n_lower][n_upper]
+        LARE::hostPlaneArray collisional_ionisation_rates;  // [n_tsample][n_lower]
+        LARE::hostPlaneArray radiative_recombination_rates; // [n_tsample][n_lower]
+        LARE::hostPlaneArray radiative_excitation_rates;    // [n_lower][n_upper]
+        LARE::hostPlaneArray radiative_de_excitation_rates; // [n_lower][n_upper]
+        LARE::hostLineArray radiative_ionisation_rates;     // [n_lower]
         
         //Physical parameters
         SAMS::T_dataType  T0=10000.0;//data.T_reference; //Reference temperature
@@ -71,8 +82,8 @@ namespace TWOFLUID
        
         //Coupling physics
         bool collisions=true;
-        bool ion_rec_empirical=true;
-        bool ion_rec_nlevel=false;
+        bool ion_rec_empirical=false;
+        bool ion_rec_nlevel=true;
         
         bool vertex_rates=false;
         LARE::volumeArray rho_p_ac_vertex; // velocity source at vertex
@@ -114,11 +125,20 @@ namespace TWOFLUID
             
             using T_dataType = SAMS::T_dataType;
 
-            void initialize(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){};
+            void initialize(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
+                two_fluid_read_rates(plasma_source);
+                two_fluid_test_rates(plasma_source);
+                };
             void defaultValues(data_two_fluid_source & plasma_source);
             void allocate(data_two_fluid_source &plasma_source,SAMS::harness &harness);
             void allocate_conserved(oldData &oldData,SAMS::harness &harness);
             void registerVariables(SAMS::harness &harness);
+            
+            void registerAxes(SAMS::harness &harness)
+            {
+                auto &axisReg = harness.axisRegistry;
+                axisReg.registerLogicalAxis("species");
+            }
             
             void initialiseSource(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 printf("Getting IC for two_fluid rates \n");
@@ -193,6 +213,7 @@ namespace TWOFLUID
         void get_collisional_source_terms(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
         void get_ion_rec_source_terms(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
         void two_fluid_read_rates(data_two_fluid_source &plasma_source);
+        void two_fluid_test_rates(const data_two_fluid_source &plasma_source);
         void set_bc_heating(LARE::LARE3DST<T_EOS>::simulationData &data,data_two_fluid_source &plasma_source);
 
         void checkSourceConservation(
