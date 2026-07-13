@@ -76,6 +76,8 @@ namespace TWOFLUID
         
         varRegistry.registerVariable<T_dataType>("PIPSource/ion_loss", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
+        varRegistry.registerVariable<T_dataType>("PIPSource/ion_heating", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
+        
         //////////////////////////////////////////////////////////////
         
         varRegistry.registerVariable<T_dataType>("PIPSource/rho_p_ac_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
@@ -147,6 +149,8 @@ namespace TWOFLUID
         pw::assign(plasma_source.gm_rec, 0.0);
         varRegistry.fillPPArray("PIPSource/ion_loss", plasma_source.ion_loss);
         pw::assign(plasma_source.ion_loss, 0.0);
+        varRegistry.fillPPArray("PIPSource/ion_heating", plasma_source.ion_heating);
+        pw::assign(plasma_source.ion_heating, 0.0);
         
         if (plasma_source.vertex_rates){
             varRegistry.fillPPArray("PIPSource/rho_p_ac_vertex", plasma_source.rho_p_ac_vertex);

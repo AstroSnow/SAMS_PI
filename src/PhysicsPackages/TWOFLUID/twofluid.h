@@ -71,7 +71,7 @@ namespace TWOFLUID
        
         //Coupling physics
         bool collisions=true;
-        bool ion_rec_empirical=false;
+        bool ion_rec_empirical=true;
         bool ion_rec_nlevel=false;
         
         bool vertex_rates=false;
@@ -156,6 +156,9 @@ namespace TWOFLUID
                 printf("two_fluid timestep = %f \n",plasma_source.two_fluid_timestep);
                 //set_dt(data);
                 timeData.dt = plasma_source.two_fluid_timestep<timeData.dt ? plasma_source.two_fluid_timestep : timeData.dt;
+                if (timeData.time<=1.0e-6) {
+                    timeData.dt = 1.0e-8<timeData.dt ? 1.0e-8 : timeData.dt;
+                }
             };
             void getTimestep(SAMS::timeState &timeData, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral){
                 //data.dt = timeData.dt;
