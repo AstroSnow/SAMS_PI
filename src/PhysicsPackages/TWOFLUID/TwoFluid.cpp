@@ -39,6 +39,7 @@ namespace TWOFLUID
     template<typename T_EOS>
     void PIP<T_EOS>::defaultValues(data_two_fluid_source & data){
         data.alpha0=1.0;
+        debug_rates(data,"defaultValues");
     }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +49,7 @@ namespace TWOFLUID
     template<typename T_EOS> 
     void PIP<T_EOS>::registerVariables(SAMS::harness &harness,data_two_fluid_source &plasma_source)
     {
-
+debug_rates(plasma_source,"registerVariables entry");
         auto &varRegistry = harness.variableRegistry;
 
         const int ghosts = 2; // 2 Ghost cells at top and bottom of each dimension
@@ -85,14 +86,17 @@ debug_rates(plasma_source,"checkpoint");
         
         //////////////////////////////////////////////////////////////
         //if (plasma_source.
+        printf("before Levels \n");
         debug_rates(plasma_source,"before levels");
 
         varRegistry.registerVariable<LARE::T_dataType>("level_populations", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0));
 
+printf("after Levels \n");
 debug_rates(plasma_source,"after populations");
         
         varRegistry.registerVariable<LARE::T_dataType>("level_rates", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0), SAMS::dimension("species",0));
 
+printf("after rates \n");
 debug_rates(plasma_source,"after rates");        
         //////////////////////////////////////////////////////////////
         if (plasma_source.vertex_rates){
@@ -1035,7 +1039,7 @@ DEVICEPREFIX INLINE LARE::T_dataType interpolate_collisional_ionisation(
     const data_two_fluid_source &ps, LARE::T_dataType temperature,
     LARE::T_indexType level_num)
 {
-if (temperature=10000.0){printf("ION DEBUG: lower=%d offset=%d li=%d size=%d\n",
+if (temperature==10000.0){printf("ION DEBUG: lower=%d offset=%d li=%d size=%d\n",
        level_num,
        ps.level_offset,
        level_num - ps.level_offset,
@@ -1155,7 +1159,7 @@ void PIP<T_EOS>::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     Range lo_range(0, static_cast<LARE::T_indexType>(n_lower - 1));
     Range up_range(0, static_cast<LARE::T_indexType>(n_upper - 1));
 
-    pw::portableArrayManager svManager;
+    static pw::portableArrayManager svManager;
     
     svManager.allocate(plasma_source.grid_logT,                     T_range);
     svManager.allocate(plasma_source.collisional_excitation_rates,  T_range, lo_range, up_range);
@@ -1164,6 +1168,7 @@ void PIP<T_EOS>::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     svManager.allocate(plasma_source.radiative_excitation_rates,    lo_range, up_range);
     svManager.allocate(plasma_source.radiative_de_excitation_rates, lo_range, up_range);
     svManager.allocate(plasma_source.radiative_ionisation_rates,    lo_range);
+printf("manager address = %p\n", &svManager);
 
     // Read logT
     int var_logT = -1;
@@ -1214,6 +1219,49 @@ void PIP<T_EOS>::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     nc_close(ncid);
     fprintf(stdout, "Rates read successfully. n_tsample=%zu, n_lower=%zu, n_upper=%zu, level_offset=%i\n",
             n_tsamp, n_lower, n_upper, plasma_source.level_offset);
+            
+        for(int i=0;i<n_lower;i++)
+{
+    printf("ion[%d] = %.16e\n",
+           i,
+           plasma_source.radiative_ionisation_rates(i));
+}
+for(int i=0;i<n_lower;i++)
+{
+    printf("cion[50,%d] = %.16e\n",
+           i,
+           plasma_source.collisional_ionisation_rates(50,i));
+}
+
+printf("lb0=%d ub0=%d size0=%d\n",
+       plasma_source.collisional_ionisation_rates.getLowerBound(0),
+       plasma_source.collisional_ionisation_rates.getUpperBound(0),
+       plasma_source.collisional_ionisation_rates.getSize(0));
+
+printf("lb1=%d ub1=%d size1=%d\n",
+       plasma_source.collisional_ionisation_rates.getLowerBound(1),
+       plasma_source.collisional_ionisation_rates.getUpperBound(1),
+       plasma_source.collisional_ionisation_rates.getSize(1));
+
+printf("grid ptr = %p\n",
+       plasma_source.grid_logT.data());
+
+printf("exc ptr  = %p\n",
+       plasma_source.hydrogen_excitation_rate.data());
+        
+        
+        
+printf("before return\n");
+printf("mid = %.16e\n",
+       plasma_source.collisional_ionisation_rates(50,4));
+
+svManager.clear();
+
+printf("after clear\n");
+printf("mid = %.16e\n",
+       plasma_source.collisional_ionisation_rates(50,4));
+
+
     return;
 }
 
@@ -1223,6 +1271,13 @@ void PIP<T_EOS>::two_fluid_test_rates(const data_two_fluid_source &plasma_source
     constexpr LARE::T_dataType  logT_test    = 4.0;
     constexpr LARE::T_indexType lower_level  = 1;
     constexpr LARE::T_indexType upper_level  = 5;
+
+
+printf("grid ptr = %p\n",
+       plasma_source.grid_logT.data());
+
+printf("exc ptr  = %p\n",
+       plasma_source.hydrogen_excitation_rate.data());
 
     const LARE::T_dataType T_test = std::pow(10.0, logT_test);
     

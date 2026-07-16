@@ -66,6 +66,7 @@ namespace TWOFLUID
         LARE::hostLineArray grid_logT;
         LARE::hostVolumeArray hydrogen_excitation_rate;
         
+        //pw::portableArrayManager rate_manager; //Rate manager
         int level_offset = 1;                               // atomic level number at array index 0
         std::vector<int> lower_level_map;                   // host: array_index -> level number
         std::vector<int> upper_level_map;                   // host: array_index -> level number
@@ -233,18 +234,28 @@ namespace TWOFLUID
             
         void debug_rates(data_two_fluid_source& ps, const char* name)
 {
-    printf("%s object=%p ion_data=%p\n",
-           name,
-           &ps,
-           ps.collisional_ionisation_rates.data());
 
-    printf("  size=%d %d\n",
-           ps.collisional_ionisation_rates.getSize(0),
-           ps.collisional_ionisation_rates.getSize(1));
 
-    printf("  value=%e\n",
+    printf("first  = %.16e\n",
+           ps.collisional_ionisation_rates(0,0));
+
+    printf("mid1   = %.16e\n",
+           ps.collisional_ionisation_rates(50,0));
+
+    printf("mid2   = %.16e\n",
            ps.collisional_ionisation_rates(50,4));
-}
+
+    printf("last   = %.16e\n",
+           ps.collisional_ionisation_rates(100,4));
+           
+   
+printf("data ptr = %p\n",
+       ps.collisional_ionisation_rates.data());
+
+printf("%p\n",
+       &ps.collisional_ionisation_rates(50,4));
+       
+    }
     };
 }
 
