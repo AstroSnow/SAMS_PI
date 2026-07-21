@@ -235,7 +235,7 @@ namespace TWOFLUID
         void debug_rates(data_two_fluid_source& ps, const char* name)
 {
 
-
+printf("DEBUG: %s\n", name);
     printf("first  = %.16e\n",
            ps.collisional_ionisation_rates(0,0));
 

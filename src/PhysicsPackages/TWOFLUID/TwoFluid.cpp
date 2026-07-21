@@ -39,7 +39,7 @@ namespace TWOFLUID
     template<typename T_EOS>
     void PIP<T_EOS>::defaultValues(data_two_fluid_source & data){
         data.alpha0=1.0;
-        debug_rates(data,"defaultValues");
+        //debug_rates(data,"defaultValues");
     }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,19 +49,31 @@ namespace TWOFLUID
     template<typename T_EOS> 
     void PIP<T_EOS>::registerVariables(SAMS::harness &harness,data_two_fluid_source &plasma_source)
     {
-debug_rates(plasma_source,"registerVariables entry");
+//debug_rates(plasma_source,"registerVariables entry");
         auto &varRegistry = harness.variableRegistry;
 
         const int ghosts = 2; // 2 Ghost cells at top and bottom of each dimension
-debug_rates(plasma_source,"checkpoint");
+
+//printf("before ac \n");
+        //debug_rates(plasma_source,"before ac");
+        
         varRegistry.registerVariable<T_dataType>("PIPSource/ac", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
 
+//printf("after ac \n");
+//        debug_rates(plasma_source,"after ac");
+        
         varRegistry.registerVariable<T_dataType>("PIPSource/mass", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
         varRegistry.registerVariable<T_dataType>("PIPSource/mass_n", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
-        
+ 
+// printf("before energy \n");
+//        debug_rates(plasma_source,"before energy");
+               
         varRegistry.registerVariable<T_dataType>("PIPSource/energy", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
-        
+
+//printf("after energy \n");
+//        debug_rates(plasma_source,"after energy");        
+
         varRegistry.registerVariable<T_dataType>("PIPSource/energy_n", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
 
         varRegistry.registerVariable<T_dataType>("PIPSource/vx", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
@@ -81,23 +93,25 @@ debug_rates(plasma_source,"checkpoint");
         varRegistry.registerVariable<T_dataType>("PIPSource/gm_rec", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
         varRegistry.registerVariable<T_dataType>("PIPSource/ion_loss", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
-        
+
+//printf("before ionheating \n");
+//        debug_rates(plasma_source,"before ionheating");        
         varRegistry.registerVariable<T_dataType>("PIPSource/ion_heating", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts));
         
         //////////////////////////////////////////////////////////////
         //if (plasma_source.
-        printf("before Levels \n");
-        debug_rates(plasma_source,"before levels");
+//        printf("before Levels \n");
+//        debug_rates(plasma_source,"before levels");
 
         varRegistry.registerVariable<LARE::T_dataType>("level_populations", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0));
 
-printf("after Levels \n");
-debug_rates(plasma_source,"after populations");
+//printf("after Levels \n");
+//debug_rates(plasma_source,"after populations");
         
         varRegistry.registerVariable<LARE::T_dataType>("level_rates", pw::arrayTags::accelerated, SAMS::dimension("X", ghosts), SAMS::dimension("Y", ghosts), SAMS::dimension("Z", ghosts), SAMS::dimension("species",0), SAMS::dimension("species",0));
 
-printf("after rates \n");
-debug_rates(plasma_source,"after rates");        
+//printf("after rates \n");
+//debug_rates(plasma_source,"after rates");        
         //////////////////////////////////////////////////////////////
         if (plasma_source.vertex_rates){
             varRegistry.registerVariable<T_dataType>("PIPSource/rho_p_ac_vertex",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
@@ -133,7 +147,7 @@ debug_rates(plasma_source,"after rates");
             varRegistry.registerVariable<T_dataType>("PIPconserve/vz_n",  pw::arrayTags::accelerated, SAMS::dimension("X", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Y", ghosts, SAMS::staggerType::HALF_CELL), SAMS::dimension("Z", ghosts, SAMS::staggerType::HALF_CELL));
         }
         
-debug_rates(plasma_source,"checkpoint");
+//debug_rates(plasma_source,"registerVars end");
     }
 /////////////////////////////////////////////////////////////////////////////////
     template<typename T_EOS>
@@ -457,19 +471,19 @@ debug_rates(plasma_source,"checkpoint");
                 printf("CHECK rate[0,0] = %e\n",
        plasma_source.collisional_ionisation_rates(0,0));
 
-printf("CHECK rate[50,0] = %e\n",
-       plasma_source.collisional_ionisation_rates(50,0));
+//printf("CHECK rate[50,0] = %e\n",
+//       plasma_source.collisional_ionisation_rates(50,0));
 
-printf("CHECK rate[50,4] = %e\n",
-       plasma_source.collisional_ionisation_rates(50,4));
-       printf("dim0=%d dim1=%d\n",
-       plasma_source.collisional_ionisation_rates.getSize(0),
-       plasma_source.collisional_ionisation_rates.getSize(1));
+//printf("CHECK rate[50,4] = %e\n",
+//       plasma_source.collisional_ionisation_rates(50,4));
+       //printf("dim0=%d dim1=%d\n",
+//       plasma_source.collisional_ionisation_rates.getSize(0),
+//       plasma_source.collisional_ionisation_rates.getSize(1));
                 printf("T0 = %g\n", plasma_source.T0);
                 printf("n0 = %g\n", plasma_source.n0);
                 printf("plasma_source = %p\n", (void *)&plasma_source);
                 printf("level_offset = %d\n", plasma_source.level_offset);
-                printf("table size = %d\n",
+                printf("table size = %ld\n",
                        plasma_source.collisional_ionisation_rates.getSize(1));
                 
                 std::vector<LARE::T_dataType> Eion = {0,13.6,3.4,1.51,0.85,0.54,0.0};
@@ -499,7 +513,7 @@ printf("T0 value = %.17g\n", plasma_source.T0);
                     plasma_source.ref_rec+=rec_rate;
                 };
                 plasma_source.ref_rec=plasma_source.ref_rec*plasma_source.n0; //This all needs checking
-                printf("Reference recombination rate %LG \n",plasma_source.ref_rec); 
+                printf("Reference recombination rate %e \n",plasma_source.ref_rec); 
             };    
             exit(0);
         }
@@ -1039,11 +1053,12 @@ DEVICEPREFIX INLINE LARE::T_dataType interpolate_collisional_ionisation(
     const data_two_fluid_source &ps, LARE::T_dataType temperature,
     LARE::T_indexType level_num)
 {
-if (temperature==10000.0){printf("ION DEBUG: lower=%d offset=%d li=%d size=%d\n",
-       level_num,
-       ps.level_offset,
-       level_num - ps.level_offset,
-       ps.collisional_ionisation_rates.getSize(1));}
+//if (temperature==10000.0){printf("ION DEBUG: lower=%d offset=%d li=%d size=%d\n",
+//       level_num,
+//       ps.level_offset,
+//       level_num - ps.level_offset,
+//       ps.collisional_ionisation_rates.getSize(1));}
+       
     const LARE::T_indexType li = level_num - static_cast<LARE::T_indexType>(ps.level_offset);
     if (li < 0 || li >= ps.collisional_ionisation_rates.getSize(1)) return 0.0;
     const LARE::T_dataType logT = std::log10(temperature);
@@ -1168,7 +1183,7 @@ void PIP<T_EOS>::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     svManager.allocate(plasma_source.radiative_excitation_rates,    lo_range, up_range);
     svManager.allocate(plasma_source.radiative_de_excitation_rates, lo_range, up_range);
     svManager.allocate(plasma_source.radiative_ionisation_rates,    lo_range);
-printf("manager address = %p\n", &svManager);
+//printf("manager address = %p\n", &svManager);
 
     // Read logT
     int var_logT = -1;
@@ -1233,12 +1248,12 @@ for(int i=0;i<n_lower;i++)
            plasma_source.collisional_ionisation_rates(50,i));
 }
 
-printf("lb0=%d ub0=%d size0=%d\n",
+printf("lb0=%ld ub0=%ld size0=%ld\n",
        plasma_source.collisional_ionisation_rates.getLowerBound(0),
        plasma_source.collisional_ionisation_rates.getUpperBound(0),
        plasma_source.collisional_ionisation_rates.getSize(0));
 
-printf("lb1=%d ub1=%d size1=%d\n",
+printf("lb1=%ld ub1=%ld size1=%ld\n",
        plasma_source.collisional_ionisation_rates.getLowerBound(1),
        plasma_source.collisional_ionisation_rates.getUpperBound(1),
        plasma_source.collisional_ionisation_rates.getSize(1));
@@ -1254,8 +1269,6 @@ printf("exc ptr  = %p\n",
 printf("before return\n");
 printf("mid = %.16e\n",
        plasma_source.collisional_ionisation_rates(50,4));
-
-svManager.clear();
 
 printf("after clear\n");
 printf("mid = %.16e\n",
@@ -1281,8 +1294,8 @@ printf("exc ptr  = %p\n",
 
     const LARE::T_dataType T_test = std::pow(10.0, logT_test);
     
-    printf("grid size = %d\n", plasma_source.grid_logT.getSize(0));
-    printf("rate size = %d\n", plasma_source.collisional_ionisation_rates.getSize(0));
+    printf("grid size = %ld\n", plasma_source.grid_logT.getSize(0));
+    printf("rate size = %ld\n", plasma_source.collisional_ionisation_rates.getSize(0));
     printf("first rate = %e\n",
        plasma_source.collisional_ionisation_rates(0,0));
 
@@ -1326,7 +1339,7 @@ printf("CHECK rate[50,0] = %e\n",
 
 printf("CHECK rate[50,4] = %e\n",
        plasma_source.collisional_ionisation_rates(50,4));
-       printf("dim0=%d dim1=%d\n",
+       printf("dim0=%ld dim1=%ld\n",
        plasma_source.collisional_ionisation_rates.getSize(0),
        plasma_source.collisional_ionisation_rates.getSize(1));
 }
