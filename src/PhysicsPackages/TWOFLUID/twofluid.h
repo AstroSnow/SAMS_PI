@@ -131,7 +131,6 @@ namespace TWOFLUID
             void initialize(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 two_fluid_read_rates(plasma_source);
                 two_fluid_test_rates(plasma_source);
-                debug_rates(plasma_source,"initialize after read");
                 };
             void defaultValues(data_two_fluid_source & plasma_source);
             void allocate(data_two_fluid_source &plasma_source,SAMS::harness &harness);
@@ -146,7 +145,6 @@ namespace TWOFLUID
             
             void initialiseSource(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 printf("Getting IC for two_fluid rates \n");
-                debug_rates(plasma_source,"initialiseSource entry");
                 get_ac(data,dataNeutral,plasma_source);
                 if (plasma_source.ion_rec_nlevel) {set_reference_recombination(data,plasma_source);}
                 get_two_fluid_source(data,dataNeutral,plasma_source);

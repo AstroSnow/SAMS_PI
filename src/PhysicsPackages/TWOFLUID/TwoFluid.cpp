@@ -468,35 +468,9 @@ namespace TWOFLUID
                 LARE::T_dataType mass_electron=9.10938356e-31; //electron mass in kg
                 LARE::T_indexType nLevels=6;
                 
-                printf("CHECK rate[0,0] = %e\n",
-       plasma_source.collisional_ionisation_rates(0,0));
-
-//printf("CHECK rate[50,0] = %e\n",
-//       plasma_source.collisional_ionisation_rates(50,0));
-
-//printf("CHECK rate[50,4] = %e\n",
-//       plasma_source.collisional_ionisation_rates(50,4));
-       //printf("dim0=%d dim1=%d\n",
-//       plasma_source.collisional_ionisation_rates.getSize(0),
-//       plasma_source.collisional_ionisation_rates.getSize(1));
-                printf("T0 = %g\n", plasma_source.T0);
-                printf("n0 = %g\n", plasma_source.n0);
-                printf("plasma_source = %p\n", (void *)&plasma_source);
-                printf("level_offset = %d\n", plasma_source.level_offset);
-                printf("table size = %ld\n",
-                       plasma_source.collisional_ionisation_rates.getSize(1));
-                
                 std::vector<LARE::T_dataType> Eion = {0,13.6,3.4,1.51,0.85,0.54,0.0};
                 std::vector<LARE::T_dataType> gn = {0,2,8,18,32,50,1};
                 
-                printf("direct ion test = %e\n",
-       interpolate_collisional_ionisation(plasma_source, 10000.0, 1));
-
-printf("T0 ion test = %e\n",
-       interpolate_collisional_ionisation(plasma_source, plasma_source.T0, 1));
-
-printf("T0 value = %.17g\n", plasma_source.T0);
-
                 for (LARE::T_indexType lower_level = 1; lower_level < nLevels; ++lower_level) {
                     LARE::T_dataType rate_coefficient = interpolate_collisional_ionisation(plasma_source,
                                                                                            plasma_source.T0, 
@@ -509,7 +483,7 @@ printf("T0 value = %.17g\n", plasma_source.T0);
                     std::pow(2.0*std::numbers::pi*kb_ev*plasma_source.T0*mass_electron/h_ev,-3.0/2.0);
                     LARE::T_dataType rec_rate=sahaRatio*ion_rate;
                     
-                    printf("Reference recombination rate %G %G \n",rate_coefficient,plasma_source.n0); 
+                    printf("Reference recombination rate %G %G %G\n",rec_rate,plasma_source.n0,plasma_source.T0); 
                     plasma_source.ref_rec+=rec_rate;
                 };
                 plasma_source.ref_rec=plasma_source.ref_rec*plasma_source.n0; //This all needs checking
@@ -1234,46 +1208,6 @@ void PIP<T_EOS>::two_fluid_read_rates(data_two_fluid_source &plasma_source){
     nc_close(ncid);
     fprintf(stdout, "Rates read successfully. n_tsample=%zu, n_lower=%zu, n_upper=%zu, level_offset=%i\n",
             n_tsamp, n_lower, n_upper, plasma_source.level_offset);
-            
-        for(int i=0;i<n_lower;i++)
-{
-    printf("ion[%d] = %.16e\n",
-           i,
-           plasma_source.radiative_ionisation_rates(i));
-}
-for(int i=0;i<n_lower;i++)
-{
-    printf("cion[50,%d] = %.16e\n",
-           i,
-           plasma_source.collisional_ionisation_rates(50,i));
-}
-
-printf("lb0=%ld ub0=%ld size0=%ld\n",
-       plasma_source.collisional_ionisation_rates.getLowerBound(0),
-       plasma_source.collisional_ionisation_rates.getUpperBound(0),
-       plasma_source.collisional_ionisation_rates.getSize(0));
-
-printf("lb1=%ld ub1=%ld size1=%ld\n",
-       plasma_source.collisional_ionisation_rates.getLowerBound(1),
-       plasma_source.collisional_ionisation_rates.getUpperBound(1),
-       plasma_source.collisional_ionisation_rates.getSize(1));
-
-printf("grid ptr = %p\n",
-       plasma_source.grid_logT.data());
-
-printf("exc ptr  = %p\n",
-       plasma_source.hydrogen_excitation_rate.data());
-        
-        
-        
-printf("before return\n");
-printf("mid = %.16e\n",
-       plasma_source.collisional_ionisation_rates(50,4));
-
-printf("after clear\n");
-printf("mid = %.16e\n",
-       plasma_source.collisional_ionisation_rates(50,4));
-
 
     return;
 }
@@ -1285,19 +1219,12 @@ void PIP<T_EOS>::two_fluid_test_rates(const data_two_fluid_source &plasma_source
     constexpr LARE::T_indexType lower_level  = 1;
     constexpr LARE::T_indexType upper_level  = 5;
 
-
-printf("grid ptr = %p\n",
-       plasma_source.grid_logT.data());
-
-printf("exc ptr  = %p\n",
-       plasma_source.hydrogen_excitation_rate.data());
-
     const LARE::T_dataType T_test = std::pow(10.0, logT_test);
     
-    printf("grid size = %ld\n", plasma_source.grid_logT.getSize(0));
-    printf("rate size = %ld\n", plasma_source.collisional_ionisation_rates.getSize(0));
-    printf("first rate = %e\n",
-       plasma_source.collisional_ionisation_rates(0,0));
+//    printf("grid size = %ld\n", plasma_source.grid_logT.getSize(0));
+//    printf("rate size = %ld\n", plasma_source.collisional_ionisation_rates.getSize(0));
+//    printf("first rate = %e\n",
+//       plasma_source.collisional_ionisation_rates(0,0));
 
     fprintf(stdout, "\n--- two_fluid_test_rates: logT=%.1f, lower=%d, upper=%d ---\n",
             logT_test, static_cast<int>(lower_level), static_cast<int>(upper_level));
@@ -1329,7 +1256,8 @@ printf("exc ptr  = %p\n",
             static_cast<int>(upper_level),
             get_radiative_ionisation(plasma_source, upper_level));
     fprintf(stdout, "---\n\n");
-    printf("plasma_source = %p\n", (void *)&plasma_source);
+    
+    /*printf("plasma_source = %p\n", (void *)&plasma_source);
     
                     printf("CHECK rate[0,0] = %e\n",
        plasma_source.collisional_ionisation_rates(0,0));
@@ -1342,6 +1270,8 @@ printf("CHECK rate[50,4] = %e\n",
        printf("dim0=%ld dim1=%ld\n",
        plasma_source.collisional_ionisation_rates.getSize(0),
        plasma_source.collisional_ionisation_rates.getSize(1));
+    */
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////
