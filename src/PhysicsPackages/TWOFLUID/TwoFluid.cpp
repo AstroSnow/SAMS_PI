@@ -851,7 +851,7 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
         
         
         //Get velocity at cell centres
-        SAMS::T_dataType  v_x_plasma_centre=  (data.vx(ix  , iy  , iz  ) + 
+        SAMS::T_dataType  vx_centre=  (data.vx(ix  , iy  , iz  ) + 
                                         data.vx(ix-1, iy  , iz  ) + 
                                         data.vx(ix  , iy-1, iz  ) + 
                                         data.vx(ix-1, iy-1, iz  ) + 
@@ -860,7 +860,7 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
                                         data.vx(ix  , iy-1, iz-1) + 
                                         data.vx(ix-1, iy-1, iz-1))* 
                                         0.125;
-        SAMS::T_dataType  v_y_plasma_centre=  (data.vy(ix  , iy  , iz  ) + 
+        SAMS::T_dataType  vy_centre=  (data.vy(ix  , iy  , iz  ) + 
                                         data.vy(ix-1, iy  , iz  ) + 
                                         data.vy(ix  , iy-1, iz  ) + 
                                         data.vy(ix-1, iy-1, iz  ) + 
@@ -869,7 +869,7 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
                                         data.vy(ix  , iy-1, iz-1) + 
                                         data.vy(ix-1, iy-1, iz-1))* 
                                         0.125;
-        SAMS::T_dataType  v_z_plasma_centre=  (data.vz(ix  , iy  , iz  ) + 
+        SAMS::T_dataType  vz_centre=  (data.vz(ix  , iy  , iz  ) + 
                                         data.vz(ix-1, iy  , iz  ) + 
                                         data.vz(ix  , iy-1, iz  ) + 
                                         data.vz(ix-1, iy-1, iz  ) + 
@@ -878,7 +878,7 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
                                         data.vz(ix  , iy-1, iz-1) + 
                                         data.vz(ix-1, iy-1, iz-1))* 
                                         0.125;
-        SAMS::T_dataType  v_x_neutral_centre= (dataNeutral.vx(ix  , iy  , iz  ) + 
+        SAMS::T_dataType  vx_n_centre= (dataNeutral.vx(ix  , iy  , iz  ) + 
                                         dataNeutral.vx(ix-1, iy  , iz  ) + 
                                         dataNeutral.vx(ix  , iy-1, iz  ) + 
                                         dataNeutral.vx(ix-1, iy-1, iz  ) + 
@@ -887,7 +887,7 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
                                         dataNeutral.vx(ix  , iy-1, iz-1) + 
                                         dataNeutral.vx(ix-1, iy-1, iz-1))* 
                                         0.125;
-        SAMS::T_dataType  v_y_neutral_centre= (dataNeutral.vy(ix  , iy  , iz  ) + 
+        SAMS::T_dataType  vy_n_centre= (dataNeutral.vy(ix  , iy  , iz  ) + 
                                         dataNeutral.vy(ix-1, iy  , iz  ) + 
                                         dataNeutral.vy(ix  , iy-1, iz  ) + 
                                         dataNeutral.vy(ix-1, iy-1, iz  ) + 
@@ -896,7 +896,7 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
                                         dataNeutral.vy(ix  , iy-1, iz-1) + 
                                         dataNeutral.vy(ix-1, iy-1, iz-1))* 
                                         0.125;
-        SAMS::T_dataType  v_z_neutral_centre= (dataNeutral.vz(ix  , iy  , iz  ) + 
+        SAMS::T_dataType  vz_n_centre= (dataNeutral.vz(ix  , iy  , iz  ) + 
                                         dataNeutral.vz(ix-1, iy  , iz  ) + 
                                         dataNeutral.vz(ix  , iy-1, iz  ) + 
                                         dataNeutral.vz(ix-1, iy-1, iz  ) + 
@@ -906,35 +906,49 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
                                         dataNeutral.vz(ix-1, iy-1, iz-1))* 
                                         0.125;
         
-        SAMS::T_dataType  vp2=v_x_plasma_centre*v_x_plasma_centre+
-                              v_y_plasma_centre*v_y_plasma_centre+
-                              v_z_plasma_centre*v_z_plasma_centre;
+        //SAMS::T_dataType  vp2=v_x_plasma_centre*v_x_plasma_centre+
+        //                      v_y_plasma_centre*v_y_plasma_centre+
+        //                      v_z_plasma_centre*v_z_plasma_centre;
                               
-        SAMS::T_dataType  vn2=v_x_neutral_centre*v_x_neutral_centre+
-                              v_y_neutral_centre*v_y_neutral_centre+
-                              v_z_neutral_centre*v_z_neutral_centre;
+        //SAMS::T_dataType  vn2=v_x_neutral_centre*v_x_neutral_centre+
+        //                      v_y_neutral_centre*v_y_neutral_centre+
+        //                      v_z_neutral_centre*v_z_neutral_centre;
         
-        SAMS::T_dataType  vpvn= v_x_plasma_centre*v_x_neutral_centre+
-                                v_y_plasma_centre*v_y_neutral_centre+
-                                v_z_plasma_centre*v_z_neutral_centre;                      
+        //SAMS::T_dataType  vpvn= v_x_plasma_centre*v_x_neutral_centre+
+        //                        v_y_plasma_centre*v_y_neutral_centre+
+        //                        v_z_plasma_centre*v_z_neutral_centre;   
+        
+        SAMS::T_dataType dvx = vx_n_centre - vx_centre;
+        SAMS::T_dataType dvy = vy_n_centre - vy_centre;
+        SAMS::T_dataType dvz = vz_n_centre - vz_centre;
+
+        SAMS::T_dataType vd2 = dvx*dvx + dvy*dvy + dvz*dvz;
+       
+        plasma_source.source_energy(ix,iy,iz)+=plasma_source.gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)*\
+                        0.5*vd2 \
+                        /data.rho(ix,iy,iz);
+        //printf("getting neutral energy source terms \n");
+        plasma_source.source_energy_n(ix,iy,iz)+=plasma_source.gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)*\
+                        0.5*vd2\
+                        /dataNeutral.rho(ix,iy,iz);
         
         //Pressure 
         SAMS::T_dataType  pr_p=data.energy_ion(ix,iy,iz)*(data.gas_gamma-1.0)*data.rho(ix,iy,iz); //Note that this is electron+ion pressure hence the factor of 0.5 in the TeIR formula
         SAMS::T_dataType  pr_n=dataNeutral.energy(ix,iy,iz)*(data.gas_gamma-1.0)*dataNeutral.rho(ix,iy,iz);
         
         //work done on the neutrals through ionisation/recombiation
-        SAMS::T_dataType  Hn=0.5*(plasma_source.gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)*(vp2-2.0*vpvn)+
-                                  plasma_source.gm_ion(ix,iy,iz)*vn2);
-        SAMS::T_dataType  Hp=0.5*(plasma_source.gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)*(vn2-2.0*vpvn)+
-                                  plasma_source.gm_rec(ix,iy,iz)*vp2);
+        //SAMS::T_dataType  Hn=0.5*(plasma_source.gm_rec(ix,iy,iz)*data.rho(ix,iy,iz)/dataNeutral.rho(ix,iy,iz)*(vp2-2.0*vpvn)+
+        //                          plasma_source.gm_ion(ix,iy,iz)*vn2);
+        //SAMS::T_dataType  Hp=0.5*(plasma_source.gm_ion(ix,iy,iz)*dataNeutral.rho(ix,iy,iz)/data.rho(ix,iy,iz)*(vn2-2.0*vpvn)+
+        //                          plasma_source.gm_rec(ix,iy,iz)*vp2);
                                   
         //Thermal equalisation from IR
         SAMS::T_dataType  TeIR=(plasma_source.gm_ion(ix,iy,iz)*pr_n-0.5*plasma_source.gm_rec(ix,iy,iz)*pr_p)/(data.gas_gamma-1.0);
         
         
         //Corrected energy source terms
-        plasma_source.source_energy(ix,iy,iz) +=Hp+TeIR/data.rho(ix,iy,iz);
-        plasma_source.source_energy_n(ix,iy,iz) +=Hn+TeIR/dataNeutral.rho(ix,iy,iz);
+        plasma_source.source_energy(ix,iy,iz) +=TeIR/data.rho(ix,iy,iz);
+        plasma_source.source_energy_n(ix,iy,iz) +=TeIR/dataNeutral.rho(ix,iy,iz);
         
         //Work out how much energy is spent/gained by IR processes
         if (plasma_source.ion_rec_empirical) { 
