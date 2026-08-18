@@ -40,12 +40,14 @@ namespace TWOFLUID
         LARE::volumeArray source_v_z; // velocity source term
         LARE::volumeArray source_energy; // energy source term
         LARE::volumeArray source_electron_energy; // energy source term
+        LARE::volumeArray source_kinetic_energy; // kinetic energy source term (for diagnostics only)
         
         LARE::volumeArray source_mass_n; // mass source term
         LARE::volumeArray source_v_x_n; // velocity source term
         LARE::volumeArray source_v_y_n; // velocity source term
         LARE::volumeArray source_v_z_n; // velocity source term
         LARE::volumeArray source_energy_n; // energy source term
+        LARE::volumeArray source_kinetic_energy_n; // kinetic energy source term (for diagnostics only)
         
         LARE::volumeArray gm_ion; //ionisation rate
         LARE::volumeArray gm_rec; //recombination rate
@@ -85,7 +87,7 @@ namespace TWOFLUID
        
         //Coupling physics
         bool collisions=true;
-        bool ion_rec_empirical=true;
+        bool ion_rec_empirical=false;
         bool ion_rec_nlevel=false;
         
         bool vertex_rates=false;
@@ -94,7 +96,8 @@ namespace TWOFLUID
         LARE::volumeArray gm_ion_vertex; //
         LARE::volumeArray gm_rec_vertex; // 
         
-        bool check_source=false;
+        bool check_conservation=false;
+        bool check_source=true;
     };
     
     struct oldData
@@ -153,7 +156,7 @@ namespace TWOFLUID
             
             void getVariables(data_two_fluid_source &plasma_source,oldData &oldData, SAMS::harness &harness){
                 allocate(plasma_source, harness);
-                if (plasma_source.check_source) {allocate_conserved(oldData,harness);}
+                if (plasma_source.check_conservation) {allocate_conserved(oldData,harness);}
             }
             void beforeStartOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 get_ac(data,dataNeutral,plasma_source); //These might not be needed
@@ -162,7 +165,8 @@ namespace TWOFLUID
             };
             
             void applySourceTermsStart(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData){
-                if (plasma_source.check_source) {copyState(data, dataNeutral, oldData);};
+                if (plasma_source.check_conservation) {copyState(data, dataNeutral, oldData);};
+                if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,plasma_source);};
                 apply_two_fluid_source(data,dataNeutral,plasma_source);
             };
 
@@ -170,7 +174,7 @@ namespace TWOFLUID
                 get_ac(data,dataNeutral,plasma_source);
                 get_two_fluid_source(data,dataNeutral,plasma_source);
                 apply_two_fluid_source(data,dataNeutral,plasma_source); 
-                if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,oldData);};
+                if (plasma_source.check_conservation) {checkConservation(data,dataNeutral,oldData);};
             };
 
             void calculateTimestep(SAMS::timeState &timeData,LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
@@ -222,6 +226,10 @@ namespace TWOFLUID
         void set_reference_recombination(LARE::LARE3DST<T_EOS>::simulationData &data,data_two_fluid_source &plasma_source);
 
         void checkSourceConservation(
+                LARE::LARE3DST<T_EOS>::simulationData &data,
+                LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
+                data_two_fluid_source &plasma_source);
+        void checkConservation(
                 LARE::LARE3DST<T_EOS>::simulationData &data,
                 LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
                 oldData &oldData);
