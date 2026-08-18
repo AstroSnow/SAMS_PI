@@ -98,6 +98,12 @@ namespace TWOFLUID
         
         bool check_conservation=false;
         bool check_source=true;
+        
+        bool substepping=false;
+        int substep_iter=0;
+        int substep_max_nsteps=100; // set a maximum number of step. Not done yet
+        SAMS::T_dataType  substep_dt=0;
+        SAMS::T_dataType  substep_time=0; //to make sure that the tiem is correct after the substeps
     };
     
     struct oldData
@@ -183,7 +189,14 @@ namespace TWOFLUID
                 set_dt_collisional(data,dataNeutral,plasma_source);
                 //printf("two_fluid timestep = %f \n",plasma_source.two_fluid_timestep);
                 //set_dt(data);
-                timeData.dt = plasma_source.two_fluid_timestep<timeData.dt ? plasma_source.two_fluid_timestep : timeData.dt;
+                if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
+                    //set up the substepping for the two-fluid routines
+                    int n_substeps=std::ceil(timeData.dt/plasma_source.two_fluid_timestep);
+                    plasma_source.substep_dt=timeData.dt/n_substeps;
+                    //IS THIS ALWAYS CALCULATED AFTER THE FLUID TIMESTEP?
+                } else {
+                    timeData.dt = plasma_source.two_fluid_timestep<timeData.dt ? plasma_source.two_fluid_timestep : timeData.dt;
+                }
                 if (timeData.time<=1.0e-6) {
                     timeData.dt = 1.0e-8<timeData.dt ? 1.0e-8 : timeData.dt;
                 }
