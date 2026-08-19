@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cassert>
 #include <string>
+#include <vector>
 #include "constants.h"
 #include "pp/parallelWrapper.h"
 #include "mpiManager.h"
@@ -39,12 +40,14 @@ namespace TWOFLUID
         LARE::volumeArray source_v_z; // velocity source term
         LARE::volumeArray source_energy; // energy source term
         LARE::volumeArray source_electron_energy; // energy source term
+        LARE::volumeArray source_kinetic_energy; // kinetic energy source term (for diagnostics only)
         
         LARE::volumeArray source_mass_n; // mass source term
         LARE::volumeArray source_v_x_n; // velocity source term
         LARE::volumeArray source_v_y_n; // velocity source term
         LARE::volumeArray source_v_z_n; // velocity source term
         LARE::volumeArray source_energy_n; // energy source term
+        LARE::volumeArray source_kinetic_energy_n; // kinetic energy source term (for diagnostics only)
         
         LARE::volumeArray gm_ion; //ionisation rate
         LARE::volumeArray gm_rec; //recombination rate
@@ -56,12 +59,25 @@ namespace TWOFLUID
 
         LARE::T_dataType alpha0; // Coupling coefficient
         
+        SAMS::T_dataType ref_rec; //Reference recombination rate
+        
         LARE::volumeArray4D level_populations; //4D array of level populations per cell
         LARE::volumeArray5D level_rates; //5D array of all the rates per cell
         
-        std::string data_path = "./data/atomic_rates_2.nc";
+        std::string data_path = "./data/hydrogen_atomic_rates.nc";
         LARE::hostLineArray grid_logT;
         LARE::hostVolumeArray hydrogen_excitation_rate;
+        
+        //pw::portableArrayManager rate_manager; //Rate manager
+        int level_offset = 1;                               // atomic level number at array index 0
+        std::vector<int> lower_level_map;                   // host: array_index -> level number
+        std::vector<int> upper_level_map;                   // host: array_index -> level number
+        LARE::hostVolumeArray collisional_excitation_rates; // [n_tsample][n_lower][n_upper]
+        LARE::hostPlaneArray collisional_ionisation_rates;  // [n_tsample][n_lower]
+        LARE::hostPlaneArray radiative_recombination_rates; // [n_tsample][n_lower]
+        LARE::hostPlaneArray radiative_excitation_rates;    // [n_lower][n_upper]
+        LARE::hostPlaneArray radiative_de_excitation_rates; // [n_lower][n_upper]
+        LARE::hostLineArray radiative_ionisation_rates;     // [n_lower]
         
         //Physical parameters
         SAMS::T_dataType  T0=10000.0;//data.T_reference; //Reference temperature
@@ -71,7 +87,7 @@ namespace TWOFLUID
        
         //Coupling physics
         bool collisions=true;
-        bool ion_rec_empirical=true;
+        bool ion_rec_empirical=false;
         bool ion_rec_nlevel=false;
         
         bool vertex_rates=false;
@@ -80,7 +96,14 @@ namespace TWOFLUID
         LARE::volumeArray gm_ion_vertex; //
         LARE::volumeArray gm_rec_vertex; // 
         
-        bool check_source=false;
+        bool check_conservation=false;
+        bool check_source=true;
+        
+        bool substepping=false;
+        int substep_iter=0;
+        int substep_max_nsteps=100; // set a maximum number of step. Not done yet
+        SAMS::T_dataType  substep_dt=0;
+        SAMS::T_dataType  substep_time=0; //to make sure that the tiem is correct after the substeps
     };
     
     struct oldData
@@ -114,22 +137,32 @@ namespace TWOFLUID
             
             using T_dataType = SAMS::T_dataType;
 
-            void initialize(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){};
+            void initialize(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
+                two_fluid_read_rates(plasma_source);
+                two_fluid_test_rates(plasma_source);
+                };
             void defaultValues(data_two_fluid_source & plasma_source);
             void allocate(data_two_fluid_source &plasma_source,SAMS::harness &harness);
             void allocate_conserved(oldData &oldData,SAMS::harness &harness);
-            void registerVariables(SAMS::harness &harness);
+            void registerVariables(SAMS::harness &harness,data_two_fluid_source &plasma_source);
+            
+            void registerAxes(SAMS::harness &harness)
+            {
+                auto &axisReg = harness.axisRegistry;
+                axisReg.registerLogicalAxis("species");
+            }
             
             void initialiseSource(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 printf("Getting IC for two_fluid rates \n");
                 get_ac(data,dataNeutral,plasma_source);
+                if (plasma_source.ion_rec_nlevel) {set_reference_recombination(data,plasma_source);}
                 get_two_fluid_source(data,dataNeutral,plasma_source);
                 if (plasma_source.ion_rec_empirical) {set_bc_heating(data,plasma_source);}
             }
             
             void getVariables(data_two_fluid_source &plasma_source,oldData &oldData, SAMS::harness &harness){
                 allocate(plasma_source, harness);
-                allocate_conserved(oldData,harness);
+                if (plasma_source.check_conservation) {allocate_conserved(oldData,harness);}
             }
             void beforeStartOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 get_ac(data,dataNeutral,plasma_source); //These might not be needed
@@ -138,7 +171,8 @@ namespace TWOFLUID
             };
             
             void applySourceTermsStart(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData){
-                if (plasma_source.check_source) {copyState(data, dataNeutral, oldData);};
+                if (plasma_source.check_conservation) {copyState(data, dataNeutral, oldData);};
+                if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,plasma_source);};
                 apply_two_fluid_source(data,dataNeutral,plasma_source);
             };
 
@@ -146,16 +180,23 @@ namespace TWOFLUID
                 get_ac(data,dataNeutral,plasma_source);
                 get_two_fluid_source(data,dataNeutral,plasma_source);
                 apply_two_fluid_source(data,dataNeutral,plasma_source); 
-                if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,oldData);};
+                if (plasma_source.check_conservation) {checkConservation(data,dataNeutral,oldData);};
             };
 
             void calculateTimestep(SAMS::timeState &timeData,LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 //get_ac(data,dataNeutral,plasma_source);
                 //get_two_fluid_source(data,dataNeutral,plasma_source);
                 set_dt_collisional(data,dataNeutral,plasma_source);
-                printf("two_fluid timestep = %f \n",plasma_source.two_fluid_timestep);
+                //printf("two_fluid timestep = %f \n",plasma_source.two_fluid_timestep);
                 //set_dt(data);
-                timeData.dt = plasma_source.two_fluid_timestep<timeData.dt ? plasma_source.two_fluid_timestep : timeData.dt;
+                if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
+                    //set up the substepping for the two-fluid routines
+                    int n_substeps=std::ceil(timeData.dt/plasma_source.two_fluid_timestep);
+                    plasma_source.substep_dt=timeData.dt/n_substeps;
+                    //IS THIS ALWAYS CALCULATED AFTER THE FLUID TIMESTEP?
+                } else {
+                    timeData.dt = plasma_source.two_fluid_timestep<timeData.dt ? plasma_source.two_fluid_timestep : timeData.dt;
+                }
                 if (timeData.time<=1.0e-6) {
                     timeData.dt = 1.0e-8<timeData.dt ? 1.0e-8 : timeData.dt;
                 }
@@ -193,9 +234,15 @@ namespace TWOFLUID
         void get_collisional_source_terms(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
         void get_ion_rec_source_terms(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source);
         void two_fluid_read_rates(data_two_fluid_source &plasma_source);
+        void two_fluid_test_rates(const data_two_fluid_source &plasma_source);
         void set_bc_heating(LARE::LARE3DST<T_EOS>::simulationData &data,data_two_fluid_source &plasma_source);
+        void set_reference_recombination(LARE::LARE3DST<T_EOS>::simulationData &data,data_two_fluid_source &plasma_source);
 
         void checkSourceConservation(
+                LARE::LARE3DST<T_EOS>::simulationData &data,
+                LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
+                data_two_fluid_source &plasma_source);
+        void checkConservation(
                 LARE::LARE3DST<T_EOS>::simulationData &data,
                 LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
                 oldData &oldData);
@@ -203,6 +250,31 @@ namespace TWOFLUID
             LARE::LARE3DST<T_EOS>::simulationData &data,
             LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
             oldData &oldData);
+            
+        void debug_rates(data_two_fluid_source& ps, const char* name)
+{
+
+printf("DEBUG: %s\n", name);
+    printf("first  = %.16e\n",
+           ps.collisional_ionisation_rates(0,0));
+
+    printf("mid1   = %.16e\n",
+           ps.collisional_ionisation_rates(50,0));
+
+    printf("mid2   = %.16e\n",
+           ps.collisional_ionisation_rates(50,4));
+
+    printf("last   = %.16e\n",
+           ps.collisional_ionisation_rates(100,4));
+           
+   
+printf("data ptr = %p\n",
+       ps.collisional_ionisation_rates.data());
+
+printf("%p\n",
+       &ps.collisional_ionisation_rates(50,4));
+       
+    }
     };
 }
 
