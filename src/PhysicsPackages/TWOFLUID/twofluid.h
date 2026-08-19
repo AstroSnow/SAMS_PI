@@ -176,8 +176,9 @@ namespace TWOFLUID
                 if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,plasma_source);};
                 if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
                     //set up the substepping for the two-fluid routines
-                    int n_substeps=std::ceil(timeData.dt/plasma_source.two_fluid_timestep);
+                    int n_substeps=std::ceil(0.5*timeData.dt/plasma_source.two_fluid_timestep);
                     plasma_source.substep_dt=0.5*timeData.dt/n_substeps; //0.5 from strang split. Not sure if needed elsewhere
+                    printf("Beginning subcycle, n, dt, dt_plasma, dt_sub %li, %.12e, %.12e, %.12e \n",n_substeps,timeData.dt, plasma_source.two_fluid_timestep,plasma_source.substep_dt);
                     for (int i = 0; i < n_substeps; i++) {
                         get_ac(data,dataNeutral,plasma_source);
                         get_two_fluid_source(data,dataNeutral,plasma_source);
@@ -190,10 +191,24 @@ namespace TWOFLUID
                 }
             };
 
-            void afterEndOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData){
-                get_ac(data,dataNeutral,plasma_source);
-                get_two_fluid_source(data,dataNeutral,plasma_source);
-                apply_two_fluid_source(data,dataNeutral,plasma_source); 
+            void afterEndOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData,SAMS::timeState &timeData){
+                if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
+                    //set up the substepping for the two-fluid routines
+                    int n_substeps=std::ceil(0.5*timeData.dt/plasma_source.two_fluid_timestep);
+                    plasma_source.substep_dt=0.5*timeData.dt/n_substeps; //0.5 from strang split. Not sure if needed elsewhere
+                    printf("Second subcycle, n, dt, dt_plasma, dt_sub %li, %.12e, %.12e, %.12e \n",n_substeps,timeData.dt, plasma_source.two_fluid_timestep,plasma_source.substep_dt);
+                    for (int i = 0; i < n_substeps; i++) {
+                        get_ac(data,dataNeutral,plasma_source);
+                        get_two_fluid_source(data,dataNeutral,plasma_source);
+                        apply_two_fluid_source(data,dataNeutral,plasma_source);
+                    }
+                } else {
+                    //Explicit time integration
+                    plasma_source.substep_dt=0.5*data.dt;//0.5 from strang split.
+                    get_ac(data,dataNeutral,plasma_source);
+                    get_two_fluid_source(data,dataNeutral,plasma_source);
+                    apply_two_fluid_source(data,dataNeutral,plasma_source);
+                }
                 if (plasma_source.check_conservation) {checkConservation(data,dataNeutral,oldData);};
             };
 
