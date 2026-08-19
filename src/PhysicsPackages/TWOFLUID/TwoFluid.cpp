@@ -301,23 +301,23 @@ namespace TWOFLUID
             portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
                 //Note that the factor of 0.5 in these is due to Strang splitting
                 //Mass exchange terms
-                data.rho(ix,iy,iz)+=0.5*data.dt*plasma_source.source_mass(ix,iy,iz);
-                dataNeutral.rho(ix,iy,iz)+=0.5*data.dt*plasma_source.source_mass_n(ix,iy,iz);
+                data.rho(ix,iy,iz)+=plasma_source.substep_dt*plasma_source.source_mass(ix,iy,iz);
+                dataNeutral.rho(ix,iy,iz)+=plasma_source.substep_dt*plasma_source.source_mass_n(ix,iy,iz);
                 
                 //Apply the velocity exchange terms
-                data.vx(ix,iy,iz)       +=0.5*data.dt*plasma_source.source_v_x(ix,iy,iz);
-                dataNeutral.vx(ix,iy,iz)+=0.5*data.dt*plasma_source.source_v_x_n(ix,iy,iz);
+                data.vx(ix,iy,iz)       +=plasma_source.substep_dt*plasma_source.source_v_x(ix,iy,iz);
+                dataNeutral.vx(ix,iy,iz)+=plasma_source.substep_dt*plasma_source.source_v_x_n(ix,iy,iz);
                 
-                data.vy(ix,iy,iz)       +=0.5*data.dt*plasma_source.source_v_y(ix,iy,iz);
-                dataNeutral.vy(ix,iy,iz)+=0.5*data.dt*plasma_source.source_v_y_n(ix,iy,iz);
+                data.vy(ix,iy,iz)       +=plasma_source.substep_dt*plasma_source.source_v_y(ix,iy,iz);
+                dataNeutral.vy(ix,iy,iz)+=plasma_source.substep_dt*plasma_source.source_v_y_n(ix,iy,iz);
                 
-                data.vz(ix,iy,iz)       +=0.5*data.dt*plasma_source.source_v_z(ix,iy,iz);
-                dataNeutral.vz(ix,iy,iz)+=0.5*data.dt*plasma_source.source_v_z_n(ix,iy,iz);
+                data.vz(ix,iy,iz)       +=plasma_source.substep_dt*plasma_source.source_v_z(ix,iy,iz);
+                dataNeutral.vz(ix,iy,iz)+=plasma_source.substep_dt*plasma_source.source_v_z_n(ix,iy,iz);
                 
                 //Energy source terms - the 3/2 here needs fixing
-                data.energy_ion(ix,iy,iz)+=0.5*data.dt*plasma_source.source_energy(ix,iy,iz);
+                data.energy_ion(ix,iy,iz)+=plasma_source.substep_dt*plasma_source.source_energy(ix,iy,iz);
                 //data.energy_electron(ix,iy,iz)+=0.5*data.dt*plasma_source.source_energy(ix,iy,iz);
-                dataNeutral.energy(ix,iy,iz)+=0.5*data.dt*plasma_source.source_energy_n(ix,iy,iz);                 
+                dataNeutral.energy(ix,iy,iz)+=plasma_source.substep_dt*plasma_source.source_energy_n(ix,iy,iz);                 
             }, Range(-1,data.nx), Range(-1,data.ny), Range(-1,data.nz));
         }
         
