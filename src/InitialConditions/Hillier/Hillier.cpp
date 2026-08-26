@@ -34,7 +34,7 @@ namespace examples{
             data.t_end = 1000; // End time of the simulation
             data.dt_snapshots = data.t_end/10;
 
-            data.nx = 1024;
+            data.nx = 4096;
             data.ny = 2;
             data.nz = 2;
 
@@ -45,11 +45,11 @@ namespace examples{
             data.z_min = 0.0;
             data.z_max = (data.x_max - data.x_min) * data.nz / data.nx;
 
-            data.dt_multiplier = 0.8; // Default multiplier for time step
+            data.dt_multiplier = 1.0; // Default multiplier for time step
             // Geometry options: cartesian, cylindrical, spherical
             data.geometry = LARE::geometryType::Cartesian;
             // Shock viscosity coefficients
-            data.visc1 = 0.1;
+            data.visc1 = 0.8;
             data.visc2 = 1.0;
 
             // Ratio of specific heat capacities

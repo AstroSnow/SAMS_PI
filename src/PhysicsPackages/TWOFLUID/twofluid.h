@@ -87,7 +87,7 @@ namespace TWOFLUID
        
         //Coupling physics
         bool collisions=true;
-        bool ion_rec_empirical=true;
+        bool ion_rec_empirical=false;
         bool ion_rec_nlevel=false;
         
         bool vertex_rates=false;
