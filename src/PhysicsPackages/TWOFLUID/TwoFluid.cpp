@@ -13,6 +13,7 @@
 #include "harness.h"
 #include "runner.h"
 #include "io/writerProto.h"
+#include "petsc.h"
 
 #include "twofluid.h"
 
@@ -951,10 +952,10 @@ fprintf(stdout, "  radiative_excitation     (%d->%d) : %e\n",
         plasma_source.source_energy_n(ix,iy,iz) +=TeIR/dataNeutral.rho(ix,iy,iz);
         
         //Work out how much energy is spent/gained by IR processes
-        if (plasma_source.ion_rec_empirical) { 
-            //printf("ionisation energy, rho = %f %f \n",ionisation_energy, dataNeutral.rho(ix,iy,iz));
-            plasma_source.source_energy(ix,iy,iz)+=(plasma_source.ion_heating(ix,iy,iz)+plasma_source.ion_loss(ix,iy,iz))/data.rho(ix,iy,iz);//factor of pho comes from denergy density being specified
-        }
+//        if (plasma_source.ion_rec_empirical) { 
+//            //printf("ionisation energy, rho = %f %f \n",ionisation_energy, dataNeutral.rho(ix,iy,iz));
+//            plasma_source.source_energy(ix,iy,iz)+=(plasma_source.ion_heating(ix,iy,iz)+plasma_source.ion_loss(ix,iy,iz))/data.rho(ix,iy,iz);//factor of pho comes from denergy density being specified
+//        }
         
     }, Range(0,data.nx), Range(0,data.ny), Range(0,data.nz));
 
@@ -2041,4 +2042,109 @@ void PIP<T_EOS>::checkSourceConservation(
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
+
+// A context structure to bridge PETSc callbacks into your framework
+template<typename T_EOS>
+struct PETScBridgeCtx {
+    PIP<T_EOS> *pip_solver;
+    typename LARE::LARE3DST<T_EOS>::simulationData *data_ghost;
+    typename LARE::LARE3DNF<T_EOS>::simulationData *dataNeutral_ghost;
+    data_two_fluid_source *plasma_source;
+};
+
+// The unified PETSc RHS Evaluation function
+template<typename T_EOS>
+PetscErrorCode StiffPhysicsRHSCallback(TS ts, PetscReal t, Vec U, Vec F, void *ctx) {
+    auto *bridge = static_cast<PETScBridgeCtx<T_EOS>*>(ctx);
+    
+    PetscFunctionBeginUser;
+
+    // --- STEP 1: Unpack PETSc trial state U into your simulation data views ---
+    // This overrides the current rho, vx, vy, vz, and energy values inside
+    // bridge->data_ghost and bridge->dataNeutral_ghost with PETSc's internal guesses.
+    PetscCall(UnpackPETScVectorToViews(U, *(bridge->data_ghost), *(bridge->dataNeutral_ghost)));
+
+    // --- STEP 2: Call your exact routine completely unchanged ---
+    // This executes your parallel kernels via your portableWrapper layer,
+    // populating the plasma_source arrays with raw derivatives.
+    bridge->pip_solver->get_two_fluid_source(*(bridge->data_ghost), *(bridge->dataNeutral_ghost), *(bridge->plasma_source));
+
+    // --- STEP 3: Pack your calculated sources directly into PETSc's output Vector F ---
+    // This maps plasma_source.source_mass, source_energy, etc., straight to Vector F
+    PetscCall(PackSourcesToPETScVector(*(bridge->plasma_source), F));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+template<typename T_EOS>
+void PIP<T_EOS>::PackViewsToPETScVector(typename LARE::LARE3DST<T_EOS>::simulationData &data, 
+                                        typename LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, 
+                                        Vec &U) {
+    PetscScalar *u_raw;
+    PetscCallVoid(VecGetArray(U, &u_raw));
+
+    using Range = portableWrapper::Range;
+    int nx_start = -1, ny_start = -1, nz_start = -1;
+    int stride_x = data.nx + 2, stride_y = data.ny + 2;
+
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        T_indexType local_x = ix - nx_start;
+        T_indexType local_y = iy - ny_start;
+        T_indexType local_z = iz - nz_start;
+
+        T_indexType cell_1d = (local_z * stride_y * stride_x) + (local_y * stride_x) + local_x;
+        T_indexType idx = cell_1d * 10; 
+
+        u_raw[idx + 0] = data.rho(ix, iy, iz);
+        u_raw[idx + 1] = dataNeutral.rho(ix, iy, iz);
+        u_raw[idx + 2] = data.vx(ix, iy, iz);
+        u_raw[idx + 3] = data.vy(ix, iy, iz);
+        u_raw[idx + 4] = data.vz(ix, iy, iz);
+        u_raw[idx + 5] = dataNeutral.vx(ix, iy, iz);
+        u_raw[idx + 6] = dataNeutral.vy(ix, iy, iz);
+        u_raw[idx + 7] = dataNeutral.vz(ix, iy, iz);
+        u_raw[idx + 8] = data.energy_ion(ix, iy, iz); 
+        u_raw[idx + 9] = dataNeutral.energy(ix, iy, iz);
+    }, Range(-1, data.nx), Range(-1, data.ny), Range(-1, data.nz));
+
+    PetscCallVoid(VecRestoreArray(U, &u_raw));
+}
+
+template<typename T_EOS>
+void PIP<T_EOS>::UnpackPETScVectorToViews(Vec &U, 
+                                          typename LARE::LARE3DST<T_EOS>::simulationData &data, 
+                                          typename LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral) {
+    const PetscScalar *u_raw;
+    PetscCallVoid(VecGetArrayRead(U, &u_raw));
+
+    using Range = portableWrapper::Range;
+    int nx_start = -1, ny_start = -1, nz_start = -1;
+    int stride_x = data.nx + 2, stride_y = data.ny + 2;
+
+    portableWrapper::applyKernel(LAMBDA(T_indexType ix, T_indexType iy, T_indexType iz) {
+        T_indexType local_x = ix - nx_start;
+        T_indexType local_y = iy - ny_start;
+        T_indexType local_z = iz - nz_start;
+
+        T_indexType cell_1d = (local_z * stride_y * stride_x) + (local_y * stride_x) + local_x;
+        T_indexType idx = cell_1d * 10;
+
+        data.rho(ix, iy, iz)        = u_raw[idx + 0];
+        dataNeutral.rho(ix, iy, iz) = u_raw[idx + 1];
+        data.vx(ix, iy, iz)         = u_raw[idx + 2];
+        data.vy(ix, iy, iz)         = u_raw[idx + 3];
+        data.vz(ix, iy, iz)         = u_raw[idx + 4];
+        dataNeutral.vx(ix, iy, iz)  = u_raw[idx + 5];
+        dataNeutral.vy(ix, iy, iz)  = u_raw[idx + 6];
+        dataNeutral.vz(ix, iy, iz)  = u_raw[idx + 7];
+        data.energy_ion(ix, iy, iz) = u_raw[idx + 8];
+        dataNeutral.energy(ix, iy, iz) = u_raw[idx + 9];
+    }, Range(-1, data.nx), Range(-1, data.ny), Range(-1, data.nz));
+
+    PetscCallVoid(VecRestoreArrayRead(U, &u_raw));
+}
+
+// Explicit Instantiations
+template class TWOFLUID::PIP<LARE::idealGas>;
+
 }

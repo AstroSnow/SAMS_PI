@@ -54,6 +54,25 @@ if(NOT NetCDF_LIBRARIES)
 endif()
 ##################################
 
+# ==============================================================================
+# PETSc Configuration
+# ==============================================================================
+find_package(PkgConfig REQUIRED)
+# Search for the lowercase 'petsc' module configured by the apt installer
+pkg_check_modules(PETSC REQUIRED IMPORTED_TARGET petsc)
+
+if(PETSC_FOUND)
+  message(STATUS "Found PETSc: Version ${PETSC_VERSION}")
+  message(STATUS "PETSc Include Dirs: ${PETSC_INCLUDE_DIRS}")
+  
+  # Inject the PETSc include directories globally or link to targets later
+  include_directories(${PETSC_INCLUDE_DIRS})
+  
+  # Force matching multi-arch system path mapping if needed
+  include_directories("/usr/include/petsc")
+endif()
+# ==============================================================================
+
 if (TIMER_SUPPORT)
   message(STATUS "Enabling timer support")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_TIMER")
@@ -237,3 +256,9 @@ if (KOKKOS_CUDA OR KOKKOS_HIP OR KOKKOS_SYCL OR KOKKOS_OPENMP)
   find_package(Kokkos REQUIRED)
   target_link_libraries(sams PRIVATE Kokkos::kokkos)
 endif()
+
+target_link_libraries(sams PRIVATE ${MPI_CXX_LIBRARIES} PkgConfig::PETSC)
+target_include_directories(sams 
+    PRIVATE 
+    ${MPI_CXX_INCLUDE_PATH}
+)

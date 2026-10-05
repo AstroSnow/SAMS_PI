@@ -16,6 +16,7 @@
 #include "harness.h"
 #include "runner.h"
 #include "io/writerProto.h"
+#include "petsc.h"
 
 #include "shared_data.h"
 #include "variableRegistry.h"
@@ -26,6 +27,14 @@
 #include "LARE/shared_data.h"
 #include "LARE3DSingleTemperature/shared_data.h"
 #include "LARE3DNeutralFluid/shared_data.h"
+
+template<typename T_EOS>
+struct PETScBridgeCtx {
+    void *pip_solver; // Using void* or forward declaration to avoid circular dependencies
+    void *data_ghost;
+    void *dataNeutral_ghost;
+    void *plasma_source;
+};
 
 namespace TWOFLUID
 {
@@ -87,7 +96,7 @@ namespace TWOFLUID
        
         //Coupling physics
         bool collisions=true;
-        bool ion_rec_empirical=false;
+        bool ion_rec_empirical=true;
         bool ion_rec_nlevel=false;
         
         bool vertex_rates=false;
@@ -99,9 +108,11 @@ namespace TWOFLUID
         bool check_conservation=false;
         bool check_source=false;
         
+	bool implicit=true; // flag for using the implicit solvers from PETSc
+
         bool substepping=true;
         int substep_iter=0;
-        int substep_max_nsteps=100; // set a maximum number of step. Not done yet
+        int substep_max_nsteps=50; // set a maximum number of step. Not done yet
         SAMS::T_dataType  substep_dt=1.0;
         SAMS::T_dataType  substep_max_speedup=1000.0; //Maximum substeps. The excess decreases the timestep
         SAMS::T_dataType  substep_time=0.0; //to make sure that the tiem is correct after the substeps
@@ -128,8 +139,34 @@ namespace TWOFLUID
     template<typename T_EOS=idealGas>
     class PIP
     {
-        public:
-            // Blocks compilation if the Equation Of State is not idealGas
+	private:
+	    TS  h_ts;   // Persistent PETSc Time-stepping Context
+	    Vec u_vec;  // Persistent Solution Vector
+	    Vec f_vec;  // Persistent Derivative Vector
+	    
+	    // Structure to hold pointers so your RHS callback function can access them
+	    PETScBridgeCtx<T_EOS> bridge_ctx;         
+// --- ADD THESE PLACEHOLDER HELPER METHOD DECLARATIONS ---
+        void PackViewsToPETScVector(typename LARE::LARE3DST<T_EOS>::simulationData &data, 
+                                    typename LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, 
+                                    Vec &U) {
+            // Placeholder: We will map your portableWrapper logic here next
+        }
+
+        void UnpackPETScVectorToViews(Vec &U, 
+                                      typename LARE::LARE3DST<T_EOS>::simulationData &data, 
+                                      typename LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral) {
+            // Placeholder: We will map back out to your data structures here next
+        }
+
+	public:
+	    // Call this once during the initial setup/start of SAMS
+	    void initializePETScSolver(int total_local_cells);
+	    // Call this once at the very end of your simulation run
+	    void finalizePETScSolver();
+            
+
+	    // Blocks compilation if the Equation Of State is not idealGas
             static_assert(std::is_same_v<T_EOS, idealGas>);
         
             static constexpr std::string_view name = "PIP";
@@ -174,11 +211,33 @@ namespace TWOFLUID
             void applySourceTermsStart(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData,SAMS::timeState &timeData){
                 if (plasma_source.check_conservation) {copyState(data, dataNeutral, oldData);};
                 if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,plasma_source);};
-                if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
+                if (plasma_source.implicit) {
+		        // =====================================================================
+		        // NEW: BRANCH 1 - PETSc Implicit Stiff Solver Loop
+		        // =====================================================================
+		        // Strang split time delta is 0.5 * dt
+			plasma_source.substep_dt = 0.5 * timeData.dt; 
+
+		        // 1. Pack current grid values into the vector (Declared below)
+		        PackViewsToPETScVector(data, dataNeutral, this->u_vec);
+
+		        // 2. Set precise time window bounds using the Void macro variant
+		        PetscCallVoid(TSSetTime(this->h_ts, timeData.time));
+		        PetscCallVoid(TSSetTimeStep(this->h_ts, plasma_source.substep_dt));
+		        PetscCallVoid(TSSetMaxTime(this->h_ts, timeData.time + plasma_source.substep_dt));
+
+		        // 3. Solve the point-wise coupled systems implicitly
+		        printf("Executing implicit PETSc source solve for dt = %.12e\n", plasma_source.substep_dt);
+		        PetscCallVoid(TSSolve(this->h_ts, this->u_vec));
+
+		        // 4. Unpack solved implicit states back into grid arrays
+		        UnpackPETScVectorToViews(this->u_vec, data, dataNeutral);
+
+	        } else if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
                     //set up the substepping for the two-fluid routines
                     int n_substeps=std::ceil(0.5*timeData.dt/plasma_source.two_fluid_timestep);
                     plasma_source.substep_dt=0.5*timeData.dt/n_substeps; //0.5 from strang split. Not sure if needed elsewhere
-                    printf("Beginning subcycle, n, dt, dt_plasma, dt_sub %li, %.12e, %.12e, %.12e \n",n_substeps,timeData.dt, plasma_source.two_fluid_timestep,plasma_source.substep_dt);
+                    printf("Beginning subcycle, n, dt, dt_plasma, dt_sub %i, %.12e, %.12e, %.12e \n",n_substeps,timeData.dt, plasma_source.two_fluid_timestep,plasma_source.substep_dt);
                     for (int i = 0; i < n_substeps; i++) {
                         get_ac(data,dataNeutral,plasma_source);
                         get_two_fluid_source(data,dataNeutral,plasma_source);
@@ -196,7 +255,7 @@ namespace TWOFLUID
                     //set up the substepping for the two-fluid routines
                     int n_substeps=std::ceil(0.5*timeData.dt/plasma_source.two_fluid_timestep);
                     plasma_source.substep_dt=0.5*timeData.dt/n_substeps; //0.5 from strang split. Not sure if needed elsewhere
-                    printf("Second subcycle, n, dt, dt_plasma, dt_sub %li, %.12e, %.12e, %.12e \n",n_substeps,timeData.dt, plasma_source.two_fluid_timestep,plasma_source.substep_dt);
+                    printf("Second subcycle, n, dt, dt_plasma, dt_sub %i, %.12e, %.12e, %.12e \n",n_substeps,timeData.dt, plasma_source.two_fluid_timestep,plasma_source.substep_dt);
                     for (int i = 0; i < n_substeps; i++) {
                         get_ac(data,dataNeutral,plasma_source);
                         get_two_fluid_source(data,dataNeutral,plasma_source);
