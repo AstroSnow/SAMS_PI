@@ -16,7 +16,8 @@
 #include "harness.h"
 #include "runner.h"
 #include "io/writerProto.h"
-#include "petsc.h"
+#include <memory>
+#include "petscStiffSolver.h"
 
 #include "shared_data.h"
 #include "variableRegistry.h"
@@ -28,13 +29,6 @@
 #include "LARE3DSingleTemperature/shared_data.h"
 #include "LARE3DNeutralFluid/shared_data.h"
 
-template<typename T_EOS>
-struct PETScBridgeCtx {
-    void *pip_solver; // Using void* or forward declaration to avoid circular dependencies
-    void *data_ghost;
-    void *dataNeutral_ghost;
-    void *plasma_source;
-};
 
 namespace TWOFLUID
 {
@@ -96,7 +90,7 @@ namespace TWOFLUID
        
         //Coupling physics
         bool collisions=true;
-        bool ion_rec_empirical=true;
+        bool ion_rec_empirical=false;
         bool ion_rec_nlevel=false;
         
         bool vertex_rates=false;
@@ -108,7 +102,10 @@ namespace TWOFLUID
         bool check_conservation=false;
         bool check_source=false;
         
-	bool implicit=true; // flag for using the implicit solvers from PETSc
+	    bool implicit=false; // flag for using the implicit solvers from PETSc
+        SAMS::T_dataType implicit_rtol=1.0e-6;  // relative tolerance of the PETSc time stepper (command line -ts_rtol overrides)
+        SAMS::T_dataType implicit_atol=1.0e-9;  // absolute tolerance of the PETSc time stepper (command line -ts_atol overrides)
+        bool implicit_limit_dt=false;           // if false the explicit collisional dt limit is not applied when implicit=true
 
         bool substepping=true;
         int substep_iter=0;
@@ -116,6 +113,8 @@ namespace TWOFLUID
         SAMS::T_dataType  substep_dt=1.0;
         SAMS::T_dataType  substep_max_speedup=1000.0; //Maximum substeps. The excess decreases the timestep
         SAMS::T_dataType  substep_time=0.0; //to make sure that the tiem is correct after the substeps
+        
+        bool debug_twofluid_steps=true; //print statements for where the code has gotten to
     };
     
     struct oldData
@@ -140,31 +139,49 @@ namespace TWOFLUID
     class PIP
     {
 	private:
-	    TS  h_ts;   // Persistent PETSc Time-stepping Context
-	    Vec u_vec;  // Persistent Solution Vector
-	    Vec f_vec;  // Persistent Derivative Vector
-	    
-	    // Structure to hold pointers so your RHS callback function can access them
-	    PETScBridgeCtx<T_EOS> bridge_ctx;         
-// --- ADD THESE PLACEHOLDER HELPER METHOD DECLARATIONS ---
-        void PackViewsToPETScVector(typename LARE::LARE3DST<T_EOS>::simulationData &data, 
-                                    typename LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, 
-                                    Vec &U) {
-            // Placeholder: We will map your portableWrapper logic here next
-        }
+	    // ---- PETSc implicit source-term solver -------------------------------------------------
+	    // All PETSc code lives in petscStiffSolver.cpp; here we only exchange plain host arrays with it.
+	    // State layout (10 variables per cell, over Range(-1,n) in each direction):
+	    //   +0 rho  +1 rho_n  +2..4 plasma v  +5..7 neutral v  +8 energy_ion  +9 energy_n
 
-        void UnpackPETScVectorToViews(Vec &U, 
-                                      typename LARE::LARE3DST<T_EOS>::simulationData &data, 
-                                      typename LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral) {
-            // Placeholder: We will map back out to your data structures here next
-        }
+	    // Context handed to the right hand side callback. Refreshed before every solve.
+	    struct PETScCtx {
+	        PIP *pip = nullptr;
+	        typename LARE::LARE3DST<T_EOS>::simulationData *data = nullptr;
+	        typename LARE::LARE3DNF<T_EOS>::simulationData *dataNeutral = nullptr;
+	        data_two_fluid_source *plasma_source = nullptr;
+	    };
+
+	    static constexpr int petsc_stride = 10;
+
+	    std::shared_ptr<SAMS_PETSC::StiffSolver> stiff_solver; // created on first use
+	    std::vector<double> u_buf;       // state handed to / returned from the solver
+	    std::vector<double> u_start_buf; // copy of the state at the start of a solve, for rollback
+	    PETScCtx petsc_ctx;
+
+	    void ensureStiffSolver(LARE::LARE3DST<T_EOS>::simulationData &data, data_two_fluid_source &plasma_source);
+	    void implicitSourceSolve(LARE::LARE3DST<T_EOS>::simulationData &data,
+	                             LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
+	                             data_two_fluid_source &plasma_source,
+	                             SAMS::T_dataType dt_solve);
+
+	    // Host-array packing in the layout above
+	    void PackViewsToArray(LARE::LARE3DST<T_EOS>::simulationData &data,
+	                          LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral,
+	                          double *u);
+	    void UnpackArrayToViews(const double *u,
+	                            LARE::LARE3DST<T_EOS>::simulationData &data,
+	                            LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral);
+	    void PackSourcesToArray(data_two_fluid_source &plasma_source,
+	                            LARE::LARE3DST<T_EOS>::simulationData &data,
+	                            double *f);
+
+	    // f = F(u): exact two-fluid sources of the trial state u
+	    static void RHSAdapter(const double *u, double *f, void *user);
 
 	public:
-	    // Call this once during the initial setup/start of SAMS
-	    void initializePETScSolver(int total_local_cells);
-	    // Call this once at the very end of your simulation run
-	    void finalizePETScSolver();
-            
+	    // Called by the runner at the end of the run; releases the PETSc objects
+	    void finalize();
 
 	    // Blocks compilation if the Equation Of State is not idealGas
             static_assert(std::is_same_v<T_EOS, idealGas>);
@@ -176,18 +193,20 @@ namespace TWOFLUID
             using T_dataType = SAMS::T_dataType;
 
             void initialize(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
-                two_fluid_read_rates(plasma_source);
-                two_fluid_test_rates(plasma_source);
+                if (plasma_source.ion_rec_nlevel) {
+                    two_fluid_read_rates(plasma_source);
+                    two_fluid_test_rates(plasma_source);
+                }
                 };
             void defaultValues(data_two_fluid_source & plasma_source);
             void allocate(data_two_fluid_source &plasma_source,SAMS::harness &harness);
             void allocate_conserved(oldData &oldData,SAMS::harness &harness);
             void registerVariables(SAMS::harness &harness,data_two_fluid_source &plasma_source);
             
-            void registerAxes(SAMS::harness &harness)
+            void registerAxes(SAMS::harness &harness,data_two_fluid_source &plasma_source)
             {
                 auto &axisReg = harness.axisRegistry;
-                axisReg.registerLogicalAxis("species");
+                if (plasma_source.ion_rec_nlevel) {axisReg.registerLogicalAxis("species");}
             }
             
             void initialiseSource(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
@@ -203,37 +222,22 @@ namespace TWOFLUID
                 if (plasma_source.check_conservation) {allocate_conserved(oldData,harness);}
             }
             void beforeStartOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
+                printf("beforeStartofTimestep start \n");
                 get_ac(data,dataNeutral,plasma_source); //These might not be needed
                 get_two_fluid_source(data,dataNeutral,plasma_source);
+                printf("beforeStartofTimestep end \n");
                 //apply_two_fluid_source(data,dataNeutral,plasma_source);
             };
             
             void applySourceTermsStart(LARE::LARE3DST<T_EOS>::simulationData &data,LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData,SAMS::timeState &timeData){
+                if (plasma_source.debug_twofluid_steps) {printf("applySourceTermsStart start \n");}
                 if (plasma_source.check_conservation) {copyState(data, dataNeutral, oldData);};
                 if (plasma_source.check_source) {checkSourceConservation(data,dataNeutral,plasma_source);};
                 if (plasma_source.implicit) {
-		        // =====================================================================
-		        // NEW: BRANCH 1 - PETSc Implicit Stiff Solver Loop
-		        // =====================================================================
-		        // Strang split time delta is 0.5 * dt
-			plasma_source.substep_dt = 0.5 * timeData.dt; 
-
-		        // 1. Pack current grid values into the vector (Declared below)
-		        PackViewsToPETScVector(data, dataNeutral, this->u_vec);
-
-		        // 2. Set precise time window bounds using the Void macro variant
-		        PetscCallVoid(TSSetTime(this->h_ts, timeData.time));
-		        PetscCallVoid(TSSetTimeStep(this->h_ts, plasma_source.substep_dt));
-		        PetscCallVoid(TSSetMaxTime(this->h_ts, timeData.time + plasma_source.substep_dt));
-
-		        // 3. Solve the point-wise coupled systems implicitly
-		        printf("Executing implicit PETSc source solve for dt = %.12e\n", plasma_source.substep_dt);
-		        PetscCallVoid(TSSolve(this->h_ts, this->u_vec));
-
-		        // 4. Unpack solved implicit states back into grid arrays
-		        UnpackPETScVectorToViews(this->u_vec, data, dataNeutral);
-
-	        } else if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
+                    // Implicit PETSc solve of the first Strang half step
+                    plasma_source.substep_dt = 0.5 * timeData.dt; // Strang splitting factor
+                    implicitSourceSolve(data, dataNeutral, plasma_source, plasma_source.substep_dt);
+                } else if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
                     //set up the substepping for the two-fluid routines
                     int n_substeps=std::ceil(0.5*timeData.dt/plasma_source.two_fluid_timestep);
                     plasma_source.substep_dt=0.5*timeData.dt/n_substeps; //0.5 from strang split. Not sure if needed elsewhere
@@ -248,10 +252,15 @@ namespace TWOFLUID
                     plasma_source.substep_dt=0.5*data.dt;//0.5 from strang split.
                     apply_two_fluid_source(data,dataNeutral,plasma_source);
                 }
+                if (plasma_source.debug_twofluid_steps) {printf("applySourceTermsStart end \n");}
             };
 
             void afterEndOfTimestep(LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source,oldData &oldData,SAMS::timeState &timeData){
-                if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
+                if (plasma_source.implicit) {
+                    // Implicit PETSc solve of the second Strang half step
+                    plasma_source.substep_dt = 0.5 * timeData.dt; // Strang splitting factor
+                    implicitSourceSolve(data, dataNeutral, plasma_source, plasma_source.substep_dt);
+                } else if ((plasma_source.substepping) && (plasma_source.two_fluid_timestep<timeData.dt)){
                     //set up the substepping for the two-fluid routines
                     int n_substeps=std::ceil(0.5*timeData.dt/plasma_source.two_fluid_timestep);
                     plasma_source.substep_dt=0.5*timeData.dt/n_substeps; //0.5 from strang split. Not sure if needed elsewhere
@@ -274,6 +283,11 @@ namespace TWOFLUID
             void calculateTimestep(SAMS::timeState &timeData,LARE::LARE3DST<T_EOS>::simulationData &data, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral, data_two_fluid_source &plasma_source){
                 //get_ac(data,dataNeutral,plasma_source);
                 //get_two_fluid_source(data,dataNeutral,plasma_source);
+                printf("calculateTimestep start \n");
+                if (plasma_source.implicit && !plasma_source.implicit_limit_dt) {
+                    // The implicit solver is not limited by the stiff exchange timescales;
+                    // the accuracy of the source step is controlled by the PETSc adaptive time stepper.
+                } else {
                 set_dt_collisional(data,dataNeutral,plasma_source);
                 //printf("two_fluid timestep = %f \n",plasma_source.two_fluid_timestep);
                 //set_dt(data);
@@ -286,9 +300,11 @@ namespace TWOFLUID
                 } else {
                     timeData.dt = plasma_source.two_fluid_timestep<timeData.dt ? plasma_source.two_fluid_timestep : timeData.dt;
                 }
+                } // end explicit dt limit
                 if (timeData.time<=1.0e-6) {
                     timeData.dt = 1.0e-8<timeData.dt ? 1.0e-8 : timeData.dt;
                 }
+                printf("calculateTimestep end \n");
             };
             void getTimestep(SAMS::timeState &timeData, LARE::LARE3DNF<T_EOS>::simulationData &dataNeutral){
                 //data.dt = timeData.dt;

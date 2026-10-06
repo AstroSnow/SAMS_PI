@@ -58,18 +58,49 @@ endif()
 # PETSc Configuration
 # ==============================================================================
 find_package(PkgConfig REQUIRED)
-# Search for the lowercase 'petsc' module configured by the apt installer
+# Finds 'petsc' through pkg-config. For a PETSc installed in a custom prefix, add
+# <prefix>/lib/pkgconfig to PKG_CONFIG_PATH (or CMAKE_PREFIX_PATH) before running cmake.
 pkg_check_modules(PETSC REQUIRED IMPORTED_TARGET petsc)
 
 if(PETSC_FOUND)
   message(STATUS "Found PETSc: Version ${PETSC_VERSION}")
+  if(PETSC_VERSION VERSION_LESS 3.18)
+    message(WARNING "PETSc ${PETSC_VERSION} is older than 3.18: using the PetscCall compatibility macros in twofluid.h")
+  endif()
   message(STATUS "PETSc Include Dirs: ${PETSC_INCLUDE_DIRS}")
-  
-  # Inject the PETSc include directories globally or link to targets later
+
   include_directories(${PETSC_INCLUDE_DIRS})
-  
-  # Force matching multi-arch system path mapping if needed
-  include_directories("/usr/include/petsc")
+
+  # petsc.h always includes mpi.h. A PETSc built with MPI needs the real MPI headers (-DMPI=ON);
+  # a PETSc built with --with-mpi=0 uses its own serial stub (MPIUNI) and must be used with
+  # -DMPI=OFF, otherwise the two mpi.h files clash. PETSc records which one in petscconf.h.
+  set(PETSC_MPIUNI FALSE)
+  set(PETSC_CONF_FOUND FALSE)
+  foreach(_dir ${PETSC_INCLUDE_DIRS})
+    if(EXISTS "${_dir}/petscconf.h")
+      set(PETSC_CONF_FOUND TRUE)
+      file(READ "${_dir}/petscconf.h" _petscconf)
+      string(FIND "${_petscconf}" "PETSC_HAVE_MPIUNI" _pos)
+      if(NOT _pos EQUAL -1)
+        set(PETSC_MPIUNI TRUE)
+      endif()
+    endif()
+  endforeach()
+
+  if(PETSC_MPIUNI)
+    message(STATUS "PETSc was built without MPI (MPIUNI)")
+    if(MPI)
+      message(WARNING "PETSc was built without MPI but MPI is ON: the MPIUNI and real mpi.h will clash. Use -DMPI=OFF.")
+    endif()
+  elseif(PETSC_CONF_FOUND)
+    message(STATUS "PETSc was built with MPI")
+    if(NOT MPI)
+      message(WARNING "PETSc was built with MPI but MPI is OFF: compiling will fail with 'mpi.h: No such file'. "
+                      "Use -DMPI=ON, or build PETSc with --with-mpi=0.")
+    endif()
+  else()
+    message(STATUS "Could not find petscconf.h in the PETSc include dirs; skipping the MPI consistency check")
+  endif()
 endif()
 # ==============================================================================
 
